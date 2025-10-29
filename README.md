@@ -1,0 +1,1 @@
+# suse-ai-up
