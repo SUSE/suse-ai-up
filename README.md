@@ -111,55 +111,14 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 
 ```mermaid
 graph TD
-    %% User Device
-    A[User Device - VS Code, Web App, CLI Tool]
-
-    %% Proxy Service with capabilities
-    B[Proxy Service - Router & Load Balancer - Capabilities: Service Discovery, Health Monitoring, Load Balancing, Session Affinity]
-
-    %% Service branches
-    C[SmartAgents Service - AI Orchestrator - Local Model acts on behalf of Remote LLM for security]
-
-    D[MCP Registry Service - Server Management - Capabilities: Discovery, Upload, Search, Bulk Operations]
-
-    E[Network Scan - Auto-Discovery - Capabilities: CIDR Scanning, Port Scanning, Health Checks, Auto-Registration]
-
-     F[VirtualMCP Service - Legacy Integration - Capabilities: OpenAPI Schema, Database Integration, Code-free Generation, Legacy API Consumption (Separate Repository)]
-
-    %% AI processing components
-    G[Local Model - Worker - Private Data Control]
-
-    H[Remote LLM - Supervisor - Cloud AI Power]
-
-    %% Final output
-    I[MCP Servers - Generated from APIs - Standardized Endpoints]
-
-    %% Flow connections
-    A --> B
-    B --> C
-    B --> D
-    D --> E
-    D --> F
-
-    %% SmartAgents internal flow
-    C --> G
-    G --> H
-
-    %% VirtualMCP output
-    F --> I
-
-    %% Styling
-    classDef userClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef serviceClass fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef aiClass fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-    classDef outputClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-
-    class A userClass
-    class B proxyClass
-    class C,D,E,F serviceClass
-    class G,H aiClass
-    class I outputClass
+    A[User Device<br/>VS Code, Web App, CLI Tool] --> B[Proxy Service<br/>Router & Load Balancer]
+    B --> C[SmartAgents Service<br/>AI Orchestrator]
+    B --> D[MCP Registry Service<br/>Server Management]
+    D --> E[Network Scan<br/>Auto-Discovery]
+    D --> F[VirtualMCP Service<br/>Legacy Integration<br/>(Separate Repository)]
+    C --> G[Local Model<br/>Worker]
+    G --> H[Remote LLM<br/>Supervisor]
+    F --> I[MCP Servers<br/>Generated from APIs]
 ```
 
 ## 📦 Services
