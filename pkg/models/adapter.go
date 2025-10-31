@@ -91,6 +91,7 @@ type AdapterStatus struct {
 // DiscoveredServer represents a found MCP server
 type DiscoveredServer struct {
 	ID                 string            `json:"id" example:"server-123"`
+	Name               string            `json:"name,omitempty" example:"MCP Example Server"`
 	Address            string            `json:"address" example:"http://192.168.1.100:8000"`
 	Protocol           ServerProtocol    `json:"protocol" example:"MCP"`
 	Connection         ConnectionType    `json:"connection" example:"StreamableHttp"`

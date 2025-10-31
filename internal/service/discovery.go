@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -565,25 +566,12 @@ func (ds *DiscoveryService) detectMCPServers(results []ScanResult) []models.Disc
 func (ds *DiscoveryService) testMCPServer(address string) *models.DiscoveredServer {
 	mcpURL := address + "/mcp"
 
-	// Test 1: Try SSE endpoint
-	if ds.testSSEEndpoint(mcpURL) {
-		return &models.DiscoveredServer{
-			ID:                 fmt.Sprintf("mcp-%d", time.Now().UnixNano()),
-			Address:            address,
-			Protocol:           models.ServerProtocolMCP,
-			Connection:         models.ConnectionTypeSSE,
-			Status:             "healthy",
-			LastSeen:           time.Now(),
-			Metadata:           map[string]string{"detectionMethod": "sse", "auth_type": "unknown"},
-			VulnerabilityScore: "high", // Default for SSE - could be enhanced later
-		}
-	}
-
-	// Test 2: Try streamable HTTP
+	// Test streamable HTTP endpoint (replacing SSE with HTTP)
 	authResult := ds.testStreamableHTTPEndpoint(mcpURL)
 	if authResult.isMCP {
 		return &models.DiscoveredServer{
 			ID:                 fmt.Sprintf("mcp-%d", time.Now().UnixNano()),
+			Name:               authResult.serverName,
 			Address:            address,
 			Protocol:           models.ServerProtocolMCP,
 			Connection:         models.ConnectionTypeStreamableHttp,
@@ -597,33 +585,12 @@ func (ds *DiscoveryService) testMCPServer(address string) *models.DiscoveredServ
 	return nil
 }
 
-// testSSEEndpoint tests if the endpoint supports SSE
-func (ds *DiscoveryService) testSSEEndpoint(url string) bool {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return false
-	}
-
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-
-	resp, err := ds.httpClient.Do(req)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-
-	// Check for SSE response
-	contentType := resp.Header.Get("Content-Type")
-	return strings.Contains(contentType, "text/event-stream") ||
-		strings.Contains(contentType, "application/json") // MCP error response
-}
-
 // authDetectionResult holds the result of MCP server authentication detection
 type authDetectionResult struct {
 	isMCP              bool
 	vulnerabilityScore string
 	authType           string
+	serverName         string
 }
 
 // testStreamableHTTPEndpoint tests if the endpoint supports streamable HTTP and detects authentication
@@ -674,21 +641,53 @@ func (ds *DiscoveryService) scanProxyEndpoint(url string) authDetectionResult {
 		return authDetectionResult{isMCP: false}
 	}
 
+	// Extract server name from MCP response (success or error)
+	serverName := ""
+	var response map[string]interface{}
+	if err := json.Unmarshal(body[:n], &response); err == nil {
+		if result, ok := response["result"].(map[string]interface{}); ok {
+			if serverInfo, ok := result["serverInfo"].(map[string]interface{}); ok {
+				if name, ok := serverInfo["name"].(string); ok {
+					serverName = name
+				}
+			}
+		}
+		// Also check error responses for server info
+		if error, ok := response["error"].(map[string]interface{}); ok {
+			if data, ok := error["data"].(map[string]interface{}); ok {
+				if serverInfo, ok := data["serverInfo"].(map[string]interface{}); ok {
+					if name, ok := serverInfo["name"].(string); ok {
+						serverName = name
+					}
+				}
+			}
+		}
+	}
+
 	// Determine vulnerability based on authentication
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
-		// Authentication is required - this is good!
+		// Authentication is required - analyze WWW-Authenticate header
 		authHeader := resp.Header.Get("WWW-Authenticate")
-		if strings.Contains(authHeader, "Bearer") {
-			return authDetectionResult{isMCP: true, vulnerabilityScore: "low", authType: "bearer"}
+
+		// Check for OAuth (resource_metadata indicates OAuth 2.1 protected resource)
+		if strings.Contains(authHeader, "resource_metadata") {
+			return authDetectionResult{isMCP: true, vulnerabilityScore: "low", authType: "oauth", serverName: serverName}
 		}
-		return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "other"}
+
+		// Check for Bearer token auth
+		if strings.Contains(authHeader, "Bearer") {
+			return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "token", serverName: serverName}
+		}
+
+		// Other authentication methods
+		return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "other", serverName: serverName}
 	} else if resp.StatusCode == 200 {
 		// No authentication required - potentially vulnerable
-		return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none"}
+		return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none", serverName: serverName}
 	}
 
 	// Other status codes
-	return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "unknown"}
+	return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "unknown", serverName: serverName}
 }
 
 // scanDirectMCPServer scans a direct MCP server (not through proxy)
@@ -718,44 +717,59 @@ func (ds *DiscoveryService) scanDirectMCPServer(url string) authDetectionResult 
 	isMCPResponse := strings.Contains(bodyStr, `"jsonrpc"`) &&
 		(strings.Contains(bodyStr, `"result"`) || strings.Contains(bodyStr, `"error"`))
 
-	// If we got any response that looks like MCP, determine vulnerability
+	// Extract server name from MCP response (success or error)
+	serverName := ""
 	if isMCPResponse {
-		if resp.StatusCode == 200 {
-			return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none"}
-		} else if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			authHeader := resp.Header.Get("WWW-Authenticate")
-			if strings.Contains(authHeader, "Bearer") {
-				// Try with a test token
-				req2, _ := http.NewRequest("POST", url, strings.NewReader(initPayload))
-				req2.Header.Set("Content-Type", "application/json")
-				req2.Header.Set("Accept", "application/json, text/event-stream")
-				req2.Header.Set("Authorization", "Bearer test-token")
-
-				resp2, err := ds.httpClient.Do(req2)
-				if err == nil {
-					defer resp2.Body.Close()
-					if resp2.StatusCode == 200 {
-						return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "token"}
+		var response map[string]interface{}
+		if err := json.Unmarshal(body[:n], &response); err == nil {
+			if result, ok := response["result"].(map[string]interface{}); ok {
+				if serverInfo, ok := result["serverInfo"].(map[string]interface{}); ok {
+					if name, ok := serverInfo["name"].(string); ok {
+						serverName = name
 					}
 				}
 			}
+			// Also check error responses for server info
+			if error, ok := response["error"].(map[string]interface{}); ok {
+				if data, ok := error["data"].(map[string]interface{}); ok {
+					if serverInfo, ok := data["serverInfo"].(map[string]interface{}); ok {
+						if name, ok := serverInfo["name"].(string); ok {
+							serverName = name
+						}
+					}
+				}
+			}
+		}
+	}
 
-			// Check for OAuth
-			if strings.Contains(authHeader, "oauth") || strings.Contains(authHeader, "OAuth") {
-				return authDetectionResult{isMCP: true, vulnerabilityScore: "low", authType: "oauth"}
+	// If we got any response that looks like MCP, determine vulnerability
+	if isMCPResponse {
+		if resp.StatusCode == 200 {
+			return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none", serverName: serverName}
+		} else if resp.StatusCode == 401 || resp.StatusCode == 403 {
+			authHeader := resp.Header.Get("WWW-Authenticate")
+
+			// Check for OAuth (resource_metadata indicates OAuth 2.1 protected resource)
+			if strings.Contains(authHeader, "resource_metadata") {
+				return authDetectionResult{isMCP: true, vulnerabilityScore: "low", authType: "oauth", serverName: serverName}
+			}
+
+			// Check for Bearer token auth
+			if strings.Contains(authHeader, "Bearer") {
+				return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "token", serverName: serverName}
 			}
 
 			// Other auth
-			return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "other"}
+			return authDetectionResult{isMCP: true, vulnerabilityScore: "medium", authType: "other", serverName: serverName}
 		} else {
 			// Any other status with MCP response
-			return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none"}
+			return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none", serverName: serverName}
 		}
 	}
 
 	// If status 200 but not MCP response, still consider it MCP (might be error response)
 	if resp.StatusCode == 200 {
-		return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none"}
+		return authDetectionResult{isMCP: true, vulnerabilityScore: "high", authType: "none", serverName: serverName}
 	}
 
 	return authDetectionResult{isMCP: false}
