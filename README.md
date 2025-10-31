@@ -110,7 +110,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ## 🏗️ User Flow Architecture
 
 ```mermaid
-graph TD
+graph LR
     A[User Device<br/>VS Code, Web App, CLI Tool] --> B[Proxy Service<br/>Router & Load Balancer<br/>• Service Discovery<br/>• Health Monitoring<br/>• Load Balancing<br/>• Session Affinity]
     B --> C[SmartAgents Service<br/>AI Orchestrator<br/>• Local Model acts on behalf<br/>of Remote LLM for security]
     B --> D[MCP Registry Service<br/>Server Management<br/>• Discovery<br/>• Upload<br/>• Search<br/>• Bulk Operations]
@@ -119,6 +119,18 @@ graph TD
     C --> G[Local Model<br/>Worker<br/>• Private Data Control]
     G --> H[Remote LLM<br/>Supervisor<br/>• Cloud AI Power]
     F --> I[MCP Servers<br/>Generated from APIs<br/>• Standardized Endpoints]
+
+    classDef userClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef serviceClass fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef aiClass fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef outputClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+
+    class A userClass
+    class B proxyClass
+    class C,D,E,F serviceClass
+    class G,H aiClass
+    class I outputClass
 ```
 
 ## 📦 Services
