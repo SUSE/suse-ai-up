@@ -112,27 +112,27 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ```mermaid
 graph TD
     %% User Device
-    A[User Device<br/>VS Code, Web App, CLI Tool]
+    A[User Device - VS Code, Web App, CLI Tool]
 
     %% Proxy Service with capabilities
-    B[Proxy Service<br/>Router & Load Balancer<br/>📋 Capabilities:<br/>• Service Discovery<br/>• Health Monitoring<br/>• Load Balancing<br/>• Session Affinity]
+    B[Proxy Service - Router & Load Balancer - Capabilities: Service Discovery, Health Monitoring, Load Balancing, Session Affinity]
 
     %% Service branches
-    C[SmartAgents Service<br/>AI Orchestrator<br/>🤖 Local Model acts on behalf<br/>of Remote LLM for security]
+    C[SmartAgents Service - AI Orchestrator - Local Model acts on behalf of Remote LLM for security]
 
-    D[MCP Registry Service<br/>Server Management<br/>📚 Capabilities:<br/>• Discovery<br/>• Upload<br/>• Search<br/>• Bulk Operations]
+    D[MCP Registry Service - Server Management - Capabilities: Discovery, Upload, Search, Bulk Operations]
 
-    E[Network Scan<br/>Auto-Discovery<br/>🔍 Capabilities:<br/>• CIDR Scanning<br/>• Port Scanning<br/>• Health Checks<br/>• Auto-Registration]
+    E[Network Scan - Auto-Discovery - Capabilities: CIDR Scanning, Port Scanning, Health Checks, Auto-Registration]
 
-     F[VirtualMCP Service<br/>Legacy Integration<br/>🔧 Capabilities:<br/>• OpenAPI Schema<br/>• Database Integration<br/>• Code-free Generation<br/>• Legacy API Consumption<br/>*(Separate Repository)*]
+     F[VirtualMCP Service - Legacy Integration - Capabilities: OpenAPI Schema, Database Integration, Code-free Generation, Legacy API Consumption (Separate Repository)]
 
     %% AI processing components
-    G[Local Model<br/>Worker<br/>🏠 Private Data Control]
+    G[Local Model - Worker - Private Data Control]
 
-    H[Remote LLM<br/>Supervisor<br/>☁️ Cloud AI Power]
+    H[Remote LLM - Supervisor - Cloud AI Power]
 
     %% Final output
-    I[MCP Servers<br/>Generated from APIs<br/>🔗 Standardized Endpoints]
+    I[MCP Servers - Generated from APIs - Standardized Endpoints]
 
     %% Flow connections
     A --> B
@@ -216,7 +216,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Submitting pull requests
 - Coding conventions
 
-For questions or discussions, join our [GitHub Discussions](https://github.com/suse/suse-ai-up-proxy/discussions).
+For questions or discussions, join our [GitHub Discussions](https://github.com/suse/suse-ai-up/discussions).
 
 ## 📄 License
 
