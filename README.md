@@ -12,68 +12,18 @@ A comprehensive platform for managing and proxying Model Context Protocol (MCP) 
 - **Kubernetes-Native**: Designed for cloud-native deployments with Helm charts and StatefulSets
 - **Plugin Architecture**: Extensible microservices framework for pluggable AI capabilities
 
-## 🚀 Quick Start
+## 🎯 What This Solves
 
-### Local Development Setup
-```bash
-# 1. Start the proxy service
-cd suse-ai-up-proxy && go run cmd/service/main.go
+The SUSE AI Universal Proxy addresses the growing complexity of deploying and managing AI services in enterprise environments. By providing a unified reverse proxy and management layer for MCP servers, it enables:
 
-# 2. Start SmartAgents with proxy registration (now in separate repository)
+- **Unified API Gateway**: Single entry point for all AI services
+- **Service Orchestration**: Automated service discovery and registration
+- **Load Balancing**: Intelligent routing with session affinity
+- **Security**: Enterprise-grade authentication and authorization
+- **Observability**: Comprehensive monitoring and logging
+- **Scalability**: Kubernetes-native deployment with auto-scaling
 
-# 3. Test the setup
-curl http://localhost:8911/plugins/services
-curl http://localhost:8911/v1/models
-```
-
-### MCP Server Example with Authentication
-
-Create and test a secure sequential thinking MCP server:
-
-```bash
-# 1. Start the proxy service
-cd suse-ai-up-proxy && go run cmd/service/main.go
-
-# 2. Create authenticated sequential thinking adapter
-curl -X POST http://localhost:8911/adapters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "sequential-thinking",
-    "connectionType": "LocalStdio",
-    "mcpClientConfig": {
-      "mcpServers": {
-        "sequential-thinking": {
-          "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-        }
-      }
-    },
-    "authentication": {
-      "required": true,
-      "type": "bearer",
-      "token": "my-secure-token-123"
-    },
-    "description": "Authenticated sequential thinking MCP server"
-  }'
-
-# 3. Test without authentication (should fail)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
-
-# 4. Test with authentication (should succeed)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer my-secure-token-123" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
-
-# 5. List available tools
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer my-secure-token-123" \
-  -H "mcp-session-id: YOUR_SESSION_ID" \
-  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
-```
+This solution bridges the gap between AI development and production deployment, making it easier to build and maintain AI-powered applications.
 
 ## 🏗️ Architecture Overview
 
@@ -165,18 +115,17 @@ Comprehensive MCP server registry with discovery, deployment, and management cap
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines and contribution process
 - **[License](LICENSE.md)** - Apache 2.0 license information
 
-## 🎯 What This Solves
+### Local Development Setup
+```bash
+# 1. Start the proxy service
+cd suse-ai-up-proxy && go run cmd/service/main.go
 
-The SUSE AI Universal Proxy addresses the growing complexity of deploying and managing AI services in enterprise environments. By providing a unified reverse proxy and management layer for MCP servers, it enables:
+# 2. Start SmartAgents with proxy registration (now in separate repository)
 
-- **Unified API Gateway**: Single entry point for all AI services
-- **Service Orchestration**: Automated service discovery and registration
-- **Load Balancing**: Intelligent routing with session affinity
-- **Security**: Enterprise-grade authentication and authorization
-- **Observability**: Comprehensive monitoring and logging
-- **Scalability**: Kubernetes-native deployment with auto-scaling
-
-This solution bridges the gap between AI development and production deployment, making it easier to build and maintain AI-powered applications.
+# 3. Test the setup
+curl http://localhost:8911/plugins/services
+curl http://localhost:8911/v1/models
+```
 
 ## 🤝 Contributing
 
