@@ -77,6 +77,34 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 
 ## 🏗️ Architecture Overview
 
+```mermaid
+graph TD
+    A[SUSE AI Universal Proxy]
+    subgraph B [Plugin Service Framework]
+        C[SmartAgents Service]
+        D[Registry Service]
+        E[VirtualMCP Service]
+    end
+    F[Dynamic Router & Load Balancer]
+    G[Service Discovery & Health Monitor]
+    subgraph H [External Clients]
+        I[VS Code MCP Clients]
+        J[Web Apps REST APIs]
+        K[CLI Tools curl/wget]
+    end
+
+    H --> A
+    A --> B
+    B --> F
+    A --> G
+
+    classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef serviceClass fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef clientClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+
+    class A proxyClass
+    class C,D,E serviceClass
+    class I,J,K clientClass
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SUSE AI Universal Proxy                       │
