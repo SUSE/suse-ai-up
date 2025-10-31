@@ -111,14 +111,14 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 
 ```mermaid
 graph TD
-    A[User Device<br/>VS Code, Web App, CLI Tool] --> B[Proxy Service<br/>Router & Load Balancer]
-    B --> C[SmartAgents Service<br/>AI Orchestrator]
-    B --> D[MCP Registry Service<br/>Server Management]
-    D --> E[Network Scan<br/>Auto-Discovery]
-    D --> F[VirtualMCP Service<br/>Legacy Integration]
-    C --> G[Local Model<br/>Worker]
-    G --> H[Remote LLM<br/>Supervisor]
-    F --> I[MCP Servers<br/>Generated from APIs]
+    A[User Device<br/>VS Code, Web App, CLI Tool] --> B[Proxy Service<br/>Router & Load Balancer<br/>• Service Discovery<br/>• Health Monitoring<br/>• Load Balancing<br/>• Session Affinity]
+    B --> C[SmartAgents Service<br/>AI Orchestrator<br/>• Local Model acts on behalf<br/>of Remote LLM for security]
+    B --> D[MCP Registry Service<br/>Server Management<br/>• Discovery<br/>• Upload<br/>• Search<br/>• Bulk Operations]
+    D --> E[Network Scan<br/>Auto-Discovery<br/>• CIDR Scanning<br/>• Port Scanning<br/>• Health Checks<br/>• Auto-Registration]
+    D --> F[VirtualMCP Service<br/>Legacy Integration<br/>• OpenAPI Schema<br/>• Database Integration<br/>• Code-free Generation<br/>• Legacy API Consumption]
+    C --> G[Local Model<br/>Worker<br/>• Private Data Control]
+    G --> H[Remote LLM<br/>Supervisor<br/>• Cloud AI Power]
+    F --> I[MCP Servers<br/>Generated from APIs<br/>• Standardized Endpoints]
 ```
 
 ## 📦 Services
