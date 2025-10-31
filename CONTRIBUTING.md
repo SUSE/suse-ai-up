@@ -2,7 +2,7 @@
 
 We're thrilled you're interested in contributing to SUSE AI Universal Proxy! This project aims to provide a robust reverse proxy and management layer for Model Context Protocol (MCP) servers. Your contributions help make AI development more accessible and scalable.
 
-If you haven't already, check out our [GitHub Issues](https://github.com/suse/suse-ai-up-proxy/issues) for current discussions and feature requests. We want you working on things you're excited about.
+If you haven't already, check out our [GitHub Issues](https://github.com/suse/suse-ai-up/issues) for current discussions and feature requests. We want you working on things you're excited about.
 
 Here are some important resources:
 
@@ -25,7 +25,20 @@ For specific services:
 
 ## Submitting changes
 
-Please send a [GitHub Pull Request](https://github.com/suse/suse-ai-up-proxy/pulls) with a clear list of what you've done. When you send a pull request, please include tests for new functionality. We can always use more test coverage.
+To contribute to this project, follow these steps:
+
+1. **Fork the repository**: First, fork the repo to your own GitHub account.
+
+2. **Do not create a new branch**: Work directly on the main branch of your fork.
+
+3. **Open an issue**: Create a new issue in the original repository with the label "epic". The issue must clearly describe:
+   - The problem you're addressing
+   - Why it's important
+   - How you think you may solve it
+
+4. **Wait for approval**: Once the issue is approved by maintainers, you may proceed.
+
+5. **Submit a Pull Request**: After approval, submit your work as a PR from your fork's main branch, linking it to the approved issue.
 
 Please follow our coding conventions (below) and make sure all of your commits are atomic (one feature per commit).
 
