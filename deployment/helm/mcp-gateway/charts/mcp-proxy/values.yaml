@@ -1,0 +1,80 @@
+# Default values for mcp-proxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: ghcr.io/microsoft/mcp-proxy
+  tag: "latest"
+  pullPolicy: Always
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# MCP Server Configuration
+mcp:
+  # Mode: "local" or "remote"
+  mode: "local"
+
+  # For local MCP servers
+  local:
+    command: "npx"  # or "uvx"
+    args: "-y @azure/mcp@latest server start"
+    env:
+      - name: AZURE_MCP_INCLUDE_PRODUCTION_CREDENTIALS
+        value: "true"
+      - name: DOTNET_SYSTEM_GLOBALIZATION_INVARIANT
+        value: "1"
+
+  # For remote MCP servers
+  remote:
+    url: "https://internal-mcp-server/mcp"
+
+  # Workload Identity
+  useWorkloadIdentity: false
+
+# Runtime Configuration
+runtime:
+  # Supported runtimes for local MCP servers
+  supportedCommands:
+    - "npx"
+    - "uvx"
+    - "python"
+    - "node"
+    - "dotnet"
+
+  # Security settings
+  maxArgs: 64
+  maxArgLength: 512
+  allowedCommands: ["npx", "uvx", "python", "node", "dotnet"]
+
+# RBAC Configuration
+rbac:
+  enabled: true
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+# Ingress Configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mcp-proxy.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
