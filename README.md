@@ -115,7 +115,7 @@ graph TD
     B --> C[SmartAgents Service<br/>AI Orchestrator]
     B --> D[MCP Registry Service<br/>Server Management]
     D --> E[Network Scan<br/>Auto-Discovery]
-    D --> F[VirtualMCP Service<br/>Legacy Integration<br/>(Separate Repository)]
+    D --> F[VirtualMCP Service<br/>Legacy Integration]
     C --> G[Local Model<br/>Worker]
     G --> H[Remote LLM<br/>Supervisor]
     F --> I[MCP Servers<br/>Generated from APIs]
