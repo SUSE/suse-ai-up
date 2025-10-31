@@ -1,0 +1,163 @@
+# Default values for mcp-gateway.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Gateway Service Configuration
+gateway:
+  enabled: true
+  image:
+    repository: ghcr.io/suse/suse-ai-up
+    tag: "latest"
+    pullPolicy: Always
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  env:
+    - name: AUTH_MODE
+      value: "dev"
+    - name: PORT
+      value: "8000"
+
+  # Authentication Configuration
+  auth:
+    mode: "dev"  # dev, oauth
+    oauth:
+      provider: "azure"
+      clientId: ""
+      tenantId: ""
+      jwksUrl: ""
+      issuer: ""
+      audience: ""
+
+  # Storage Configuration
+  storage:
+    type: "inmemory"  # inmemory, cosmos
+    cosmos:
+      accountEndpoint: ""
+      databaseName: "McpGatewayDb"
+      connectionString: ""
+
+  # Session Configuration
+  session:
+    type: "inmemory"  # inmemory, redis
+    redis:
+      host: ""
+      port: 6379
+
+  # Kubernetes Configuration
+  rbac:
+    enabled: true
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+
+  # Ingress Configuration
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: mcp-gateway.local
+        paths:
+          - path: /
+            pathType: Prefix
+          - path: /docs
+            pathType: Exact
+          - path: /swagger
+            pathType: Prefix
+    tls: []
+
+# MCP Proxy Service Configuration
+proxy:
+  enabled: true
+  image:
+    repository: ghcr.io/microsoft/mcp-proxy
+    tag: "latest"
+    pullPolicy: Always
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # MCP Server Configuration
+  mcp:
+    # Mode: "local" or "remote"
+    mode: "local"
+
+    # For local MCP servers
+    local:
+      command: "npx"  # or "uvx"
+      args: "-y @azure/mcp@latest server start"
+      env:
+        - name: AZURE_MCP_INCLUDE_PRODUCTION_CREDENTIALS
+          value: "true"
+        - name: DOTNET_SYSTEM_GLOBALIZATION_INVARIANT
+          value: "1"
+
+    # For remote MCP servers
+    remote:
+      url: "https://internal-mcp-server/mcp"
+
+    # Workload Identity
+    useWorkloadIdentity: false
+
+  # Runtime Configuration
+  runtime:
+    # Supported runtimes for local MCP servers
+    supportedCommands:
+      - "npx"
+      - "uvx"
+      - "python"
+      - "node"
+      - "dotnet"
+
+    # Security settings
+    maxArgs: 64
+    maxArgLength: 512
+    allowedCommands: ["npx", "uvx", "python", "node", "dotnet"]
+
+# Global configurations
+global:
+  imageRegistry: ""
+
+# Monitoring Configuration
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: "30s"
+    scrapeTimeout: "10s"
+    additionalLabels: {}
+    relabelings: []
+    metricRelabelings: []
+
+# Common labels
+commonLabels: {}
+
+# Common annotations
+commonAnnotations: {}

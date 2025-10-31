@@ -1,0 +1,124 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+    component: gateway
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mcp-gateway.selectorLabels" . | nindent 6 }}
+      component: gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.targetPort }}
+    {{- if .Values.gateway.ingress.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.targetPort }}
+    {{- end }}
+    # Allow access to swagger UI from anywhere (for development)
+    {{- if eq .Values.gateway.auth.mode "dev" }}
+    - from: []
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.targetPort }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow access to proxy service
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "mcp-gateway.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/name: mcp-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.proxy.service.targetPort }}
+    # Allow access to Kubernetes API
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    {{- if eq .Values.gateway.storage.type "cosmos" }}
+    # Allow access to Cosmos DB
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+    {{- if eq .Values.gateway.session.type "redis" }}
+    # Allow access to Redis
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.session.redis.port }}
+    {{- end }}
+---
+{{- end }}
+{{- if .Values.proxy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-proxy
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+    component: proxy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mcp-gateway.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: mcp-proxy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "mcp-gateway.selectorLabels" . | nindent 14 }}
+              component: gateway
+      ports:
+        - protocol: TCP
+          port: {{ .Values.proxy.service.targetPort }}
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow outbound to internet for MCP commands
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+---
+{{- end }}

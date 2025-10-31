@@ -1,0 +1,77 @@
+2025/10/30 18:08:26 Starting SUSE AI Universal Proxy service...
+2025/10/30 18:08:26 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": dial tcp 127.0.0.1:6443: connect: connection refused. Running in local mode without Kubernetes deployment.
+2025/10/30 18:08:26 Creating discovery service...
+2025/10/30 18:08:26 Discovery service created successfully
+2025/10/30 18:08:26 Plugin service framework initialized
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+2025/10/30 18:08:26 Using development authentication
+[GIN-debug] POST   /scan                     --> suse-ai-up-proxy/internal/service.(*DiscoveryService).StartScan-fm (4 handlers)
+[GIN-debug] GET    /scan/:scanId             --> suse-ai-up-proxy/internal/service.(*DiscoveryService).GetScanStatus-fm (4 handlers)
+[GIN-debug] GET    /servers                  --> suse-ai-up-proxy/internal/service.(*DiscoveryService).ListDiscoveredServers-fm (4 handlers)
+[GIN-debug] POST   /register                 --> suse-ai-up-proxy/internal/service.(*DiscoveryService).RegisterServer-fm (4 handlers)
+[GIN-debug] GET    /public/registry          --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).PublicList-fm (4 handlers)
+[GIN-debug] GET    /registry/browse          --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).BrowseRegistry-fm (4 handlers)
+[GIN-debug] POST   /registry/sync/official   --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).SyncOfficialRegistry-fm (4 handlers)
+[GIN-debug] POST   /registry/upload          --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).UploadRegistryEntry-fm (4 handlers)
+[GIN-debug] POST   /registry/upload/bulk     --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).UploadBulkRegistryEntries-fm (4 handlers)
+[GIN-debug] POST   /registry/upload/local-mcp --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).UploadLocalMCP-fm (4 handlers)
+[GIN-debug] GET    /registry/:id             --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).GetMCPServer-fm (4 handlers)
+[GIN-debug] PUT    /registry/:id             --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).UpdateMCPServer-fm (4 handlers)
+[GIN-debug] DELETE /registry/:id             --> suse-ai-up-proxy/internal/handlers.(*RegistryHandler).DeleteMCPServer-fm (4 handlers)
+[GIN-debug] POST   /plugins/register         --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).RegisterService-fm (4 handlers)
+[GIN-debug] DELETE /plugins/register/:serviceId --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).UnregisterService-fm (4 handlers)
+[GIN-debug] GET    /plugins/services         --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).ListServices-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/:serviceId --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).GetService-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/:serviceId/health --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).GetServiceHealth-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/type/:serviceType --> suse-ai-up-proxy/internal/service.(*PluginRegistrationService).ListServicesByType-fm (4 handlers)
+[GIN-debug] GET    /ping                     --> main.main.func2 (4 handlers)
+[GIN-debug] POST   /adapters                 --> suse-ai-up-proxy/internal/service.(*ManagementService).CreateAdapter-fm (4 handlers)
+[GIN-debug] GET    /adapters                 --> suse-ai-up-proxy/internal/service.(*ManagementService).ListAdapters-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name           --> suse-ai-up-proxy/internal/service.(*ManagementService).GetAdapter-fm (4 handlers)
+[GIN-debug] PUT    /adapters/:name           --> suse-ai-up-proxy/internal/service.(*ManagementService).UpdateAdapter-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name           --> suse-ai-up-proxy/internal/service.(*ManagementService).DeleteAdapter-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/status    --> suse-ai-up-proxy/internal/service.(*ManagementService).GetAdapterStatus-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/logs      --> suse-ai-up-proxy/internal/service.(*ManagementService).GetAdapterLogs-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/mcp       --> suse-ai-up-proxy/internal/service.(*ProxyHandler).ForwardStreamableHttp-fm (5 handlers)
+[GIN-debug] POST   /adapters/:name/messages  --> suse-ai-up-proxy/internal/service.(*ProxyHandler).ForwardMessages-fm (5 handlers)
+[GIN-debug] GET    /adapters/:name/sse       --> suse-ai-up-proxy/internal/service.(*ProxyHandler).ForwardSSE-fm (5 handlers)
+[GIN-debug] GET    /adapters/:name/auth/status --> suse-ai-up-proxy/internal/service.(*AuthorizationService).GetAuthorizationStatus-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/auth/authorize --> suse-ai-up-proxy/internal/service.(*AuthorizationService).AuthorizeAdapter-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name/auth/tokens --> suse-ai-up-proxy/internal/service.(*AuthorizationService).RevokeTokens-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/sessions  --> suse-ai-up-proxy/internal/service.(*AuthorizationService).ListSessions-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/sessions  --> suse-ai-up-proxy/internal/service.(*AuthorizationService).CreateSession-fm (4 handlers)
+[GIN-debug] GET    /oauth/callback           --> suse-ai-up-proxy/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
+[GIN-debug] POST   /oauth/callback           --> suse-ai-up-proxy/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
+[GIN-debug] GET    /docs                     --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
+[GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
+2025/10/30 18:08:26 Server listening on http://localhost:8911
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8911
+2025/10/30 18:09:32 CreateAdapter: Starting adapter creation
+2025/10/30 18:09:32 CreateAdapter: JSON bound successfully: {Name:sequential-thinking ImageName: ImageVersion: Protocol: ConnectionType:LocalStdio EnvironmentVariables:map[] ReplicaCount:0 Description:Authenticated sequential thinking MCP server UseWorkloadIdentity:false RemoteUrl: Command: Args:[] MCPClientConfig:0x14000d123d0 Authentication:0x14000d4cba0}
+2025/10/30 18:09:32 CreateAdapter: After defaults: {Name:sequential-thinking ImageName: ImageVersion: Protocol:MCP ConnectionType:LocalStdio EnvironmentVariables:map[] ReplicaCount:1 Description:Authenticated sequential thinking MCP server UseWorkloadIdentity:false RemoteUrl: Command: Args:[] MCPClientConfig:0x14000d123d0 Authentication:0x14000d4cba0}
+2025/10/30 18:09:32 CreateAdapter: Validating name: sequential-thinking
+2025/10/30 18:09:32 CreateAdapter: Name validation passed
+2025/10/30 18:09:32 CreateAdapter: User: dev
+2025/10/30 18:09:32 CreateAdapter: Adapter does not exist, proceeding
+2025/10/30 18:09:32 Skipping deployment for non-K8s adapter sequential-thinking (type: LocalStdio)
+AUTH: Successful authentication for adapter sequential-thinking from ::1
+2025/10/30 18:09:37 ForwardStreamableHttp: Request for adapter sequential-thinking
+DEBUG: stdout length: 164, content: "{\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"sequential-thinking-server\",\"version\":\"0.2.0\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n"
+DEBUG: stderr length: 48, content: "Sequential Thinking MCP Server running on stdio\n"
+AUTH: Successful authentication for adapter sequential-thinking from ::1
+2025/10/30 18:09:45 ForwardStreamableHttp: Request for adapter sequential-thinking
+DEBUG: stdout length: 164, content: "{\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"sequential-thinking-server\",\"version\":\"0.2.0\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n"
+DEBUG: stderr length: 48, content: "Sequential Thinking MCP Server running on stdio\n"
+AUTH: Successful authentication for adapter sequential-thinking from ::1
+2025/10/30 18:09:50 ForwardStreamableHttp: Request for adapter sequential-thinking
+DEBUG: stdout length: 3827, content: "{\"result\":{\"tools\":[{\"name\":\"sequentialthinking\",\"description\":\"A detailed tool for dynamic and reflective problem-solving through thoughts.\\nThis tool helps analyze problems through a flexible thinking process that can adapt and evolve.\\nEach thought can build on, question, or revise previous insights as understanding deepens.\\n\\nWhen to use this tool:\\n- Breaking down complex problems into steps\\n- Planning and design with room for revision\\n- Analysis that might need course correction\\n- Problems where the full scope might not be clear initially\\n- Problems that require a multi-step solution\\n- Tasks that need to maintain context over multiple steps\\n- Situations where irrelevant information needs to be filtered out\\n\\nKey features:\\n- You can adjust total_thoughts up or down as you progress\\n- You can question or revise previous thoughts\\n- You can add more thoughts even after reaching what seemed like the end\\n- You can express uncertainty and explore alternative approaches\\n- Not every thought needs to build linearly - you can branch or backtrack\\n- Generates a solution hypothesis\\n- Verifies the hypothesis based on the Chain of Thought steps\\n- Repeats the process until satisfied\\n- Provides a correct answer\\n\\nParameters explained:\\n- thought: Your current thinking step, which can include:\\n* Regular analytical steps\\n* Revisions of previous thoughts\\n* Questions about previous decisions\\n* Realizations about needing more analysis\\n* Changes in approach\\n* Hypothesis generation\\n* Hypothesis verification\\n- next_thought_needed: True if you need more thinking, even if at what seemed like the end\\n- thought_number: Current number in sequence (can go beyond initial total if needed)\\n- total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)\\n- is_revision: A boolean indicating if this thought revises previous thinking\\n- revises_thought: If is_revision is true, which thought number is being reconsidered\\n- branch_from_thought: If branching, which thought number is the branching point\\n- branch_id: Identifier for the current branch (if any)\\n- needs_more_thoughts: If reaching end but realizing more thoughts needed\\n\\nYou should:\\n1. Start with an initial estimate of needed thoughts, but be ready to adjust\\n2. Feel free to question or revise previous thoughts\\n3. Don't hesitate to add more thoughts if needed, even at the \\\"end\\\"\\n4. Express uncertainty when present\\n5. Mark thoughts that revise previous thinking or branch into new paths\\n6. Ignore information that is irrelevant to the current step\\n7. Generate a solution hypothesis when appropriate\\n8. Verify the hypothesis based on the Chain of Thought steps\\n9. Repeat the process until satisfied with the solution\\n10. Provide a single, ideally correct answer as the final output\\n11. Only set next_thought_needed to false when truly done and a satisfactory answer is reached\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"thought\":{\"type\":\"string\",\"description\":\"Your current thinking step\"},\"nextThoughtNeeded\":{\"type\":\"boolean\",\"description\":\"Whether another thought step is needed\"},\"thoughtNumber\":{\"type\":\"integer\",\"description\":\"Current thought number\",\"minimum\":1},\"totalThoughts\":{\"type\":\"integer\",\"description\":\"Estimated total thoughts needed\",\"minimum\":1},\"isRevision\":{\"type\":\"boolean\",\"description\":\"Whether this revises previous thinking\"},\"revisesThought\":{\"type\":\"integer\",\"description\":\"Which thought is being reconsidered\",\"minimum\":1},\"branchFromThought\":{\"type\":\"integer\",\"description\":\"Branching point thought number\",\"minimum\":1},\"branchId\":{\"type\":\"string\",\"description\":\"Branch identifier\"},\"needsMoreThoughts\":{\"type\":\"boolean\",\"description\":\"If more thoughts are needed\"}},\"required\":[\"thought\",\"nextThoughtNeeded\",\"thoughtNumber\",\"totalThoughts\"]}}]},\"jsonrpc\":\"2.0\",\"id\":2}\n"
+DEBUG: stderr length: 48, content: "Sequential Thinking MCP Server running on stdio\n"
+AUTH: Successful authentication for adapter sequential-thinking from ::1
+2025/10/30 18:09:58 ForwardStreamableHttp: Request for adapter sequential-thinking
+DEBUG: stdout length: 213, content: "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"thoughtNumber\\\": 1,\\n  \\\"totalThoughts\\\": 1,\\n  \\\"nextThoughtNeeded\\\": false,\\n  \\\"branches\\\": [],\\n  \\\"thoughtHistoryLength\\\": 1\\n}\"}]},\"jsonrpc\":\"2.0\",\"id\":3}\n"
+DEBUG: stderr length: 482, content: "Sequential Thinking MCP Server running on stdio\n\n┌──────────────────────────────────────┐\n│ 💭 Thought 1/1 │\n├──────────────────────────────────────┤\n│ I need to analyze a simple problem   │\n└──────────────────────────────────────┘\n"

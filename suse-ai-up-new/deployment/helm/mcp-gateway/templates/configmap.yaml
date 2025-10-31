@@ -1,0 +1,39 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+    component: gateway
+data:
+  config.yaml: |
+    auth:
+      mode: {{ .Values.gateway.auth.mode }}
+      {{- if eq .Values.gateway.auth.mode "oauth" }}
+      oauth:
+        provider: {{ .Values.gateway.auth.oauth.provider }}
+        clientId: {{ .Values.gateway.auth.oauth.clientId | quote }}
+        tenantId: {{ .Values.gateway.auth.oauth.tenantId | quote }}
+        jwksUrl: {{ .Values.gateway.auth.oauth.jwksUrl | quote }}
+        issuer: {{ .Values.gateway.auth.oauth.issuer | quote }}
+        audience: {{ .Values.gateway.auth.oauth.audience | quote }}
+      {{- end }}
+    storage:
+      type: {{ .Values.gateway.storage.type }}
+      {{- if eq .Values.gateway.storage.type "cosmos" }}
+      cosmos:
+        accountEndpoint: {{ .Values.gateway.storage.cosmos.accountEndpoint | quote }}
+        databaseName: {{ .Values.gateway.storage.cosmos.databaseName | quote }}
+      {{- end }}
+    session:
+      type: {{ .Values.gateway.session.type }}
+      {{- if eq .Values.gateway.session.type "redis" }}
+      redis:
+        host: {{ .Values.gateway.session.redis.host | quote }}
+        port: {{ .Values.gateway.session.redis.port }}
+      {{- end }}
+    kubernetes:
+      namespace: {{ .Release.Namespace }}
+---
+{{- end }}

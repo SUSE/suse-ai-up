@@ -1,0 +1,1247 @@
+basePath: /
+definitions:
+  models.AdapterData:
+    properties:
+      args:
+        example:
+        - my_server.py
+        items:
+          type: string
+        type: array
+      command:
+        description: For local stdio
+        example: python
+        type: string
+      connectionType:
+        allOf:
+        - $ref: '#/definitions/models.ConnectionType'
+        example: StreamableHttp
+      description:
+        example: My MCP adapter
+        type: string
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      imageName:
+        example: nginx
+        type: string
+      imageVersion:
+        example: latest
+        type: string
+      name:
+        example: my-adapter
+        type: string
+      protocol:
+        allOf:
+        - $ref: '#/definitions/models.ServerProtocol'
+        example: MCP
+      remoteUrl:
+        description: For remote HTTP
+        example: https://remote-mcp.example.com
+        type: string
+      replicaCount:
+        example: 1
+        type: integer
+      useWorkloadIdentity:
+        example: false
+        type: boolean
+    required:
+    - name
+    type: object
+  models.AdapterResource:
+    properties:
+      args:
+        example:
+        - my_server.py
+        items:
+          type: string
+        type: array
+      command:
+        description: For local stdio
+        example: python
+        type: string
+      connectionType:
+        allOf:
+        - $ref: '#/definitions/models.ConnectionType'
+        example: StreamableHttp
+      createdAt:
+        type: string
+      createdBy:
+        example: user@example.com
+        type: string
+      description:
+        example: My MCP adapter
+        type: string
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      id:
+        example: my-adapter
+        type: string
+      imageName:
+        example: nginx
+        type: string
+      imageVersion:
+        example: latest
+        type: string
+      lastUpdatedAt:
+        type: string
+      name:
+        example: my-adapter
+        type: string
+      protocol:
+        allOf:
+        - $ref: '#/definitions/models.ServerProtocol'
+        example: MCP
+      remoteUrl:
+        description: For remote HTTP
+        example: https://remote-mcp.example.com
+        type: string
+      replicaCount:
+        example: 1
+        type: integer
+      useWorkloadIdentity:
+        example: false
+        type: boolean
+    required:
+    - name
+    type: object
+  models.AdapterStatus:
+    properties:
+      availableReplicas:
+        example: 1
+        type: integer
+      image:
+        example: nginx:latest
+        type: string
+      readyReplicas:
+        example: 1
+        type: integer
+      replicaStatus:
+        example: Healthy
+        type: string
+      updatedReplicas:
+        example: 1
+        type: integer
+    type: object
+  models.ConnectionType:
+    enum:
+    - SSE
+    - StreamableHttp
+    - RemoteHttp
+    - LocalStdio
+    type: string
+    x-enum-varnames:
+    - ConnectionTypeSSE
+    - ConnectionTypeStreamableHttp
+    - ConnectionTypeRemoteHttp
+    - ConnectionTypeLocalStdio
+  models.DiscoveredServer:
+    properties:
+      address:
+        example: http://192.168.1.100:8000
+        type: string
+      connection:
+        allOf:
+        - $ref: '#/definitions/models.ConnectionType'
+        example: StreamableHttp
+      id:
+        example: server-123
+        type: string
+      lastSeen:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      protocol:
+        allOf:
+        - $ref: '#/definitions/models.ServerProtocol'
+        example: MCP
+      status:
+        example: healthy
+        type: string
+    type: object
+  models.EnvironmentVariable:
+    properties:
+      default:
+        description: default value if any
+        type: string
+      description:
+        type: string
+      format:
+        description: string, number, boolean
+        type: string
+      isSecret:
+        description: true for sensitive values
+        type: boolean
+      name:
+        type: string
+    type: object
+  models.MCPServer:
+    properties:
+      _meta:
+        additionalProperties: true
+        description: Registry metadata
+        type: object
+      description:
+        type: string
+      discovered_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      packages:
+        items:
+          $ref: '#/definitions/models.Package'
+        type: array
+      protocol:
+        type: string
+      repository:
+        $ref: '#/definitions/models.Repository'
+      tools:
+        items:
+          $ref: '#/definitions/models.MCPTool'
+        type: array
+      url:
+        description: Legacy fields for backward compatibility
+        type: string
+      validation_status:
+        description: new, approved, certified
+        type: string
+      version:
+        type: string
+    type: object
+  models.MCPTool:
+    properties:
+      description:
+        type: string
+      input_schema:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+    type: object
+  models.Package:
+    properties:
+      environmentVariables:
+        items:
+          $ref: '#/definitions/models.EnvironmentVariable'
+        type: array
+      identifier:
+        description: docker.io/user/image:tag
+        type: string
+      registryType:
+        description: oci, npm, etc.
+        type: string
+      transport:
+        $ref: '#/definitions/models.Transport'
+    type: object
+  models.Repository:
+    properties:
+      source:
+        description: github, gitlab, etc.
+        type: string
+      url:
+        type: string
+    type: object
+  models.ScanConfig:
+    properties:
+      maxConcurrent:
+        example: 10
+        type: integer
+      ports:
+        example:
+        - 8000
+        - 3000
+        items:
+          type: integer
+        type: array
+      scanRanges:
+        example:
+        - 192.168.1.0/24
+        items:
+          type: string
+        type: array
+      timeout:
+        example: 30s
+        type: string
+    type: object
+  models.ScanJob:
+    properties:
+      config:
+        $ref: '#/definitions/models.ScanConfig'
+      error:
+        type: string
+      id:
+        example: scan-12345
+        type: string
+      results:
+        items:
+          $ref: '#/definitions/models.DiscoveredServer'
+        type: array
+      startTime:
+        type: string
+      status:
+        example: running
+        type: string
+    type: object
+  models.ServerProtocol:
+    enum:
+    - MCP
+    type: string
+    x-enum-varnames:
+    - ServerProtocolMCP
+  models.Transport:
+    properties:
+      type:
+        description: stdio, sse, websocket, http
+        type: string
+    type: object
+  plugins.ServiceCapability:
+    properties:
+      description:
+        type: string
+      methods:
+        description: HTTP methods (GET, POST, etc.)
+        items:
+          type: string
+        type: array
+      path:
+        description: API path (e.g., "/v1/*", "/agents/*")
+        type: string
+    type: object
+  plugins.ServiceHealth:
+    properties:
+      last_checked:
+        type: string
+      message:
+        type: string
+      response_time:
+        description: Response time in nanoseconds
+        type: integer
+      status:
+        description: '"healthy", "unhealthy", "unknown"'
+        type: string
+    type: object
+  plugins.ServiceRegistration:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/plugins.ServiceCapability'
+        type: array
+      last_heartbeat:
+        type: string
+      registered_at:
+        type: string
+      service_id:
+        type: string
+      service_type:
+        $ref: '#/definitions/plugins.ServiceType'
+      service_url:
+        type: string
+      version:
+        type: string
+    type: object
+  plugins.ServiceType:
+    enum:
+    - smartagents
+    - registry
+    - virtualmcp
+    type: string
+    x-enum-varnames:
+    - ServiceTypeSmartAgents
+    - ServiceTypeRegistry
+    - ServiceTypeVirtualMCP
+  service.BulkSessionDeleteResponse:
+    properties:
+      adapterName:
+        type: string
+      message:
+        type: string
+    type: object
+  service.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  service.LogsResponse:
+    properties:
+      logs:
+        type: string
+    type: object
+  service.SessionDeleteResponse:
+    properties:
+      message:
+        type: string
+      sessionId:
+        type: string
+    type: object
+  service.SessionListResponse:
+    properties:
+      adapterName:
+        type: string
+      sessions:
+        items:
+          $ref: '#/definitions/session.SessionDetails'
+        type: array
+    type: object
+  service.SessionReinitializeRequest:
+    properties:
+      clientInfo:
+        additionalProperties: true
+        type: object
+      forceReinitialize:
+        type: boolean
+    type: object
+  service.SessionReinitializeResponse:
+    properties:
+      adapterName:
+        type: string
+      message:
+        type: string
+      sessionId:
+        type: string
+    type: object
+  session.AuthorizationInfo:
+    properties:
+      authorizationServer:
+        type: string
+      authorizationUrl:
+        type: string
+      authorizedAt:
+        type: string
+      clientId:
+        type: string
+      errorMessage:
+        type: string
+      lastTokenRefresh:
+        type: string
+      resourceServer:
+        type: string
+      status:
+        description: '"unauthorized", "authorizing", "authorized", "expired", "failed"'
+        type: string
+    type: object
+  session.SessionDetails:
+    properties:
+      adapterName:
+        type: string
+      authorizationInfo:
+        $ref: '#/definitions/session.AuthorizationInfo'
+      connectionType:
+        type: string
+      createdAt:
+        type: string
+      lastActivity:
+        type: string
+      sessionId:
+        type: string
+      status:
+        description: '"active", "expired", "invalidated"'
+        type: string
+      targetAddress:
+        type: string
+      tokenInfo:
+        $ref: '#/definitions/session.TokenInfo'
+    type: object
+  session.TokenInfo:
+    properties:
+      accessToken:
+        type: string
+      expiresAt:
+        type: string
+      issuedAt:
+        type: string
+      refreshToken:
+        type: string
+      scope:
+        type: string
+      tokenType:
+        type: string
+    type: object
+host: localhost:8911
+info:
+  contact:
+    name: SUSE AI Universal Proxy Team
+    url: https://github.com/SUSE/suse-ai-up
+  description: SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model
+    Context Protocol) server deployments and proxying requests to MCP servers running
+    in Kubernetes.
+  license:
+    name: MIT
+    url: https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
+  title: SUSE AI Universal Proxy - Control Plane
+  version: 1.0.0
+paths:
+  /adapters:
+    get:
+      description: Returns a list of all MCP server adapters that the user can access.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AdapterResource'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: List all MCP server adapters
+      tags:
+      - adapters
+    post:
+      consumes:
+      - application/json
+      description: Creates a new MCP adapter and deploys it to Kubernetes.
+      parameters:
+      - description: Adapter configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdapterData'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Create a new MCP server adapter
+      tags:
+      - adapters
+  /adapters/{name}:
+    delete:
+      description: Remove an MCP server adapter and its deployment.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Delete an adapter
+      tags:
+      - adapters
+    get:
+      description: Retrieve metadata for a specific MCP server adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get adapter details
+      tags:
+      - adapters
+    put:
+      consumes:
+      - application/json
+      description: Update the configuration and deployment of an existing MCP server
+        adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Updated adapter configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdapterResource'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Update an adapter
+      tags:
+      - adapters
+  /adapters/{name}/logs:
+    get:
+      description: Access the running logs of an MCP server adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.LogsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get adapter logs
+      tags:
+      - adapters
+  /adapters/{name}/sessions:
+    delete:
+      description: Remove all active sessions for a specific adapter
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.BulkSessionDeleteResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Delete all sessions for an adapter
+      tags:
+      - sessions
+    get:
+      description: Retrieve all active sessions for a specific MCP server adapter
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.SessionListResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: List all sessions for an adapter
+      tags:
+      - sessions
+    post:
+      consumes:
+      - application/json
+      description: Create a new session by reinitializing the MCP connection
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Reinitialization parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.SessionReinitializeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.SessionReinitializeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Reinitialize a session
+      tags:
+      - sessions
+  /adapters/{name}/sessions/{sessionId}:
+    delete:
+      description: Invalidate and remove a specific session
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Session ID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.SessionDeleteResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Delete a session
+      tags:
+      - sessions
+    get:
+      description: Retrieve detailed information about a specific session
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Session ID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/session.SessionDetails'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get session details
+      tags:
+      - sessions
+  /adapters/{name}/status:
+    get:
+      description: Check the current deployment status of an MCP server adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AdapterStatus'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get adapter deployment status
+      tags:
+      - adapters
+  /plugins/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a plugin service with the proxy
+      parameters:
+      - description: Service registration data
+        in: body
+        name: registration
+        required: true
+        schema:
+          $ref: '#/definitions/plugins.ServiceRegistration'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/plugins.ServiceRegistration'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "409":
+          description: Conflict
+          schema:
+            type: string
+      summary: Register a plugin service
+      tags:
+      - plugins
+  /plugins/register/{serviceId}:
+    delete:
+      description: Remove a plugin service registration
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Unregister a plugin service
+      tags:
+      - plugins
+  /plugins/services:
+    get:
+      description: Get a list of all registered plugin services
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+      summary: List registered plugin services
+      tags:
+      - plugins
+  /plugins/services/{serviceId}:
+    get:
+      description: Get details of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceRegistration'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get service details
+      tags:
+      - plugins
+  /plugins/services/{serviceId}/health:
+    get:
+      description: Get health status of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceHealth'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get service health
+      tags:
+      - plugins
+  /plugins/services/type/{serviceType}:
+    get:
+      description: Get all services of a specific type
+      parameters:
+      - description: Service type (smartagents, registry, virtualmcp)
+        in: path
+        name: serviceType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+      summary: List services by type
+      tags:
+      - plugins
+  /public/registry:
+    get:
+      description: Retrieve filtered JSON data from the official Model Context Protocol
+        registry (only active latest versions)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get public registry data
+      tags:
+      - registry
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Register a discovered MCP server as an adapter
+      parameters:
+      - description: Registration request with discoveredServerId
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Register discovered server
+      tags:
+      - discovery
+  /registry/{id}:
+    delete:
+      description: Remove an MCP server entry
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete an MCP server
+      tags:
+      - registry
+    get:
+      description: Retrieve a specific MCP server configuration
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get an MCP server by ID
+      tags:
+      - registry
+    put:
+      consumes:
+      - application/json
+      description: Update an existing MCP server configuration or validation status
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Update an MCP server
+      tags:
+      - registry
+  /registry/browse:
+    get:
+      description: Search and filter MCP servers from all configured sources
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Filter by transport type (stdio, sse, websocket)
+        in: query
+        name: transport
+        type: string
+      - description: Filter by registry type (oci, npm)
+        in: query
+        name: registryType
+        type: string
+      - description: Filter by validation status
+        in: query
+        name: validationStatus
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MCPServer'
+            type: array
+      summary: Browse registry servers with search and filters
+      tags:
+      - registry
+  /registry/sync/official:
+    post:
+      description: Manually trigger synchronization with the official MCP registry
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Sync from official MCP registry
+      tags:
+      - registry
+  /registry/upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload a single MCP server registry entry
+      parameters:
+      - description: MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a single registry entry
+      tags:
+      - registry
+  /registry/upload/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Upload multiple MCP server registry entries in bulk
+      parameters:
+      - description: Array of MCP server data
+        in: body
+        name: servers
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.MCPServer'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload multiple registry entries
+      tags:
+      - registry
+  /scan:
+    post:
+      consumes:
+      - application/json
+      description: Initiates a network scan to discover MCP servers
+      parameters:
+      - description: Scan configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/models.ScanConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Start network scan for MCP servers
+      tags:
+      - discovery
+  /scan/{scanId}:
+    get:
+      description: Retrieve the status and results of a network scan
+      parameters:
+      - description: Scan ID
+        in: path
+        name: scanId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ScanJob'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get scan status
+      tags:
+      - discovery
+  /servers:
+    get:
+      description: Retrieve all discovered MCP servers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.DiscoveredServer'
+            type: array
+      summary: List discovered servers
+      tags:
+      - discovery
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token for authentication
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

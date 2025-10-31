@@ -1,0 +1,97 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+    component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mcp-gateway.selectorLabels" . | nindent 6 }}
+      component: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "mcp-gateway.selectorLabels" . | nindent 8 }}
+        component: gateway
+      {{- with .Values.commonAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.gateway.rbac.serviceAccount.create }}
+      serviceAccountName: {{ include "mcp-gateway.serviceAccountName" . }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "mcp-gateway.image" . }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- range .Values.gateway.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- if eq .Values.gateway.auth.mode "oauth" }}
+            - name: AUTH_MODE
+              value: "oauth"
+            - name: OAUTH_CLIENT_ID
+              value: {{ .Values.gateway.auth.oauth.clientId | quote }}
+            - name: OAUTH_TENANT_ID
+              value: {{ .Values.gateway.auth.oauth.tenantId | quote }}
+            - name: OAUTH_JWKS_URL
+              value: {{ .Values.gateway.auth.oauth.jwksUrl | quote }}
+            - name: OAUTH_ISSUER
+              value: {{ .Values.gateway.auth.oauth.issuer | quote }}
+            - name: OAUTH_AUDIENCE
+              value: {{ .Values.gateway.auth.oauth.audience | quote }}
+            {{- end }}
+            {{- if eq .Values.gateway.storage.type "cosmos" }}
+            - name: COSMOS_ENDPOINT
+              value: {{ .Values.gateway.storage.cosmos.accountEndpoint | quote }}
+            - name: COSMOS_DATABASE
+              value: {{ .Values.gateway.storage.cosmos.databaseName | quote }}
+            - name: COSMOS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mcp-gateway.fullname" . }}-cosmos
+                  key: connectionString
+            {{- end }}
+            {{- if eq .Values.gateway.session.type "redis" }}
+            - name: REDIS_HOST
+              value: {{ .Values.gateway.session.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.gateway.session.redis.port | quote | toString }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 1000
+---
+{{- end }}

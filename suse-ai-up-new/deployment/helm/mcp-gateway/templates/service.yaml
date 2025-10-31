@@ -1,0 +1,20 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mcp-gateway.fullname" . }}-gateway
+  labels:
+    {{- include "mcp-gateway.labels" . | nindent 4 }}
+    component: gateway
+spec:
+  type: {{ .Values.gateway.service.type }}
+  ports:
+    - port: {{ .Values.gateway.service.port }}
+      targetPort: {{ .Values.gateway.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "mcp-gateway.selectorLabels" . | nindent 4 }}
+    component: gateway
+---
+{{- end }}

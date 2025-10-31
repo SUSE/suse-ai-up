@@ -1,0 +1,5 @@
+suse-ai-up-proxy/mcp-gateway/service
+suse-ai-up-proxy/service
+suse-ai-up-smartagents/data/rancher_sa_api.db
+suse-ai-up-smartagents/data/rancher_sa_api.db-shm
+suse-ai-up-smartagents/data/rancher_sa_api.db-wal
