@@ -337,7 +337,8 @@ curl -X POST http://localhost:8911/adapters \
       "token": "sqlite-token-101"
     },
     "description": "Authenticated SQLite database MCP server"
-  }'
+  }' \
+  | jq
 
 # 3. Test without authentication (should fail)
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
@@ -348,14 +349,16 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
+  | jq
 
 # 5. List available tools
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -H "mcp-session-id: db-session-123" \
-  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' \
+  | jq
 
 # 6. Create a test table
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
@@ -372,7 +375,8 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
         "sql": "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)"
       }
     }
-  }'
+  }' \
+  | jq
 
 # 7. Insert data
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
@@ -390,7 +394,8 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
         "params": ["Alice", "alice@example.com"]
       }
     }
-  }'
+  }' \
+  | jq
 
 # 8. Query data
 curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
@@ -407,7 +412,8 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
         "sql": "SELECT * FROM users"
       }
     }
-  }'
+  }' \
+  | jq
 
 # 9. Clean up
 curl -X DELETE http://localhost:8911/adapters/sqlite-db
@@ -449,25 +455,29 @@ curl -X POST http://localhost:8911/adapters \
       "token": "github-token-202"
     },
     "description": "Authenticated GitHub API MCP server"
-  }'
+  }' \
+  | jq
 
 # 3. Test without authentication (should fail)
 curl -X POST http://localhost:8911/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
+  | jq
 
 # 4. Initialize with authentication
 curl -X POST http://localhost:8911/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
+  | jq
 
 # 5. List available tools
 curl -X POST http://localhost:8911/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
   -H "mcp-session-id: github-session-123" \
-  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' \
+  | jq
 
 # 6. Search repositories
 curl -X POST http://localhost:8911/adapters/github-api/mcp \
@@ -486,7 +496,8 @@ curl -X POST http://localhost:8911/adapters/github-api/mcp \
         "order": "desc"
       }
     }
-  }'
+  }' \
+  | jq
 
 # 7. Get repository information
 curl -X POST http://localhost:8911/adapters/github-api/mcp \
@@ -504,7 +515,8 @@ curl -X POST http://localhost:8911/adapters/github-api/mcp \
         "repo": "Hello-World"
       }
     }
-  }'
+  }' \
+  | jq
 
 # 8. Clean up
 curl -X DELETE http://localhost:8911/adapters/github-api
@@ -643,7 +655,8 @@ curl -X POST http://localhost:8911/scan \
   -d '{
     "scanRanges": ["127.0.0.1/32"],
     "ports": [8002]
-  }'
+  }' \
+  | jq
 
 # Check discovered servers with vulnerability scores
 curl http://localhost:8911/servers
@@ -673,27 +686,31 @@ curl -X POST http://localhost:8911/adapters \
     "environmentVariables": {
       "MCP_PROXY_URL": "http://localhost:8002"
     }
-  }'
+  }' \
+  | jq
 
 # Initialize and test tools (no auth required)
 curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}' \
+  | jq
 
 # List tools
 curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
-  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' \
+  | jq
 
 # Call multiply tool
 curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
-  -d '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "multiply", "arguments": {"a": 4, "b": 7}}}'
+  -d '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "multiply", "arguments": {"a": 4, "b": 7}}}' \
+  | jq
 ```
 
 ## Scenario 3: HTTP MCP with Token Authentication
