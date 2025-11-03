@@ -217,6 +217,221 @@ tail -f proxy.log | grep DiscoveryService
 curl -I http://target-host:port/mcp
 ```
 
+## Testing the Discovery System
+
+The discovery system includes comprehensive test infrastructure to validate authentication detection capabilities.
+
+### Test Environment Setup
+
+The `examples/discovery/` directory contains test MCP servers for different authentication types:
+
+#### Test Servers
+
+1. **No Authentication Server** (`no-auth-server.py`)
+   - Port: 8002
+   - Auth Type: None
+   - Vulnerability: High
+   - Purpose: Validates detection of open MCP servers
+
+2. **Bearer Token Server** (`bearer-auth-server.py`)
+   - Port: 8001
+   - Auth Type: Bearer Token
+   - Vulnerability: Medium
+   - Test Token: `test-bearer-token-12345`
+
+3. **OAuth Server** (`oauth-server.py`)
+   - OAuth Server Port: 8003
+   - MCP Server Port: 8004
+   - Auth Type: OAuth 2.1
+   - Vulnerability: Low
+   - Test Token: `oauth-test-token`
+
+### Running Tests
+
+#### Automated Testing
+
+Run the comprehensive test suite:
+
+```bash
+cd examples/discovery
+./test-discovery.sh
+```
+
+This script will:
+- Start all test servers
+- Run the MCP discovery service against localhost
+- Verify correct authentication type detection
+- Validate vulnerability scoring
+- Generate a detailed test report
+
+#### Manual Testing
+
+Start test servers manually:
+
+```bash
+cd examples/discovery
+./start-test-servers.sh
+```
+
+Or start individually:
+
+```bash
+# Terminal 1
+python3 no-auth-server.py
+
+# Terminal 2
+python3 bearer-auth-server.py
+
+# Terminal 3
+python3 oauth-server.py
+```
+
+#### Docker Testing
+
+For containerized testing:
+
+```bash
+cd examples/discovery
+docker-compose up -d
+```
+
+### Manual Server Testing
+
+Test each server individually:
+
+```bash
+# No-auth server (should work)
+curl -X POST http://localhost:8002/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# Bearer auth server (should fail without token)
+curl -X POST http://localhost:8001/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# Bearer auth server (should work with token)
+curl -X POST http://localhost:8001/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer test-bearer-token-12345" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# OAuth server (should fail without token)
+curl -X POST http://localhost:8004/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# OAuth server (should work with token)
+curl -X POST http://localhost:8004/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer oauth-test-token" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+```
+
+### Discovery Testing
+
+Test the discovery system against running servers:
+
+```bash
+# Scan localhost for test servers
+curl -X POST http://localhost:8911/scan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scanRanges": ["127.0.0.1/32"],
+    "ports": [8001, 8002, 8004],
+    "timeout": "10s"
+  }'
+
+# Check scan status (replace SCAN_ID with actual ID from response)
+curl http://localhost:8911/scan/SCAN_ID
+```
+
+### Expected Results
+
+When scanning `127.0.0.1/32` with ports `8001,8002,8004`, you should see:
+
+```json
+{
+  "scanId": "scan-1762180330654346000",
+  "status": "completed",
+  "serverCount": 3,
+  "results": [
+    {
+      "id": "mcp-127-0-0-1-8001-1762180330654346000",
+      "address": "http://127.0.0.1:8001",
+      "protocol": "MCP",
+      "connection": "StreamableHttp",
+      "status": "discovered",
+      "vulnerability_score": "medium",
+      "metadata": {
+        "auth_type": "bearer",
+        "auth_scheme": "Bearer",
+        "detection_method": "http-auth-response"
+      }
+    },
+    {
+      "id": "mcp-127-0-0-1-8002-1762180330654346000",
+      "address": "http://127.0.0.1:8002",
+      "protocol": "MCP",
+      "connection": "StreamableHttp",
+      "status": "discovered",
+      "vulnerability_score": "high",
+      "metadata": {
+        "auth_type": "none",
+        "detection_method": "http-success-response"
+      }
+    },
+    {
+      "id": "mcp-127-0-0-1-8004-1762180330654346000",
+      "address": "http://127.0.0.1:8004",
+      "protocol": "MCP",
+      "connection": "StreamableHttp",
+      "status": "discovered",
+      "vulnerability_score": "low",
+      "metadata": {
+        "auth_type": "oauth",
+        "detection_method": "http-auth-response"
+      }
+    }
+  ]
+}
+```
+
+### Test Validation Checklist
+
+- [ ] No-auth server detected with `auth_type: "none"` and `vulnerability_score: "high"`
+- [ ] Bearer auth server detected with `auth_type: "bearer"` and `vulnerability_score: "medium"`
+- [ ] OAuth server detected with `auth_type: "oauth"` and `vulnerability_score: "low"`
+- [ ] All servers return valid MCP protocol responses
+- [ ] Authentication enforcement works correctly for protected servers
+- [ ] Discovery scan completes without errors
+- [ ] Server metadata includes correct detection methods
+
+### Troubleshooting Tests
+
+#### Servers Not Starting
+```bash
+# Check if ports are available
+netstat -tlnp | grep :800
+
+# Kill existing processes
+pkill -f "python3.*-server.py"
+
+# Check Python dependencies
+pip install fastmcp flask flask-cors
+```
+
+#### Discovery Not Finding Servers
+1. Verify MCP gateway is running on port 8911
+2. Check server logs for errors
+3. Test manual connectivity: `curl http://localhost:8001/mcp`
+4. Ensure firewall allows local connections
+
+#### Authentication Detection Issues
+- Check server logs for WWW-Authenticate headers
+- Verify OAuth metadata endpoints are accessible
+- Test manual authentication with provided tokens
+
 ## Future Enhancements
 
 - **IPv6 Support**: Full IPv6 CIDR range scanning
