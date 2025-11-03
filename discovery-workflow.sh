@@ -7,28 +7,38 @@ echo "Step 1: Scanning for MCP servers on 192.168.1.74 ports 8000 and 8001..."
 SCAN_RESPONSE=$(curl -s -X POST http://localhost:8911/scan \
   -H "Content-Type: application/json" \
   -d '{
-    "scanRanges": ["192.168.1.74/32"],
-    "ports": [8000, 8001]
+    "scanRanges": ["192.168.1.74"],
+    "ports": [8000, 8001],
+    "maxConcurrent": 10,
+    "timeout": "30s"
   }')
 
 echo "Scan Response:"
 echo "$SCAN_RESPONSE" | jq '.'
 echo
 
-# Extract scan ID and server count
-SCAN_ID=$(echo "$SCAN_RESPONSE" | jq -r '.scanId')
-SERVER_COUNT=$(echo "$SCAN_RESPONSE" | jq -r '.serverCount')
+# Extract scan ID
+SCAN_ID=$(echo "$SCAN_RESPONSE" | jq -r '.scanId // .scan_id')
 
-echo "Step 2: Listing discovered servers..."
+echo "Step 2: Checking scan status..."
+SCAN_STATUS_RESPONSE=$(curl -s http://localhost:8911/scan/$SCAN_ID)
+echo "Scan Status:"
+echo "$SCAN_STATUS_RESPONSE" | jq '.'
+echo
+
+# Extract server count from scan results
+SERVER_COUNT=$(echo "$SCAN_STATUS_RESPONSE" | jq -r '.results | length')
+
+echo "Step 3: Listing discovered servers..."
 SERVERS_RESPONSE=$(curl -s http://localhost:8911/servers)
 echo "Discovered Servers:"
 echo "$SERVERS_RESPONSE" | jq '.'
 echo
 
 if [ "$SERVER_COUNT" -gt 0 ]; then
-    # Get the first server ID
-    SERVER_ID=$(echo "$SERVERS_RESPONSE" | jq -r '.[0].id')
-    SERVER_ADDRESS=$(echo "$SERVERS_RESPONSE" | jq -r '.[0].address')
+    # Get the first server from scan results
+    SERVER_ID=$(echo "$SCAN_STATUS_RESPONSE" | jq -r '.results[0].id')
+    SERVER_ADDRESS=$(echo "$SCAN_STATUS_RESPONSE" | jq -r '.results[0].address')
     
     echo "Step 3: Registering discovered server (ID: $SERVER_ID)..."
     REGISTER_RESPONSE=$(curl -s -X POST http://localhost:8911/register \

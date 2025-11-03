@@ -103,8 +103,8 @@ type DiscoveredServer struct {
 
 // ScanConfig represents configuration for network scanning
 type ScanConfig struct {
-	ScanRanges       []string `json:"scanRanges" example:"192.168.1.0/24"`
-	Ports            []int    `json:"ports" example:"8000,3000"`
+	ScanRanges       []string `json:"scanRanges" example:"192.168.1.0/24,10.0.0.1-10.0.0.10"`
+	Ports            []string `json:"ports" example:"8000,8001,9000-9100"`
 	Timeout          string   `json:"timeout" example:"30s"`
 	MaxConcurrent    int      `json:"maxConcurrent" example:"10"`
 	ExcludeProxy     *bool    `json:"excludeProxy,omitempty" example:"true"` // Default: true

@@ -171,7 +171,7 @@ if __name__ == "__main__":
             oauth_app.run(host="127.0.0.1", port=8003, debug=False)
 
         def run_mcp():
-            app.run(transport="streamable-http", host="127.0.0.1", port=8004)
+            app.run(transport="streamable-http", host="0.0.0.0", port=8002)
 
         oauth_thread = threading.Thread(target=run_oauth)
         oauth_thread.daemon = True

@@ -148,6 +148,7 @@ func main() {
 
 	// Discovery routes (register first)
 	r.POST("/scan", discoveryService.StartScan)
+	r.GET("/scan", discoveryService.ListScans) // List all scans
 	r.GET("/scan/:scanId", discoveryService.GetScanStatus)
 	r.GET("/servers", discoveryService.ListDiscoveredServers)
 	r.POST("/register", discoveryService.RegisterServer)
