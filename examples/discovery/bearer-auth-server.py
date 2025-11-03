@@ -13,6 +13,26 @@ Uses StaticTokenVerifier for Bearer token validation.
 from fastmcp import FastMCP
 from fastmcp.server.auth import StaticTokenVerifier
 import os
+import socket
+
+def get_host_ip():
+    """Get the actual IP address of the host"""
+    try:
+        # Get the hostname
+        hostname = socket.gethostname()
+        # Get the IP address
+        ip_address = socket.gethostbyname(hostname)
+        # Validate it's not localhost
+        if ip_address.startswith('127.'):
+            # Try to get the IP from a socket connection
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))  # Connect to Google DNS
+            ip_address = s.getsockname()[0]
+            s.close()
+        return ip_address
+    except Exception:
+        # Fallback to localhost if detection fails
+        return "127.0.0.1"
 
 # Bearer token configuration
 AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN", "test-bearer-token-12345")
@@ -69,11 +89,13 @@ def get_weather(city: str) -> dict:
     }
 
 if __name__ == "__main__":
+    host_ip = get_host_ip()
     port = int(os.getenv("PORT", "8001"))
-    print(f"🔐 Starting Bearer Auth MCP Server on port {port}")
+    print(f"🔐 Starting Bearer Auth MCP Server on {host_ip}:{port}")
     print("   This server requires Bearer token authentication - medium vulnerability")
     print(f"   Test token: {AUTH_TOKEN}")
-    print(f"   Test with: curl -X POST http://localhost:{port}/mcp -H 'Content-Type: application/json' -H 'Authorization: Bearer {AUTH_TOKEN}' -d '{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{{}},\"clientInfo\":{{\"name\":\"test\",\"version\":\"1.0\"}}}}}}'")
+    print(f"   Accessible at: http://{host_ip}:{port}")
+    print(f"   Test with: curl -X POST http://{host_ip}:{port}/mcp -H 'Content-Type: application/json' -H 'Authorization: Bearer {AUTH_TOKEN}' -d '{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{{}},\"clientInfo\":{{\"name\":\"test\",\"version\":\"1.0\"}}}}}}'")
     print()
 
-    app.run(transport="streamable-http", host="127.0.0.1", port=port)
+    app.run(transport="streamable-http", host=host_ip, port=port)

@@ -11,6 +11,29 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Function to get host IP
+get_host_ip() {
+    python3 -c "
+import socket
+try:
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    if ip_address.startswith('127.'):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip_address = s.getsockname()[0]
+        s.close()
+    print(ip_address)
+except Exception:
+    print('127.0.0.1')
+"
+}
+
+# Get host IP
+HOST_IP=$(get_host_ip)
+echo -e "${GREEN}📡 Using host IP: $HOST_IP${NC}"
+echo
+
 # Check if MCP gateway is running
 echo "Checking MCP gateway..."
 if curl -s http://localhost:8911/ping >/dev/null 2>&1; then
@@ -42,11 +65,11 @@ echo "Running discovery scan..."
 # Run discovery scan
 SCAN_RESPONSE=$(curl -s -X POST http://localhost:8911/scan \
     -H "Content-Type: application/json" \
-    -d '{
-        "scanRanges": ["127.0.0.1/32"],
-        "ports": [8001, 8002, 8004],
-        "timeout": "10s"
-    }')
+    -d "{
+        \"scanRanges\": [\"$HOST_IP/32\"],
+        \"ports\": [8001, 8002, 8004],
+        \"timeout\": \"10s\"
+    }")
 
 echo "Scan response: $SCAN_RESPONSE"
 

@@ -56,32 +56,51 @@ python3 oauth-server.py &
 
 ### Manual Testing
 
-Test each server individually:
+First, determine your host IP address:
 
 ```bash
-# Test no-auth server (should work without auth)
-curl -X POST http://localhost:8002/mcp \
+python3 -c "
+import socket
+try:
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    if ip_address.startswith('127.'):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip_address = s.getsockname()[0]
+        s.close()
+    print(f'Host IP: {ip_address}')
+except Exception:
+    print('Host IP: 127.0.0.1')
+"
+```
+
+Then test each server individually (replace `YOUR_HOST_IP` with your actual host IP):
+
+```bash
+# No-auth server (should work)
+curl -X POST http://YOUR_HOST_IP:8002/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 
-# Test bearer auth server (should fail without token)
-curl -X POST http://localhost:8001/mcp \
+# Bearer auth server (should fail without token)
+curl -X POST http://YOUR_HOST_IP:8001/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 
-# Test bearer auth server (should work with token)
-curl -X POST http://localhost:8001/mcp \
+# Bearer auth server (should work with token)
+curl -X POST http://YOUR_HOST_IP:8001/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer test-bearer-token-12345" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 
-# Test OAuth server (should fail without token)
-curl -X POST http://localhost:8004/mcp \
+# OAuth server (should fail without token)
+curl -X POST http://YOUR_HOST_IP:8004/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 
-# Test OAuth server (should work with token)
-curl -X POST http://localhost:8004/mcp \
+# OAuth server (should work with token)
+curl -X POST http://YOUR_HOST_IP:8004/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer oauth-test-token" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
@@ -104,23 +123,23 @@ This script will:
 
 ## Expected Discovery Results
 
-When running discovery against `127.0.0.1/32` with ports `8001,8002,8004`, you should see:
+When running discovery against `YOUR_HOST_IP/32` with ports `8001,8002,8004`, you should see (replace `YOUR_HOST_IP` with your actual host IP):
 
 ```json
 {
   "servers": [
     {
-      "address": "http://127.0.0.1:8001",
+      "address": "http://YOUR_HOST_IP:8001",
       "auth_type": "bearer",
       "vulnerability_score": "medium"
     },
     {
-      "address": "http://127.0.0.1:8002",
+      "address": "http://YOUR_HOST_IP:8002",
       "auth_type": "none",
       "vulnerability_score": "high"
     },
     {
-      "address": "http://127.0.0.1:8004",
+      "address": "http://YOUR_HOST_IP:8004",
       "auth_type": "oauth",
       "vulnerability_score": "low"
     }

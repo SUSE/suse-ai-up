@@ -14,6 +14,29 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}🚀 Starting MCP Discovery Test Servers${NC}"
 echo
 
+# Function to get host IP
+get_host_ip() {
+    python3 -c "
+import socket
+try:
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    if ip_address.startswith('127.'):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip_address = s.getsockname()[0]
+        s.close()
+    print(ip_address)
+except Exception:
+    print('127.0.0.1')
+"
+}
+
+# Get host IP
+HOST_IP=$(get_host_ip)
+echo -e "${GREEN}📡 Using host IP: $HOST_IP${NC}"
+echo
+
 # Function to check if port is available
 check_port() {
     local port=$1
@@ -27,13 +50,14 @@ check_port() {
 
 # Function to wait for server to be ready
 wait_for_server() {
-    local port=$1
-    local name=$2
+    local host_ip=$1
+    local port=$2
+    local name=$3
     local count=0
     local max_wait=10
 
     echo -n "Waiting for $name on port $port..."
-    while ! curl -s --max-time 1 "http://localhost:$port/mcp" >/dev/null 2>&1; do
+    while ! curl -s --max-time 1 "http://$host_ip:$port/mcp" >/dev/null 2>&1; do
         sleep 1
         ((count++))
         echo -n "."
@@ -52,7 +76,7 @@ if check_port 8002; then
     python3 no-auth-server.py >/dev/null 2>&1 &
     NO_AUTH_PID=$!
     sleep 2
-    wait_for_server 8002 "No-Auth Server"
+    wait_for_server "$HOST_IP" 8002 "No-Auth Server"
 else
     echo "Skipping No-Auth Server (port 8002 in use)"
 fi
@@ -63,7 +87,7 @@ if check_port 8001; then
     python3 bearer-auth-server.py >/dev/null 2>&1 &
     BEARER_PID=$!
     sleep 2
-    wait_for_server 8001 "Bearer Auth Server"
+    wait_for_server "$HOST_IP" 8001 "Bearer Auth Server"
 else
     echo "Skipping Bearer Auth Server (port 8001 in use)"
 fi
@@ -74,7 +98,7 @@ if check_port 8004 && check_port 8003; then
     python3 oauth-server.py >/dev/null 2>&1 &
     OAUTH_PID=$!
     sleep 3  # OAuth server takes longer to start
-    wait_for_server 8004 "OAuth MCP Server"
+    wait_for_server "$HOST_IP" 8004 "OAuth MCP Server"
 else
     echo "Skipping OAuth Server (ports 8003/8004 in use)"
 fi
@@ -83,10 +107,10 @@ echo
 echo -e "${GREEN}🎉 Test servers started successfully!${NC}"
 echo
 echo "Active servers:"
-echo "  📡 No-Auth Server:    http://localhost:8002 (No authentication)"
-echo "  🔐 Bearer Auth Server: http://localhost:8001 (Bearer token required)"
-echo "  🛡️  OAuth Server:     http://localhost:8004 (OAuth 2.1 required)"
-echo "  🔑 OAuth Metadata:    http://localhost:8003 (OAuth endpoints)"
+echo "  📡 No-Auth Server:    http://$HOST_IP:8002 (No authentication)"
+echo "  🔐 Bearer Auth Server: http://$HOST_IP:8001 (Bearer token required)"
+echo "  🛡️  OAuth Server:     http://$HOST_IP:8004 (OAuth 2.1 required)"
+echo "  🔑 OAuth Metadata:    http://$HOST_IP:8003 (OAuth endpoints)"
 echo
 echo "Test tokens:"
 echo "  Bearer: test-bearer-token-12345"
@@ -95,7 +119,7 @@ echo
 echo "To test discovery, run:"
 echo "  curl -X POST http://localhost:8911/scan \\"
 echo "    -H 'Content-Type: application/json' \\"
-echo "    -d '{\"scanRanges\": [\"127.0.0.1/32\"], \"ports\": [8001,8002,8004]}'"
+echo "    -d '{\"scanRanges\": [\"$HOST_IP/32\"], \"ports\": [8001,8002,8004]}'"
 echo
 echo "To stop servers: kill $NO_AUTH_PID $BEARER_PID $OAUTH_PID"
 echo "Or run: pkill -f 'python3.*-server.py'"

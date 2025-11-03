@@ -20,10 +20,30 @@ Architecture:
 from fastmcp import FastMCP
 from fastmcp.server.auth import StaticTokenVerifier
 import os
+import socket
 import threading
 import time
 from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
+
+def get_host_ip():
+    """Get the actual IP address of the host"""
+    try:
+        # Get the hostname
+        hostname = socket.gethostname()
+        # Get the IP address
+        ip_address = socket.gethostbyname(hostname)
+        # Validate it's not localhost
+        if ip_address.startswith('127.'):
+            # Try to get the IP from a socket connection
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))  # Connect to Google DNS
+            ip_address = s.getsockname()[0]
+            s.close()
+        return ip_address
+    except Exception:
+        # Fallback to localhost if detection fails
+        return "127.0.0.1"
 
 # OAuth Configuration
 OAUTH_PORT = int(os.getenv("OAUTH_PORT", "8003"))
@@ -43,21 +63,23 @@ auth_codes = {}
 @oauth_app.route('/.well-known/oauth-protected-resource', methods=['GET'])
 def protected_resource_metadata():
     """OAuth 2.1 protected resource metadata"""
+    host_ip = get_host_ip()
     return jsonify({
-        "resource": f"http://localhost:{MCP_PORT}",
-        "authorization_servers": [f"http://localhost:{OAUTH_PORT}"],
+        "resource": f"http://{host_ip}:{MCP_PORT}",
+        "authorization_servers": [f"http://{host_ip}:{OAUTH_PORT}"],
         "scopes": ["read", "write", "mcp:tools"],
-        "resource_documentation": f"http://localhost:{OAUTH_PORT}/docs"
+        "resource_documentation": f"http://{host_ip}:{OAUTH_PORT}/docs"
     })
 
 @oauth_app.route('/.well-known/oauth-authorization-server', methods=['GET'])
 def authorization_server_metadata():
     """OAuth 2.0 authorization server metadata"""
+    host_ip = get_host_ip()
     return jsonify({
-        "issuer": f"http://localhost:{OAUTH_PORT}",
-        "authorization_endpoint": f"http://localhost:{OAUTH_PORT}/oauth/authorize",
-        "token_endpoint": f"http://localhost:{OAUTH_PORT}/oauth/token",
-        "jwks_uri": f"http://localhost:{OAUTH_PORT}/.well-known/jwks.json",
+        "issuer": f"http://{host_ip}:{OAUTH_PORT}",
+        "authorization_endpoint": f"http://{host_ip}:{OAUTH_PORT}/oauth/authorize",
+        "token_endpoint": f"http://{host_ip}:{OAUTH_PORT}/oauth/token",
+        "jwks_uri": f"http://{host_ip}:{OAUTH_PORT}/.well-known/jwks.json",
         "scopes_supported": ["read", "write", "mcp:tools"],
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
@@ -142,13 +164,14 @@ def multiply(a: int, b: int) -> int:
 @app.tool()
 def get_server_info() -> dict:
     """Get server information"""
+    host_ip = get_host_ip()
     return {
         "name": "MCP OAuth Protected Server",
         "version": "1.0.0",
         "description": "Test server with OAuth 2.1 authentication (simplified for discovery testing)",
         "auth_required": True,
         "auth_method": "OAuth 2.1",
-        "oauth_metadata": f"http://localhost:{OAUTH_PORT}/.well-known/oauth-protected-resource",
+        "oauth_metadata": f"http://{host_ip}:{OAUTH_PORT}/.well-known/oauth-protected-resource",
         "test_token": "oauth-test-token",
         "supported_protocols": ["2024-11-05"]
     }
@@ -164,22 +187,24 @@ def get_protected_data() -> dict:
 
 def run_oauth_server():
     """Run the OAuth server"""
-    print(f"🔐 Starting OAuth Server on port {OAUTH_PORT}")
-    oauth_app.run(host="127.0.0.1", port=OAUTH_PORT, debug=False)
+    host_ip = get_host_ip()
+    print(f"🔐 Starting OAuth Server on {host_ip}:{OAUTH_PORT}")
+    oauth_app.run(host=host_ip, port=OAUTH_PORT, debug=False)
 
 if __name__ == "__main__":
+    host_ip = get_host_ip()
     print("🚀 Starting OAuth 2.1 MCP Test Environment")
-    print(f"   OAuth Server: http://localhost:{OAUTH_PORT}")
-    print(f"   MCP Server: http://localhost:{MCP_PORT}")
+    print(f"   OAuth Server: http://{host_ip}:{OAUTH_PORT}")
+    print(f"   MCP Server: http://{host_ip}:{MCP_PORT}")
     print("   This setup provides OAuth 2.1 protection - low vulnerability")
     print()
     print("Testing OAuth Detection:")
     print("1. Discovery will detect OAuth metadata endpoints")
     print("2. Auth type will be classified as 'oauth' with 'low' vulnerability")
     print("3. To test manually:")
-    print(f"   curl -I http://localhost:{MCP_PORT}/mcp")
+    print(f"   curl -I http://{host_ip}:{MCP_PORT}/mcp")
     print("   (Should return 401 with WWW-Authenticate header)")
-    print(f"   curl -H 'Authorization: Bearer oauth-test-token' http://localhost:{MCP_PORT}/mcp")
+    print(f"   curl -H 'Authorization: Bearer oauth-test-token' http://{host_ip}:{MCP_PORT}/mcp")
     print("   (Should work with valid token)")
     print()
 
@@ -191,5 +216,5 @@ if __name__ == "__main__":
     time.sleep(2)
 
     # Start MCP server
-    print(f"🛡️ Starting OAuth-protected MCP Server on port {MCP_PORT}")
-    app.run(transport="streamable-http", host="127.0.0.1", port=MCP_PORT)
+    print(f"🛡️ Starting OAuth-protected MCP Server on {host_ip}:{MCP_PORT}")
+    app.run(transport="streamable-http", host=host_ip, port=MCP_PORT)
