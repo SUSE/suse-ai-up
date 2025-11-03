@@ -18,7 +18,7 @@ Architecture:
 """
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import StaticTokenVerifier
+from fastmcp.server.auth import OAuthProvider
 import os
 import socket
 import threading
@@ -134,9 +134,47 @@ def token():
         "scope": auth_codes[code]['scope']
     })
 
-# MCP Server with simplified OAuth-style protection
-# For testing purposes, we'll use StaticTokenVerifier but return OAuth-style headers
-token_verifier = StaticTokenVerifier(
+# MCP Server with OAuth 2.1 protection
+# Custom OAuth token verifier that returns OAuth-style WWW-Authenticate headers
+from fastmcp.server.auth import AuthProvider
+
+class OAuthTokenVerifier(AuthProvider):
+    def __init__(self, tokens, required_scopes):
+        self.tokens = tokens
+        self.required_scopes = required_scopes
+        self.host_ip = get_host_ip()
+        self.base_url = f"http://{self.host_ip}:{MCP_PORT}"
+        self.issuer_url = f"http://{self.host_ip}:{OAUTH_PORT}"
+        self.resource_server_url = self.base_url
+        self.service_documentation_url = f"http://{self.host_ip}:{OAUTH_PORT}/docs"
+        self.client_registration_options = None
+        self.revocation_options = None
+
+    async def verify_token(self, token):
+        if token in self.tokens:
+            token_data = self.tokens[token]
+            # Check if token has required scopes
+            token_scopes = set(token_data.get("scopes", []))
+            required_scopes = set(self.required_scopes)
+            if required_scopes.issubset(token_scopes):
+                from fastmcp.server.auth import AccessToken
+                return AccessToken(
+                    token=token,
+                    client_id=token_data.get("client_id"),
+                    scopes=token_data.get("scopes", []),
+                    expires_at=token_data.get("expires_at")
+                )
+        return None
+
+    def get_www_authenticate_header(self):
+        """Return OAuth-style WWW-Authenticate header with resource_metadata"""
+        metadata_url = f"http://{self.host_ip}:{OAUTH_PORT}/.well-known/oauth-protected-resource"
+        return f'Bearer realm="MCP OAuth Server", resource_metadata="{metadata_url}", scope="read"'
+
+    def get_routes(self):
+        return []
+
+token_verifier = OAuthTokenVerifier(
     tokens={
         "oauth-test-token": {
             "client_id": "mcp-oauth-test-client",
