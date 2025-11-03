@@ -104,10 +104,4 @@ echo -e "${YELLOW}Press Ctrl+C to stop all servers${NC}"
 
 # Wait for user interrupt
 trap 'echo -e "\n${GREEN}Stopping servers...${NC}"; kill $NO_AUTH_PID $BEARER_PID $OAUTH_PID 2>/dev/null; exit 0' INT
-wait</content>
-</xai:function_call">## Creating Start Script
-
-Now I need to make the scripts executable and update the discovery documentation with the comprehensive testing section. Let me first make the scripts executable. 
-
-<xai:function_call name="bash">
-<parameter name="command">chmod +x examples/discovery/test-discovery.sh examples/discovery/start-test-servers.sh
+wait
