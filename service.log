@@ -1,0 +1,90 @@
+2025/11/04 14:04:10 Starting SUSE AI Universal Proxy service...
+2025/11/04 14:04:11 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
+2025/11/04 14:04:11 Creating discovery service...
+2025/11/04 14:04:11 Discovery service created successfully
+2025/11/04 14:04:11 Plugin service framework initialized
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+2025/11/04 14:04:11 Using development authentication
+[GIN-debug] POST   /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).StartScan-fm (4 handlers)
+[GIN-debug] GET    /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).ListScans-fm (4 handlers)
+[GIN-debug] GET    /scan/:scanId             --> suse-ai-up/internal/service.(*DiscoveryService).GetScanStatus-fm (4 handlers)
+[GIN-debug] GET    /servers                  --> suse-ai-up/internal/service.(*DiscoveryService).ListDiscoveredServers-fm (4 handlers)
+[GIN-debug] POST   /register                 --> suse-ai-up/internal/service.(*DiscoveryService).RegisterServer-fm (4 handlers)
+[GIN-debug] GET    /public/registry          --> suse-ai-up/internal/handlers.(*RegistryHandler).PublicList-fm (4 handlers)
+[GIN-debug] GET    /registry/browse          --> suse-ai-up/internal/handlers.(*RegistryHandler).BrowseRegistry-fm (4 handlers)
+[GIN-debug] POST   /registry/sync/official   --> suse-ai-up/internal/handlers.(*RegistryHandler).SyncOfficialRegistry-fm (4 handlers)
+[GIN-debug] POST   /registry/upload          --> suse-ai-up/internal/handlers.(*RegistryHandler).UploadRegistryEntry-fm (4 handlers)
+[GIN-debug] POST   /registry/upload/bulk     --> suse-ai-up/internal/handlers.(*RegistryHandler).UploadBulkRegistryEntries-fm (4 handlers)
+[GIN-debug] POST   /registry/upload/local-mcp --> suse-ai-up/internal/handlers.(*RegistryHandler).UploadLocalMCP-fm (4 handlers)
+[GIN-debug] GET    /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).GetMCPServer-fm (4 handlers)
+[GIN-debug] PUT    /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).UpdateMCPServer-fm (4 handlers)
+[GIN-debug] DELETE /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).DeleteMCPServer-fm (4 handlers)
+[GIN-debug] POST   /plugins/register         --> suse-ai-up/internal/service.(*PluginRegistrationService).RegisterService-fm (4 handlers)
+[GIN-debug] DELETE /plugins/register/:serviceId --> suse-ai-up/internal/service.(*PluginRegistrationService).UnregisterService-fm (4 handlers)
+[GIN-debug] GET    /plugins/services         --> suse-ai-up/internal/service.(*PluginRegistrationService).ListServices-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/:serviceId --> suse-ai-up/internal/service.(*PluginRegistrationService).GetService-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/:serviceId/health --> suse-ai-up/internal/service.(*PluginRegistrationService).GetServiceHealth-fm (4 handlers)
+[GIN-debug] GET    /plugins/services/type/:serviceType --> suse-ai-up/internal/service.(*PluginRegistrationService).ListServicesByType-fm (4 handlers)
+[GIN-debug] GET    /ping                     --> main.main.func3 (4 handlers)
+[GIN-debug] POST   /adapters                 --> suse-ai-up/internal/service.(*ManagementService).CreateAdapter-fm (4 handlers)
+[GIN-debug] GET    /adapters                 --> suse-ai-up/internal/service.(*ManagementService).ListAdapters-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name           --> suse-ai-up/internal/service.(*ManagementService).GetAdapter-fm (4 handlers)
+[GIN-debug] PUT    /adapters/:name           --> suse-ai-up/internal/service.(*ManagementService).UpdateAdapter-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name           --> suse-ai-up/internal/service.(*ManagementService).DeleteAdapter-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/status    --> suse-ai-up/internal/service.(*ManagementService).GetAdapterStatus-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/logs      --> suse-ai-up/internal/service.(*ManagementService).GetAdapterLogs-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/mcp       --> suse-ai-up/internal/service.(*ProxyHandler).ForwardStreamableHttp-fm (5 handlers)
+[GIN-debug] POST   /adapters/:name/messages  --> suse-ai-up/internal/service.(*ProxyHandler).ForwardMessages-fm (5 handlers)
+[GIN-debug] GET    /adapters/:name/sse       --> suse-ai-up/internal/service.(*ProxyHandler).ForwardSSE-fm (5 handlers)
+[GIN-debug] GET    /adapters/:name/auth/status --> suse-ai-up/internal/service.(*AuthorizationService).GetAuthorizationStatus-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/auth/authorize --> suse-ai-up/internal/service.(*AuthorizationService).AuthorizeAdapter-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name/auth/tokens --> suse-ai-up/internal/service.(*AuthorizationService).RevokeTokens-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/sessions  --> suse-ai-up/internal/service.(*AuthorizationService).ListSessions-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/sessions  --> suse-ai-up/internal/service.(*AuthorizationService).CreateSession-fm (4 handlers)
+[GIN-debug] GET    /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
+[GIN-debug] POST   /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
+[GIN-debug] GET    /docs                     --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
+[GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
+2025/11/04 14:04:11 Server listening on http://localhost:8911
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8911
+2025/11/04 14:04:14 PublicList called with source=docker, provider=
+2025/11/04 14:04:14 Routing to Docker registry fetch
+2025/11/04 14:04:14 Starting fetchDockerRegistry method
+2025/11/04 14:04:14 Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/
+2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page_size=100
+2025/11/04 14:04:14 Fetched 100 results from Docker registry
+2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=2&page_size=100
+2025/11/04 14:04:14 Fetched 100 results from Docker registry
+2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=3&page_size=100
+2025/11/04 14:04:14 Fetched 2 results from Docker registry
+2025/11/04 14:04:14 Fetched 202 servers from Docker registry
+2025/11/04 14:04:14 Returning result with 202 servers
+2025/11/04 14:04:19 PublicList called with source=official, provider=
+2025/11/04 14:04:19 Routing to official registry fetch
+2025/11/04 14:04:19 Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers
+2025/11/04 14:04:19 Official registry response status: 200
+2025/11/04 14:04:20 Received 100 servers from official registry
+2025/11/04 14:04:20 Filtered to 60 active latest servers
+2025/11/04 14:04:21 PublicList called with source=docker, provider=anthropic
+2025/11/04 14:04:21 Routing to Docker registry fetch
+2025/11/04 14:04:21 Starting fetchDockerRegistry method
+2025/11/04 14:04:21 Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/
+2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page_size=100
+2025/11/04 14:04:21 Fetched 100 results from Docker registry
+2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=2&page_size=100
+2025/11/04 14:04:21 Fetched 100 results from Docker registry
+2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=3&page_size=100
+2025/11/04 14:04:21 Fetched 2 results from Docker registry
+2025/11/04 14:04:21 Fetched 18 servers from Docker registry
+2025/11/04 14:04:21 Returning result with 18 servers
+2025/11/04 14:04:31 PublicList called with source=official, provider=
+2025/11/04 14:04:31 Routing to official registry fetch
+2025/11/04 14:04:31 Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers
+2025/11/04 14:04:31 Official registry response status: 200
+2025/11/04 14:04:31 Received 100 servers from official registry
+2025/11/04 14:04:31 Filtered to 60 active latest servers

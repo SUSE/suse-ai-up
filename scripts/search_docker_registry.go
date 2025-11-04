@@ -7,33 +7,48 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
-	"strings"
 	"time"
+
+	"suse-ai-up/pkg/models"
 )
 
-// DockerServerMetadata represents metadata extracted from Docker MCP server
-type DockerServerMetadata struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
-	Homepage    string `json:"homepage"`
-	Repository  string `json:"repository"`
-	Readme      string `json:"readme"`
+// DockerHubRepository represents a repository from Docker Hub API
+type DockerHubRepository struct {
+	Name              string   `json:"name"`
+	Namespace         string   `json:"namespace"`
+	RepositoryType    string   `json:"repository_type"`
+	Status            int      `json:"status"`
+	StatusDescription string   `json:"status_description"`
+	Description       string   `json:"description"`
+	IsPrivate         bool     `json:"is_private"`
+	StarCount         int      `json:"star_count"`
+	PullCount         int      `json:"pull_count"`
+	LastUpdated       string   `json:"last_updated"`
+	LastModified      string   `json:"last_modified"`
+	DateRegistered    string   `json:"date_registered"`
+	Affiliation       string   `json:"affiliation"`
+	MediaTypes        []string `json:"media_types"`
+	ContentTypes      []string `json:"content_types"`
+	Categories        []struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"categories"`
+	StorageSize int64  `json:"storage_size"`
+	Source      string `json:"source"`
 }
 
-// GitHubFile represents a file from GitHub API
-type GitHubFile struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Type        string `json:"type"`
-	DownloadURL string `json:"download_url"`
+// DockerHubResponse represents the response from Docker Hub API
+type DockerHubResponse struct {
+	Count    int                   `json:"count"`
+	Next     string                `json:"next"`
+	Previous string                `json:"previous"`
+	Results  []DockerHubRepository `json:"results"`
 }
 
 // DockerServer represents a Docker MCP server entry
 type DockerServer struct {
-	Name     string               `json:"name"`
-	Metadata DockerServerMetadata `json:"metadata"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // DockerRegistryResponse represents the response from Docker registry API
@@ -48,7 +63,7 @@ type DockerMCPServer struct {
 	Description      string                 `json:"description"`
 	Repository       *DockerRepository      `json:"repository,omitempty"`
 	Version          string                 `json:"version,omitempty"`
-	Packages         []Package              `json:"packages,omitempty"`
+	Packages         []models.Package       `json:"packages,omitempty"`
 	ValidationStatus string                 `json:"validation_status"`
 	DiscoveredAt     time.Time              `json:"discovered_at"`
 	Tools            []DockerMCPTool        `json:"tools,omitempty"`
@@ -75,7 +90,7 @@ type ToolInfo struct {
 	Parameters  map[string]interface{}
 }
 
-func mainSearch() {
+func main() {
 	fmt.Println("Fetching Docker MCP registry servers...")
 
 	// Get list of servers from GitHub API
@@ -91,7 +106,7 @@ func mainSearch() {
 	for i, server := range servers {
 		mcpServer := transformToDockerMCPServer(server, i+1)
 		mcpservers = append(mcpservers, mcpServer)
-		fmt.Printf("Processed: %s (%s)\n", server.Name, server.Metadata.Version)
+		fmt.Printf("Processed: %s\n", server.Name)
 	}
 
 	// Save to JSON file
@@ -117,118 +132,74 @@ func mainSearch() {
 }
 
 func fetchDockerServers() ([]DockerServer, error) {
-	// Fetch list of server directories from GitHub API
-	url := "https://api.github.com/repos/modelcontextprotocol/servers/contents/src"
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching server list: %v", err)
-	}
-	defer resp.Body.Close()
+	var allServers []DockerServer
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
-	}
+	// Docker Hub API pagination
+	url := "https://hub.docker.com/v2/repositories/mcp/?page_size=100"
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
-	}
+	for url != "" {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching Docker Hub repositories: %v", err)
+		}
+		defer resp.Body.Close()
 
-	var files []GitHubFile
-	if err := json.Unmarshal(body, &files); err != nil {
-		return nil, fmt.Errorf("error parsing GitHub response: %v", err)
-	}
+		if resp.StatusCode != 200 {
+			return nil, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
+		}
 
-	var servers []DockerServer
-	for _, file := range files {
-		if file.Type == "dir" {
-			server, err := fetchServerMetadata(file.Name)
-			if err != nil {
-				fmt.Printf("Warning: Failed to fetch metadata for %s: %v\n", file.Name, err)
-				continue
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response: %v", err)
+		}
+
+		var hubResponse DockerHubResponse
+		if err := json.Unmarshal(body, &hubResponse); err != nil {
+			return nil, fmt.Errorf("error parsing Docker Hub response: %v", err)
+		}
+
+		// Convert Docker Hub repositories to our server format
+		for _, repo := range hubResponse.Results {
+			server := DockerServer{
+				Name:        repo.Name,
+				Description: repo.Description,
 			}
-			servers = append(servers, *server)
+			allServers = append(allServers, server)
 		}
+
+		// Get next page URL
+		url = hubResponse.Next
 	}
 
-	return servers, nil
-}
-
-func fetchServerMetadata(serverName string) (*DockerServer, error) {
-	// Fetch package.json
-	packageURL := fmt.Sprintf("https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/%s/package.json", serverName)
-	packageResp, err := http.Get(packageURL)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching package.json: %v", err)
-	}
-	defer packageResp.Body.Close()
-
-	if packageResp.StatusCode != 200 {
-		return nil, fmt.Errorf("package.json not found (status %d)", packageResp.StatusCode)
-	}
-
-	packageBody, err := io.ReadAll(packageResp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading package.json: %v", err)
-	}
-
-	var metadata DockerServerMetadata
-	if err := json.Unmarshal(packageBody, &metadata); err != nil {
-		return nil, fmt.Errorf("error parsing package.json: %v", err)
-	}
-
-	// Fetch README.md
-	readmeURL := fmt.Sprintf("https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/%s/README.md", serverName)
-	readmeResp, err := http.Get(readmeURL)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching README.md: %v", err)
-	}
-	defer readmeResp.Body.Close()
-
-	if readmeResp.StatusCode == 200 {
-		readmeBody, err := io.ReadAll(readmeResp.Body)
-		if err == nil {
-			metadata.Readme = string(readmeBody)
-		}
-	}
-
-	// Set repository URL
-	metadata.Repository = fmt.Sprintf("https://github.com/modelcontextprotocol/servers/tree/main/src/%s", serverName)
-
-	return &DockerServer{
-		Name:     serverName,
-		Metadata: metadata,
-	}, nil
+	return allServers, nil
 }
 
 func transformToDockerMCPServer(dockerServer DockerServer, index int) *DockerMCPServer {
 	server := &DockerMCPServer{
 		ID:               fmt.Sprintf("docker-%d", index),
-		Name:             dockerServer.Metadata.Name,
-		Description:      dockerServer.Metadata.Description,
-		Version:          dockerServer.Metadata.Version,
+		Name:             dockerServer.Name,
+		Description:      dockerServer.Description,
+		Version:          "latest", // Docker Hub doesn't provide version info in this API
 		ValidationStatus: "new",
 		DiscoveredAt:     time.Now(),
-		Tools:            parseToolsFromReadme(dockerServer.Metadata.Readme),
+		Tools:            parseToolsFromDescription(dockerServer.Description),
 		Meta: map[string]interface{}{
 			"source": "docker-mcp",
 		},
 	}
 
-	// Set repository
-	if dockerServer.Metadata.Repository != "" {
-		server.Repository = &DockerRepository{
-			URL:    dockerServer.Metadata.Repository,
-			Source: "github",
-		}
+	// Set repository to Docker Hub URL
+	server.Repository = &DockerRepository{
+		URL:    fmt.Sprintf("https://hub.docker.com/r/mcp/%s", dockerServer.Name),
+		Source: "dockerhub",
 	}
 
 	// Create Docker package
-	server.Packages = []Package{
+	server.Packages = []models.Package{
 		{
 			RegistryType: "oci",
 			Identifier:   fmt.Sprintf("mcp/%s", dockerServer.Name),
-			Transport: Transport{
+			Transport: models.Transport{
 				Type: "stdio",
 			},
 		},
@@ -237,36 +208,25 @@ func transformToDockerMCPServer(dockerServer DockerServer, index int) *DockerMCP
 	return server
 }
 
-func parseToolsFromReadme(readme string) []DockerMCPTool {
+func parseToolsFromDescription(description string) []DockerMCPTool {
+	// Docker Hub descriptions are much shorter, so we'll create a generic tool
+	// based on the server description. Most MCP servers provide basic functionality.
 	var tools []DockerMCPTool
 
-	// Simple regex to find tool sections in README
-	// Look for lines like: - **toolName** description
-	toolPattern := regexp.MustCompile(`- \*\*(\w+)\*\*\s*(.*?)(?:\n|$)`)
-	matches := toolPattern.FindAllStringSubmatch(readme, -1)
-
-	for _, match := range matches {
-		if len(match) >= 3 {
-			toolName := match[1]
-			toolDesc := strings.TrimSpace(match[2])
-
-			// Skip if description is too short or contains "Inputs:" (not a tool description)
-			if len(toolDesc) < 10 || strings.Contains(toolDesc, "Inputs:") {
-				continue
-			}
-
-			// Create basic input schema (could be enhanced)
-			inputSchema := map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			}
-
-			tools = append(tools, DockerMCPTool{
-				Name:        toolName,
-				Description: toolDesc,
-				InputSchema: inputSchema,
-			})
+	// For now, create a single generic tool based on the description
+	// This is a simplified approach since Docker Hub doesn't provide detailed tool info
+	if description != "" && len(description) > 10 {
+		// Create a basic tool with the server description
+		inputSchema := map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
 		}
+
+		tools = append(tools, DockerMCPTool{
+			Name:        "execute",
+			Description: description,
+			InputSchema: inputSchema,
+		})
 	}
 
 	return tools

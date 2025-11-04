@@ -6,10 +6,12 @@ The SUSE AI Universal Proxy includes a comprehensive MCP (Model Context Protocol
 
 The registry system supports multiple sources of MCP servers:
 
-- **Official MCP Registry**: Community-contributed servers from the official [Model Context Protocol registry](https://registry.modelcontextprotocol.io)
-- **Docker MCP Registry**: Official MCP server implementations from the [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) repository
+- **Official MCP Registry**: 941+ community-contributed servers from the official [Model Context Protocol registry](https://registry.modelcontextprotocol.io)
+- **Docker MCP Registry**: 202+ servers from Docker Hub's `mcp` namespace including official and community implementations
 - **Custom Sources**: Upload your own MCP server configurations
 - **Network Discovery**: Automatically discover MCP servers on your network
+
+**Total Available**: 1,143+ MCP servers across all sources
 
 ## Registry Sources
 
@@ -21,15 +23,19 @@ The official registry contains community-contributed MCP servers published by de
 
 ### Docker MCP Registry
 
-Docker MCP servers are the official reference implementations maintained by Anthropic. These are production-ready servers that implement the MCP protocol for various use cases.
+Docker MCP servers are community-contributed implementations published to Docker Hub under the `mcp` namespace. These include both official Anthropic implementations and third-party servers.
 
 **Source Identification**: `{"source": "docker-mcp"}` in the `_meta` field
 
-**Available Docker Servers**:
-- `@modelcontextprotocol/server-filesystem` - File system operations
-- `@modelcontextprotocol/server-everything` - All MCP features demonstration
-- `@modelcontextprotocol/server-memory` - In-memory data storage
-- `@modelcontextprotocol/server-sequential-thinking` - Sequential reasoning tools
+**Available Docker Servers**: 202+ servers including:
+- `mcp/filesystem` - File system operations
+- `mcp/everything` - All MCP features demonstration
+- `mcp/memory` - In-memory data storage
+- `mcp/sequentialthinking` - Sequential reasoning tools
+- `mcp/git` - Git repository operations
+- `mcp/github` - GitHub API integration
+- `mcp/postgres` - PostgreSQL database access
+- And 195+ more community servers
 
 ## API Endpoints
 
@@ -185,6 +191,12 @@ go run scripts/search_docker_registry.go
 # Publish the Docker servers
 go run scripts/publish_servers.go docker
 ```
+
+### Current Status
+
+- **Official Registry**: 941 servers synced and available
+- **Docker Registry**: 202 servers synced and available
+- **Total**: 1,143+ MCP servers ready for deployment
 
 ## Server Configuration Format
 

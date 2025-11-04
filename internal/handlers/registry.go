@@ -137,46 +137,78 @@ func (h *RegistryHandler) enumerateTools(url string) ([]models.MCPTool, error) {
 
 // PublicList handles GET /public/registry
 // @Summary Get public registry data
-// @Description Retrieve filtered JSON data from the official Model Context Protocol registry (only active latest versions)
+// @Description Retrieve filtered JSON data from MCP registries (official or docker)
 // @Tags registry
 // @Produce json
+// @Param source query string false "Registry source: 'official' or 'docker'" Enums(official,docker)
+// @Param provider query string false "Filter by provider (works for both official and docker sources)"
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {string} string "Internal Server Error"
 // @Router /public/registry [get]
 func (h *RegistryHandler) PublicList(c *gin.Context) {
-	log.Printf("Fetching public registry data from: https://registry.modelcontextprotocol.io/v0/servers")
+	source := c.Query("source")
+	if source == "" {
+		source = "official" // Default to official registry
+	}
+
+	provider := c.Query("provider")
+
+	log.Printf("PublicList called with source=%s, provider=%s", source, provider)
+
+	switch source {
+	case "docker":
+		log.Printf("Routing to Docker registry fetch")
+		h.fetchDockerRegistry(c, provider)
+	case "official":
+		log.Printf("Routing to official registry fetch")
+		h.fetchOfficialRegistry(c, provider)
+	default:
+		log.Printf("Invalid source parameter: %s", source)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source. Must be 'official' or 'docker'"})
+	}
+}
+
+// fetchOfficialRegistry fetches from the official MCP registry
+func (h *RegistryHandler) fetchOfficialRegistry(c *gin.Context, provider string) {
+	log.Printf("Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers")
 
 	// Create HTTP client with timeout
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
+	// Build URL with provider filter if specified
+	url := "https://registry.modelcontextprotocol.io/v0/servers?limit=100"
+	if provider != "" {
+		url += "&provider=" + provider
+	}
+
 	// Fetch data from the public registry
-	resp, err := client.Get("https://registry.modelcontextprotocol.io/v0/servers?limit=100")
+	resp, err := client.Get(url)
 	if err != nil {
-		log.Printf("Error fetching public registry: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch public registry: %v", err)})
+		log.Printf("Error fetching official registry: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch official registry: %v", err)})
 		return
 	}
 	defer resp.Body.Close()
 
-	log.Printf("Public registry response status: %d", resp.StatusCode)
+	log.Printf("Official registry response status: %d", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Public registry returned non-200 status: %d", resp.StatusCode)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Public registry unavailable (status: %d)", resp.StatusCode)})
+		log.Printf("Official registry returned non-200 status: %d", resp.StatusCode)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Official registry unavailable (status: %d)", resp.StatusCode)})
 		return
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("Error decoding public registry response: %v", err)
+		log.Printf("Error decoding official registry response: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse registry response"})
 		return
 	}
 
 	// Filter servers to only include active latest versions
 	if servers, ok := result["servers"].([]interface{}); ok {
-		log.Printf("Received %d servers from registry", len(servers))
+		log.Printf("Received %d servers from official registry", len(servers))
 		var filteredServers []interface{}
 
 		for _, serverEntry := range servers {
@@ -201,6 +233,186 @@ func (h *RegistryHandler) PublicList(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// fetchDockerRegistry fetches from Docker Hub MCP namespace
+func (h *RegistryHandler) fetchDockerRegistry(c *gin.Context, provider string) {
+	log.Printf("Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/")
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	var allServers []map[string]interface{}
+
+	// Docker Hub API pagination
+	url := "https://hub.docker.com/v2/repositories/mcp/?page_size=100"
+
+	for url != "" {
+		resp, err := client.Get(url)
+		if err != nil {
+			log.Printf("Error fetching Docker registry: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch Docker registry: %v", err)})
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			log.Printf("Docker registry returned non-200 status: %d", resp.StatusCode)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Docker registry unavailable (status: %d)", resp.StatusCode)})
+			return
+		}
+
+		var dockerResponse struct {
+			Count    int    `json:"count"`
+			Next     string `json:"next"`
+			Previous string `json:"previous"`
+			Results  []struct {
+				Name        string `json:"name"`
+				Namespace   string `json:"namespace"`
+				Description string `json:"description"`
+				StarCount   int    `json:"star_count"`
+				PullCount   int    `json:"pull_count"`
+				LastUpdated string `json:"last_updated"`
+				Categories  []struct {
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"categories"`
+			} `json:"results"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&dockerResponse); err != nil {
+			resp.Body.Close()
+			log.Printf("Error decoding Docker registry response: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse Docker registry response"})
+			return
+		}
+
+		resp.Body.Close()
+
+		// Convert Docker repositories to MCP server format
+		for _, repo := range dockerResponse.Results {
+			// Apply provider filtering if specified
+			if provider != "" && !h.matchesProvider(repo, provider) {
+				continue
+			}
+
+			server := map[string]interface{}{
+				"name":        fmt.Sprintf("mcp/%s", repo.Name),
+				"description": repo.Description,
+				"repository": map[string]interface{}{
+					"url":    fmt.Sprintf("https://hub.docker.com/r/mcp/%s", repo.Name),
+					"source": "dockerhub",
+				},
+				"packages": []map[string]interface{}{
+					{
+						"registryType": "oci",
+						"identifier":   fmt.Sprintf("mcp/%s", repo.Name),
+						"transport": map[string]interface{}{
+							"type": "stdio",
+						},
+					},
+				},
+				"validation_status": "new",
+				"_meta": map[string]interface{}{
+					"source":       "docker-mcp",
+					"provider":     h.inferProvider(repo),
+					"stars":        repo.StarCount,
+					"pulls":        repo.PullCount,
+					"last_updated": repo.LastUpdated,
+				},
+			}
+
+			// Add basic tool info
+			if repo.Description != "" {
+				server["tools"] = []map[string]interface{}{
+					{
+						"name":        "execute",
+						"description": repo.Description,
+						"input_schema": map[string]interface{}{
+							"type":       "object",
+							"properties": map[string]interface{}{},
+						},
+					},
+				}
+			}
+
+			allServers = append(allServers, server)
+		}
+
+		// Get next page URL
+		url = dockerResponse.Next
+	}
+
+	log.Printf("Fetched %d servers from Docker registry", len(allServers))
+
+	result := map[string]interface{}{
+		"servers": allServers,
+		"source":  "docker-mcp",
+		"count":   len(allServers),
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// matchesProvider checks if a Docker repository matches the specified provider
+func (h *RegistryHandler) matchesProvider(repo struct {
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Description string `json:"description"`
+	StarCount   int    `json:"star_count"`
+	PullCount   int    `json:"pull_count"`
+	LastUpdated string `json:"last_updated"`
+	Categories  []struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"categories"`
+}, provider string) bool {
+	inferredProvider := h.inferProvider(repo)
+	return strings.EqualFold(inferredProvider, provider)
+}
+
+// inferProvider attempts to infer the provider from Docker repository metadata
+func (h *RegistryHandler) inferProvider(repo struct {
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Description string `json:"description"`
+	StarCount   int    `json:"star_count"`
+	PullCount   int    `json:"pull_count"`
+	LastUpdated string `json:"last_updated"`
+	Categories  []struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"categories"`
+}) string {
+	// Check for official Anthropic servers
+	officialServers := map[string]bool{
+		"everything":         true,
+		"filesystem":         true,
+		"memory":             true,
+		"sequentialthinking": true,
+	}
+
+	if officialServers[repo.Name] {
+		return "anthropic"
+	}
+
+	// Check categories for provider hints
+	for _, category := range repo.Categories {
+		if strings.Contains(strings.ToLower(category.Name), "official") {
+			return "official"
+		}
+	}
+
+	// Check description for provider hints
+	desc := strings.ToLower(repo.Description)
+	if strings.Contains(desc, "official") || strings.Contains(desc, "anthropic") {
+		return "anthropic"
+	}
+
+	// Default to community for most servers
+	return "community"
 }
 
 // UploadRegistryEntry handles POST /registry/upload
