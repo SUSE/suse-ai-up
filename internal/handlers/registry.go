@@ -170,7 +170,7 @@ func (h *RegistryHandler) PublicList(c *gin.Context) {
 
 // fetchOfficialRegistry fetches from the official MCP registry
 func (h *RegistryHandler) fetchOfficialRegistry(c *gin.Context, provider string) {
-	log.Printf("Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers")
+	log.Printf("Fetching official registry data from: https://registry.modelcontextprotocol.io/v0.1/servers")
 
 	// Create HTTP client with timeout
 	client := &http.Client{
@@ -178,7 +178,7 @@ func (h *RegistryHandler) fetchOfficialRegistry(c *gin.Context, provider string)
 	}
 
 	// Build URL with provider filter if specified
-	url := "https://registry.modelcontextprotocol.io/v0/servers?limit=100"
+	url := "https://registry.modelcontextprotocol.io/v0.1/servers?limit=100"
 	if provider != "" {
 		url += "&provider=" + provider
 	}
@@ -230,9 +230,173 @@ func (h *RegistryHandler) fetchOfficialRegistry(c *gin.Context, provider string)
 
 		log.Printf("Filtered to %d active latest servers", len(filteredServers))
 		result["servers"] = filteredServers
+
+		// Store servers in local registry for browsing
+		h.storeFetchedServers(filteredServers, "official")
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// storeFetchedServers converts and stores fetched servers in the local registry
+func (h *RegistryHandler) storeFetchedServers(servers []interface{}, source string) {
+	for _, serverData := range servers {
+		if serverMap, ok := serverData.(map[string]interface{}); ok {
+			server := h.convertToMCPServer(serverMap, source)
+			if server != nil {
+				// Check if server already exists
+				if existing, _ := h.Store.GetMCPServer(server.ID); existing == nil {
+					if err := h.Store.CreateMCPServer(server); err != nil {
+						log.Printf("Error storing server %s: %v", server.ID, err)
+					} else {
+						log.Printf("Stored server %s in local registry", server.ID)
+					}
+				} else {
+					log.Printf("Server %s already exists in local registry", server.ID)
+				}
+			}
+		}
+	}
+}
+
+// convertToMCPServer converts a map representation to MCPServer model
+func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, source string) *models.MCPServer {
+	server := &models.MCPServer{
+		ValidationStatus: "new",
+		DiscoveredAt:     time.Now(),
+		Meta:             make(map[string]interface{}),
+	}
+
+	// Extract server data from nested structure (v0.1 API format)
+	serverData, hasServer := serverMap["server"].(map[string]interface{})
+	if !hasServer {
+		log.Printf("Server data not found in expected structure, falling back to direct access")
+		serverData = serverMap
+	} else {
+		log.Printf("Found server data in nested structure for ID: %v", serverData["name"])
+	}
+
+	// Extract basic fields
+	if id, ok := serverData["name"].(string); ok {
+		server.ID = id
+	} else {
+		// Generate ID if not present
+		server.ID = generateID()
+	}
+
+	if name, ok := serverData["name"].(string); ok {
+		server.Name = name
+		log.Printf("Extracted name: %s", name)
+	} else {
+		log.Printf("Name not found in serverData: %v", serverData)
+	}
+
+	if desc, ok := serverData["description"].(string); ok {
+		server.Description = desc
+		log.Printf("Extracted description: %s", desc)
+	} else {
+		log.Printf("Description not found in serverData")
+	}
+
+	if version, ok := serverData["version"].(string); ok {
+		server.Version = version
+	}
+
+	// Handle repository
+	if repoData, ok := serverData["repository"].(map[string]interface{}); ok {
+		repo := &models.Repository{}
+		if url, ok := repoData["url"].(string); ok {
+			repo.URL = url
+		}
+		if src, ok := repoData["source"].(string); ok {
+			repo.Source = src
+		}
+		server.Repository = repo
+	}
+
+	// Handle packages
+	if packagesData, ok := serverData["packages"].([]interface{}); ok {
+		var packages []models.Package
+		for _, pkgData := range packagesData {
+			if pkgMap, ok := pkgData.(map[string]interface{}); ok {
+				pkg := models.Package{}
+				if regType, ok := pkgMap["registryType"].(string); ok {
+					pkg.RegistryType = regType
+				}
+				if identifier, ok := pkgMap["identifier"].(string); ok {
+					pkg.Identifier = identifier
+				}
+				if transportData, ok := pkgMap["transport"].(map[string]interface{}); ok {
+					if transportType, ok := transportData["type"].(string); ok {
+						pkg.Transport = models.Transport{Type: transportType}
+					}
+				}
+				packages = append(packages, pkg)
+			}
+		}
+		server.Packages = packages
+	}
+
+	// Handle remotes (alternative to packages in some servers)
+	if remotesData, ok := serverData["remotes"].([]interface{}); ok {
+		var packages []models.Package
+		for _, remoteData := range remotesData {
+			if remoteMap, ok := remoteData.(map[string]interface{}); ok {
+				pkg := models.Package{}
+				if remoteType, ok := remoteMap["type"].(string); ok {
+					// Convert remote type to transport type
+					switch remoteType {
+					case "streamable-http":
+						pkg.Transport = models.Transport{Type: "http"}
+					case "sse":
+						pkg.Transport = models.Transport{Type: "sse"}
+					default:
+						pkg.Transport = models.Transport{Type: remoteType}
+					}
+				}
+				if url, ok := remoteMap["url"].(string); ok {
+					pkg.Identifier = url
+					pkg.RegistryType = "remote"
+				}
+				packages = append(packages, pkg)
+			}
+		}
+		server.Packages = packages
+	}
+
+	// Handle tools
+	if toolsData, ok := serverData["tools"].([]interface{}); ok {
+		var tools []models.MCPTool
+		for _, toolData := range toolsData {
+			if toolMap, ok := toolData.(map[string]interface{}); ok {
+				tool := models.MCPTool{}
+				if name, ok := toolMap["name"].(string); ok {
+					tool.Name = name
+				}
+				if desc, ok := toolMap["description"].(string); ok {
+					tool.Description = desc
+				}
+				if schema, ok := toolMap["input_schema"].(map[string]interface{}); ok {
+					tool.InputSchema = schema
+				}
+				tools = append(tools, tool)
+			}
+		}
+		server.Tools = tools
+	}
+
+	// Handle meta
+	if meta, ok := serverMap["_meta"].(map[string]interface{}); ok {
+		server.Meta = meta
+	}
+
+	// Add source information to meta
+	if server.Meta == nil {
+		server.Meta = make(map[string]interface{})
+	}
+	server.Meta["source"] = source
+
+	return server
 }
 
 // fetchDockerRegistry fetches from Docker Hub MCP namespace
@@ -299,6 +463,7 @@ func (h *RegistryHandler) fetchDockerRegistry(c *gin.Context, provider string) {
 			}
 
 			server := map[string]interface{}{
+				"id":          fmt.Sprintf("docker-mcp-%s", repo.Name),
 				"name":        fmt.Sprintf("mcp/%s", repo.Name),
 				"description": repo.Description,
 				"repository": map[string]interface{}{
@@ -321,6 +486,7 @@ func (h *RegistryHandler) fetchDockerRegistry(c *gin.Context, provider string) {
 					"stars":        repo.StarCount,
 					"pulls":        repo.PullCount,
 					"last_updated": repo.LastUpdated,
+					"icon_url":     fmt.Sprintf("https://api.scout.docker.com/v1/policy/insights/org-image-score/badge/mcp/%s", repo.Name),
 				},
 			}
 
@@ -346,6 +512,13 @@ func (h *RegistryHandler) fetchDockerRegistry(c *gin.Context, provider string) {
 	}
 
 	log.Printf("Fetched %d servers from Docker registry", len(allServers))
+
+	// Store servers in local registry for browsing
+	var serversInterface []interface{}
+	for _, s := range allServers {
+		serversInterface = append(serversInterface, s)
+	}
+	h.storeFetchedServers(serversInterface, "docker-mcp")
 
 	result := map[string]interface{}{
 		"servers": allServers,

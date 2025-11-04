@@ -1,13 +1,13 @@
-2025/11/04 14:04:10 Starting SUSE AI Universal Proxy service...
-2025/11/04 14:04:11 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
-2025/11/04 14:04:11 Creating discovery service...
-2025/11/04 14:04:11 Discovery service created successfully
-2025/11/04 14:04:11 Plugin service framework initialized
+2025/11/04 15:19:29 Starting SUSE AI Universal Proxy service...
+2025/11/04 15:19:29 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
+2025/11/04 15:19:29 Creating discovery service...
+2025/11/04 15:19:29 Discovery service created successfully
+2025/11/04 15:19:29 Plugin service framework initialized
 [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
  - using env:	export GIN_MODE=release
  - using code:	gin.SetMode(gin.ReleaseMode)
 
-2025/11/04 14:04:11 Using development authentication
+2025/11/04 15:19:29 Using development authentication
 [GIN-debug] POST   /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).StartScan-fm (4 handlers)
 [GIN-debug] GET    /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).ListScans-fm (4 handlers)
 [GIN-debug] GET    /scan/:scanId             --> suse-ai-up/internal/service.(*DiscoveryService).GetScanStatus-fm (4 handlers)
@@ -48,43 +48,7 @@
 [GIN-debug] POST   /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
 [GIN-debug] GET    /docs                     --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
 [GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
-2025/11/04 14:04:11 Server listening on http://localhost:8911
+2025/11/04 15:19:29 Server listening on http://localhost:8911
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8911
-2025/11/04 14:04:14 PublicList called with source=docker, provider=
-2025/11/04 14:04:14 Routing to Docker registry fetch
-2025/11/04 14:04:14 Starting fetchDockerRegistry method
-2025/11/04 14:04:14 Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/
-2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page_size=100
-2025/11/04 14:04:14 Fetched 100 results from Docker registry
-2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=2&page_size=100
-2025/11/04 14:04:14 Fetched 100 results from Docker registry
-2025/11/04 14:04:14 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=3&page_size=100
-2025/11/04 14:04:14 Fetched 2 results from Docker registry
-2025/11/04 14:04:14 Fetched 202 servers from Docker registry
-2025/11/04 14:04:14 Returning result with 202 servers
-2025/11/04 14:04:19 PublicList called with source=official, provider=
-2025/11/04 14:04:19 Routing to official registry fetch
-2025/11/04 14:04:19 Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers
-2025/11/04 14:04:19 Official registry response status: 200
-2025/11/04 14:04:20 Received 100 servers from official registry
-2025/11/04 14:04:20 Filtered to 60 active latest servers
-2025/11/04 14:04:21 PublicList called with source=docker, provider=anthropic
-2025/11/04 14:04:21 Routing to Docker registry fetch
-2025/11/04 14:04:21 Starting fetchDockerRegistry method
-2025/11/04 14:04:21 Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/
-2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page_size=100
-2025/11/04 14:04:21 Fetched 100 results from Docker registry
-2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=2&page_size=100
-2025/11/04 14:04:21 Fetched 100 results from Docker registry
-2025/11/04 14:04:21 Fetching URL: https://hub.docker.com/v2/repositories/mcp/?page=3&page_size=100
-2025/11/04 14:04:21 Fetched 2 results from Docker registry
-2025/11/04 14:04:21 Fetched 18 servers from Docker registry
-2025/11/04 14:04:21 Returning result with 18 servers
-2025/11/04 14:04:31 PublicList called with source=official, provider=
-2025/11/04 14:04:31 Routing to official registry fetch
-2025/11/04 14:04:31 Fetching official registry data from: https://registry.modelcontextprotocol.io/v0/servers
-2025/11/04 14:04:31 Official registry response status: 200
-2025/11/04 14:04:31 Received 100 servers from official registry
-2025/11/04 14:04:31 Filtered to 60 active latest servers

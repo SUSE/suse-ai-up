@@ -27,6 +27,8 @@ Docker MCP servers are community-contributed implementations published to Docker
 
 **Source Identification**: `{"source": "docker-mcp"}` in the `_meta` field
 
+**Icon URLs**: Docker servers include Docker Scout security badge URLs in the `icon_url` field, providing visual indicators of container security status.
+
 **Available Docker Servers**: 202+ servers including:
 - `mcp/filesystem` - File system operations
 - `mcp/everything` - All MCP features demonstration
@@ -244,6 +246,7 @@ go run scripts/publish_servers.go docker
   "discovered_at": "2024-01-01T00:00:00Z",
   "_meta": {
     "source": "official-mcp",
+    "icon_url": "https://api.scout.docker.com/v1/policy/insights/org-image-score/badge/mcp/server-name",
     "custom_field": "value"
   }
 }
