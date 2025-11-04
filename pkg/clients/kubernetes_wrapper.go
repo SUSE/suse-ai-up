@@ -22,6 +22,20 @@ func NewKubeClientWrapper(client *kubernetes.Clientset, namespace string) *KubeC
 	return &KubeClientWrapper{client: client, namespace: namespace}
 }
 
+// GetNamespace returns the configured namespace
+func (k *KubeClientWrapper) GetNamespace() string {
+	return k.namespace
+}
+
+// UpsertDeployment creates or updates a Deployment
+func (k *KubeClientWrapper) UpsertDeployment(deployment *appsv1.Deployment, namespace string, ctx context.Context) error {
+	_, err := k.client.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{})
+	if errors.IsAlreadyExists(err) {
+		_, err = k.client.AppsV1().Deployments(namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	}
+	return err
+}
+
 // UpsertStatefulSet creates or updates a StatefulSet
 func (k *KubeClientWrapper) UpsertStatefulSet(ss *appsv1.StatefulSet, namespace string, ctx context.Context) error {
 	_, err := k.client.AppsV1().StatefulSets(namespace).Create(ctx, ss, metav1.CreateOptions{})
@@ -34,6 +48,11 @@ func (k *KubeClientWrapper) UpsertStatefulSet(ss *appsv1.StatefulSet, namespace 
 // ReadStatefulSet reads a StatefulSet
 func (k *KubeClientWrapper) ReadStatefulSet(name, namespace string, ctx context.Context) (*appsv1.StatefulSet, error) {
 	return k.client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+// DeleteDeployment deletes a Deployment
+func (k *KubeClientWrapper) DeleteDeployment(name, namespace string, ctx context.Context) error {
+	return k.client.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 // DeleteStatefulSet deletes a StatefulSet

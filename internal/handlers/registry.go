@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -270,10 +271,8 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 	// Extract server data from nested structure (v0.1 API format)
 	serverData, hasServer := serverMap["server"].(map[string]interface{})
 	if !hasServer {
-		log.Printf("Server data not found in expected structure, falling back to direct access")
+		// Fall back to direct access for Docker registry format
 		serverData = serverMap
-	} else {
-		log.Printf("Found server data in nested structure for ID: %v", serverData["name"])
 	}
 
 	// Extract basic fields
@@ -286,16 +285,14 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 
 	if name, ok := serverData["name"].(string); ok {
 		server.Name = name
-		log.Printf("Extracted name: %s", name)
-	} else {
-		log.Printf("Name not found in serverData: %v", serverData)
 	}
 
 	if desc, ok := serverData["description"].(string); ok {
 		server.Description = desc
-		log.Printf("Extracted description: %s", desc)
-	} else {
-		log.Printf("Description not found in serverData")
+	}
+
+	if desc, ok := serverData["description"].(string); ok {
+		server.Description = desc
 	}
 
 	if version, ok := serverData["version"].(string); ok {
@@ -333,6 +330,24 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 				}
 				packages = append(packages, pkg)
 			}
+		}
+		server.Packages = packages
+	} else if packagesData, ok := serverData["packages"].([]map[string]interface{}); ok {
+		var packages []models.Package
+		for _, pkgMap := range packagesData {
+			pkg := models.Package{}
+			if regType, ok := pkgMap["registryType"].(string); ok {
+				pkg.RegistryType = regType
+			}
+			if identifier, ok := pkgMap["identifier"].(string); ok {
+				pkg.Identifier = identifier
+			}
+			if transportData, ok := pkgMap["transport"].(map[string]interface{}); ok {
+				if transportType, ok := transportData["type"].(string); ok {
+					pkg.Transport = models.Transport{Type: transportType}
+				}
+			}
+			packages = append(packages, pkg)
 		}
 		server.Packages = packages
 	}
@@ -395,6 +410,22 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 		server.Meta = make(map[string]interface{})
 	}
 	server.Meta["source"] = source
+
+	// Extract configuration template for Docker images
+	if source == "docker-mcp" {
+		// Find the Docker image from packages
+		for _, pkg := range server.Packages {
+			if pkg.RegistryType == "oci" && strings.HasPrefix(pkg.Identifier, "mcp/") {
+				configTemplate, err := h.extractDockerConfig(pkg.Identifier)
+				if err != nil {
+					log.Printf("Failed to extract config for %s: %v", pkg.Identifier, err)
+				} else {
+					server.ConfigTemplate = configTemplate
+				}
+				break
+			}
+		}
+	}
 
 	return server
 }
@@ -853,6 +884,117 @@ func isValidMCPFile(filename string) bool {
 		}
 	}
 	return false
+}
+
+// extractDockerConfig extracts MCP server configuration from Docker Hub page
+func (h *RegistryHandler) extractDockerConfig(dockerImage string) (*models.MCPConfigTemplate, error) {
+	// Extract namespace and repo from image name (e.g., "mcp/brave-search" -> "mcp", "brave-search")
+	parts := strings.Split(dockerImage, "/")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid docker image format: %s", dockerImage)
+	}
+	namespace, repo := parts[0], parts[1]
+
+	// Construct Docker Hub URL
+	url := fmt.Sprintf("https://hub.docker.com/r/%s/%s", namespace, repo)
+
+	// Fetch the page
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch Docker Hub page: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Docker Hub returned status %d", resp.StatusCode)
+	}
+
+	// Read the page content
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	content := string(body)
+
+	// Extract configuration from embedded JSON data
+	config := &models.MCPConfigTemplate{
+		Command:   "docker",
+		Args:      []string{"run", "--rm", "-i", dockerImage},
+		Env:       make(map[string]string),
+		Transport: "stdio", // default
+		Image:     dockerImage,
+	}
+
+	// Extract environment variables using multiple patterns for robustness
+	envPatterns := []*regexp.Regexp{
+		// Pattern for quoted env vars like "BRAVE_API_KEY": "YOUR_API_KEY_HERE"
+		regexp.MustCompile(`"([A-Z_][A-Z0-9_]*_KEY)"\s*:\s*"([^"]*)"`),
+		// Pattern for env vars in configuration objects
+		regexp.MustCompile(`([A-Z_][A-Z0-9_]*_KEY)\s*:\s*["']([^"']*)["']`),
+		// Pattern for env vars in comments or documentation
+		regexp.MustCompile(`([A-Z_][A-Z0-9_]*_KEY)\s*=\s*([^,\s\n]+)`),
+	}
+
+	foundEnvVars := make(map[string]bool)
+	for _, pattern := range envPatterns {
+		matches := pattern.FindAllStringSubmatch(content, -1)
+		for _, match := range matches {
+			if len(match) >= 3 {
+				envKey := match[1]
+				envValue := match[2]
+				// Only add if it's a placeholder or empty value
+				if envValue == "" || envValue == "YOUR_API_KEY_HERE" || strings.Contains(strings.ToUpper(envValue), "YOUR_") || strings.Contains(envValue, "API_KEY") {
+					if !foundEnvVars[envKey] {
+						config.Env[envKey] = ""
+						foundEnvVars[envKey] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Extract from secrets array if present
+	secretsPattern := regexp.MustCompile(`"secrets"\s*:\s*\[([^\]]+)\]`)
+	secretsMatch := secretsPattern.FindStringSubmatch(content)
+	if secretsMatch != nil {
+		secretsContent := secretsMatch[1]
+		secretPattern := regexp.MustCompile(`"([^"]+)"`)
+		secretMatches := secretPattern.FindAllStringSubmatch(secretsContent, -1)
+
+		for _, secretMatch := range secretMatches {
+			if len(secretMatch) >= 2 {
+				secretName := secretMatch[1]
+				// Convert to env var format
+				envKey := strings.ToUpper(strings.ReplaceAll(secretName, ".", "_"))
+				envKey = strings.ReplaceAll(envKey, "-", "_")
+				if strings.HasSuffix(envKey, "_KEY") || strings.Contains(envKey, "API") || strings.Contains(envKey, "TOKEN") {
+					if !foundEnvVars[envKey] {
+						config.Env[envKey] = ""
+						foundEnvVars[envKey] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Determine transport type from the content
+	transportPatterns := map[string]string{
+		`"type"\s*:\s*"streamable-http"`: "http",
+		`"type"\s*:\s*"sse"`:             "sse",
+		`"transport"\s*:\s*"http"`:       "http",
+		`"transport"\s*:\s*"sse"`:        "sse",
+	}
+
+	for pattern, transportType := range transportPatterns {
+		if matched, _ := regexp.MatchString(pattern, content); matched {
+			config.Transport = transportType
+			break
+		}
+	}
+
+	return config, nil
 }
 
 // generateID generates a unique ID for MCP servers

@@ -1,13 +1,13 @@
-2025/11/04 15:19:29 Starting SUSE AI Universal Proxy service...
-2025/11/04 15:19:29 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
-2025/11/04 15:19:29 Creating discovery service...
-2025/11/04 15:19:29 Discovery service created successfully
-2025/11/04 15:19:29 Plugin service framework initialized
+2025/11/04 15:43:12 Starting SUSE AI Universal Proxy service...
+2025/11/04 15:43:12 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
+2025/11/04 15:43:12 Creating discovery service...
+2025/11/04 15:43:12 Discovery service created successfully
+2025/11/04 15:43:12 Plugin service framework initialized
 [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
  - using env:	export GIN_MODE=release
  - using code:	gin.SetMode(gin.ReleaseMode)
 
-2025/11/04 15:19:29 Using development authentication
+2025/11/04 15:43:12 Using development authentication
 [GIN-debug] POST   /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).StartScan-fm (4 handlers)
 [GIN-debug] GET    /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).ListScans-fm (4 handlers)
 [GIN-debug] GET    /scan/:scanId             --> suse-ai-up/internal/service.(*DiscoveryService).GetScanStatus-fm (4 handlers)
@@ -22,6 +22,8 @@
 [GIN-debug] GET    /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).GetMCPServer-fm (4 handlers)
 [GIN-debug] PUT    /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).UpdateMCPServer-fm (4 handlers)
 [GIN-debug] DELETE /registry/:id             --> suse-ai-up/internal/handlers.(*RegistryHandler).DeleteMCPServer-fm (4 handlers)
+[GIN-debug] GET    /deployment/config/*serverId --> suse-ai-up/internal/handlers.(*DeploymentHandler).GetMCPConfig-fm (4 handlers)
+[GIN-debug] POST   /deployment/deploy        --> suse-ai-up/internal/handlers.(*DeploymentHandler).DeployMCP-fm (4 handlers)
 [GIN-debug] POST   /plugins/register         --> suse-ai-up/internal/service.(*PluginRegistrationService).RegisterService-fm (4 handlers)
 [GIN-debug] DELETE /plugins/register/:serviceId --> suse-ai-up/internal/service.(*PluginRegistrationService).UnregisterService-fm (4 handlers)
 [GIN-debug] GET    /plugins/services         --> suse-ai-up/internal/service.(*PluginRegistrationService).ListServices-fm (4 handlers)
@@ -48,7 +50,1829 @@
 [GIN-debug] POST   /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
 [GIN-debug] GET    /docs                     --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
 [GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
-2025/11/04 15:19:29 Server listening on http://localhost:8911
+2025/11/04 15:43:12 Server listening on http://localhost:8911
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8911
+2025/11/04 15:44:13 PublicList called with source=docker, provider=
+2025/11/04 15:44:13 Routing to Docker registry fetch
+2025/11/04 15:44:13 Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/
+2025/11/04 15:44:14 Fetched 202 servers from Docker registry
+2025/11/04 15:44:14 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:14 Looking for packages in serverData for mcp/fetch
+2025/11/04 15:44:14 Found 1 packages (map[]) for server mcp/fetch
+2025/11/04 15:44:14 Checking config extraction for server mcp/fetch with source docker-mcp, packages count: 1
+2025/11/04 15:44:14 Source is docker-mcp, extracting config for server mcp/fetch
+2025/11/04 15:44:14 Checking package 0: identifier=mcp/fetch, type=oci
+2025/11/04 15:44:14 Extracting config for Docker image: mcp/fetch
+2025/11/04 15:44:14 Successfully extracted config for mcp/fetch
+2025/11/04 15:44:14 Stored server mcp/fetch in local registry
+2025/11/04 15:44:14 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:14 Looking for packages in serverData for mcp/git
+2025/11/04 15:44:14 Found 1 packages (map[]) for server mcp/git
+2025/11/04 15:44:14 Checking config extraction for server mcp/git with source docker-mcp, packages count: 1
+2025/11/04 15:44:14 Source is docker-mcp, extracting config for server mcp/git
+2025/11/04 15:44:14 Checking package 0: identifier=mcp/git, type=oci
+2025/11/04 15:44:14 Extracting config for Docker image: mcp/git
+2025/11/04 15:44:14 Successfully extracted config for mcp/git
+2025/11/04 15:44:14 Stored server mcp/git in local registry
+2025/11/04 15:44:14 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:14 Looking for packages in serverData for mcp/time
+2025/11/04 15:44:14 Found 1 packages (map[]) for server mcp/time
+2025/11/04 15:44:14 Checking config extraction for server mcp/time with source docker-mcp, packages count: 1
+2025/11/04 15:44:14 Source is docker-mcp, extracting config for server mcp/time
+2025/11/04 15:44:14 Checking package 0: identifier=mcp/time, type=oci
+2025/11/04 15:44:14 Extracting config for Docker image: mcp/time
+2025/11/04 15:44:14 Successfully extracted config for mcp/time
+2025/11/04 15:44:14 Stored server mcp/time in local registry
+2025/11/04 15:44:14 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:14 Looking for packages in serverData for mcp/sentry
+2025/11/04 15:44:14 Found 1 packages (map[]) for server mcp/sentry
+2025/11/04 15:44:14 Checking config extraction for server mcp/sentry with source docker-mcp, packages count: 1
+2025/11/04 15:44:14 Source is docker-mcp, extracting config for server mcp/sentry
+2025/11/04 15:44:14 Checking package 0: identifier=mcp/sentry, type=oci
+2025/11/04 15:44:14 Extracting config for Docker image: mcp/sentry
+2025/11/04 15:44:15 Successfully extracted config for mcp/sentry
+2025/11/04 15:44:15 Stored server mcp/sentry in local registry
+2025/11/04 15:44:15 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:15 Looking for packages in serverData for mcp/sqlite
+2025/11/04 15:44:15 Found 1 packages (map[]) for server mcp/sqlite
+2025/11/04 15:44:15 Checking config extraction for server mcp/sqlite with source docker-mcp, packages count: 1
+2025/11/04 15:44:15 Source is docker-mcp, extracting config for server mcp/sqlite
+2025/11/04 15:44:15 Checking package 0: identifier=mcp/sqlite, type=oci
+2025/11/04 15:44:15 Extracting config for Docker image: mcp/sqlite
+2025/11/04 15:44:15 Successfully extracted config for mcp/sqlite
+2025/11/04 15:44:15 Stored server mcp/sqlite in local registry
+2025/11/04 15:44:15 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:15 Looking for packages in serverData for mcp/aws-kb-retrieval-server
+2025/11/04 15:44:15 Found 1 packages (map[]) for server mcp/aws-kb-retrieval-server
+2025/11/04 15:44:15 Checking config extraction for server mcp/aws-kb-retrieval-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:15 Source is docker-mcp, extracting config for server mcp/aws-kb-retrieval-server
+2025/11/04 15:44:15 Checking package 0: identifier=mcp/aws-kb-retrieval-server, type=oci
+2025/11/04 15:44:15 Extracting config for Docker image: mcp/aws-kb-retrieval-server
+2025/11/04 15:44:15 Successfully extracted config for mcp/aws-kb-retrieval-server
+2025/11/04 15:44:15 Stored server mcp/aws-kb-retrieval-server in local registry
+2025/11/04 15:44:15 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:15 Looking for packages in serverData for mcp/brave-search
+2025/11/04 15:44:15 Found 1 packages (map[]) for server mcp/brave-search
+2025/11/04 15:44:15 Checking config extraction for server mcp/brave-search with source docker-mcp, packages count: 1
+2025/11/04 15:44:15 Source is docker-mcp, extracting config for server mcp/brave-search
+2025/11/04 15:44:15 Checking package 0: identifier=mcp/brave-search, type=oci
+2025/11/04 15:44:15 Extracting config for Docker image: mcp/brave-search
+2025/11/04 15:44:15 Successfully extracted config for mcp/brave-search
+2025/11/04 15:44:15 Stored server mcp/brave-search in local registry
+2025/11/04 15:44:15 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:15 Looking for packages in serverData for mcp/everart
+2025/11/04 15:44:15 Found 1 packages (map[]) for server mcp/everart
+2025/11/04 15:44:15 Checking config extraction for server mcp/everart with source docker-mcp, packages count: 1
+2025/11/04 15:44:15 Source is docker-mcp, extracting config for server mcp/everart
+2025/11/04 15:44:15 Checking package 0: identifier=mcp/everart, type=oci
+2025/11/04 15:44:15 Extracting config for Docker image: mcp/everart
+2025/11/04 15:44:16 Successfully extracted config for mcp/everart
+2025/11/04 15:44:16 Stored server mcp/everart in local registry
+2025/11/04 15:44:16 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:16 Looking for packages in serverData for mcp/everything
+2025/11/04 15:44:16 Found 1 packages (map[]) for server mcp/everything
+2025/11/04 15:44:16 Checking config extraction for server mcp/everything with source docker-mcp, packages count: 1
+2025/11/04 15:44:16 Source is docker-mcp, extracting config for server mcp/everything
+2025/11/04 15:44:16 Checking package 0: identifier=mcp/everything, type=oci
+2025/11/04 15:44:16 Extracting config for Docker image: mcp/everything
+2025/11/04 15:44:16 Successfully extracted config for mcp/everything
+2025/11/04 15:44:16 Stored server mcp/everything in local registry
+2025/11/04 15:44:16 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:16 Looking for packages in serverData for mcp/filesystem
+2025/11/04 15:44:16 Found 1 packages (map[]) for server mcp/filesystem
+2025/11/04 15:44:16 Checking config extraction for server mcp/filesystem with source docker-mcp, packages count: 1
+2025/11/04 15:44:16 Source is docker-mcp, extracting config for server mcp/filesystem
+2025/11/04 15:44:16 Checking package 0: identifier=mcp/filesystem, type=oci
+2025/11/04 15:44:16 Extracting config for Docker image: mcp/filesystem
+2025/11/04 15:44:16 Successfully extracted config for mcp/filesystem
+2025/11/04 15:44:16 Stored server mcp/filesystem in local registry
+2025/11/04 15:44:16 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:16 Looking for packages in serverData for mcp/gdrive
+2025/11/04 15:44:16 Found 1 packages (map[]) for server mcp/gdrive
+2025/11/04 15:44:16 Checking config extraction for server mcp/gdrive with source docker-mcp, packages count: 1
+2025/11/04 15:44:16 Source is docker-mcp, extracting config for server mcp/gdrive
+2025/11/04 15:44:16 Checking package 0: identifier=mcp/gdrive, type=oci
+2025/11/04 15:44:16 Extracting config for Docker image: mcp/gdrive
+2025/11/04 15:44:16 Successfully extracted config for mcp/gdrive
+2025/11/04 15:44:16 Stored server mcp/gdrive in local registry
+2025/11/04 15:44:16 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:16 Looking for packages in serverData for mcp/github
+2025/11/04 15:44:16 Found 1 packages (map[]) for server mcp/github
+2025/11/04 15:44:16 Checking config extraction for server mcp/github with source docker-mcp, packages count: 1
+2025/11/04 15:44:16 Source is docker-mcp, extracting config for server mcp/github
+2025/11/04 15:44:16 Checking package 0: identifier=mcp/github, type=oci
+2025/11/04 15:44:16 Extracting config for Docker image: mcp/github
+2025/11/04 15:44:16 Successfully extracted config for mcp/github
+2025/11/04 15:44:16 Stored server mcp/github in local registry
+2025/11/04 15:44:16 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:16 Looking for packages in serverData for mcp/gitlab
+2025/11/04 15:44:16 Found 1 packages (map[]) for server mcp/gitlab
+2025/11/04 15:44:16 Checking config extraction for server mcp/gitlab with source docker-mcp, packages count: 1
+2025/11/04 15:44:16 Source is docker-mcp, extracting config for server mcp/gitlab
+2025/11/04 15:44:16 Checking package 0: identifier=mcp/gitlab, type=oci
+2025/11/04 15:44:16 Extracting config for Docker image: mcp/gitlab
+2025/11/04 15:44:17 Successfully extracted config for mcp/gitlab
+2025/11/04 15:44:17 Stored server mcp/gitlab in local registry
+2025/11/04 15:44:17 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:17 Looking for packages in serverData for mcp/google-maps
+2025/11/04 15:44:17 Found 1 packages (map[]) for server mcp/google-maps
+2025/11/04 15:44:17 Checking config extraction for server mcp/google-maps with source docker-mcp, packages count: 1
+2025/11/04 15:44:17 Source is docker-mcp, extracting config for server mcp/google-maps
+2025/11/04 15:44:17 Checking package 0: identifier=mcp/google-maps, type=oci
+2025/11/04 15:44:17 Extracting config for Docker image: mcp/google-maps
+2025/11/04 15:44:17 Successfully extracted config for mcp/google-maps
+2025/11/04 15:44:17 Stored server mcp/google-maps in local registry
+2025/11/04 15:44:17 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:17 Looking for packages in serverData for mcp/memory
+2025/11/04 15:44:17 Found 1 packages (map[]) for server mcp/memory
+2025/11/04 15:44:17 Checking config extraction for server mcp/memory with source docker-mcp, packages count: 1
+2025/11/04 15:44:17 Source is docker-mcp, extracting config for server mcp/memory
+2025/11/04 15:44:17 Checking package 0: identifier=mcp/memory, type=oci
+2025/11/04 15:44:17 Extracting config for Docker image: mcp/memory
+2025/11/04 15:44:17 Successfully extracted config for mcp/memory
+2025/11/04 15:44:17 Stored server mcp/memory in local registry
+2025/11/04 15:44:17 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:17 Looking for packages in serverData for mcp/postgres
+2025/11/04 15:44:17 Found 1 packages (map[]) for server mcp/postgres
+2025/11/04 15:44:17 Checking config extraction for server mcp/postgres with source docker-mcp, packages count: 1
+2025/11/04 15:44:17 Source is docker-mcp, extracting config for server mcp/postgres
+2025/11/04 15:44:17 Checking package 0: identifier=mcp/postgres, type=oci
+2025/11/04 15:44:17 Extracting config for Docker image: mcp/postgres
+2025/11/04 15:44:17 Successfully extracted config for mcp/postgres
+2025/11/04 15:44:17 Stored server mcp/postgres in local registry
+2025/11/04 15:44:17 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:17 Looking for packages in serverData for mcp/puppeteer
+2025/11/04 15:44:17 Found 1 packages (map[]) for server mcp/puppeteer
+2025/11/04 15:44:17 Checking config extraction for server mcp/puppeteer with source docker-mcp, packages count: 1
+2025/11/04 15:44:17 Source is docker-mcp, extracting config for server mcp/puppeteer
+2025/11/04 15:44:17 Checking package 0: identifier=mcp/puppeteer, type=oci
+2025/11/04 15:44:17 Extracting config for Docker image: mcp/puppeteer
+2025/11/04 15:44:18 Successfully extracted config for mcp/puppeteer
+2025/11/04 15:44:18 Stored server mcp/puppeteer in local registry
+2025/11/04 15:44:18 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:18 Looking for packages in serverData for mcp/sequentialthinking
+2025/11/04 15:44:18 Found 1 packages (map[]) for server mcp/sequentialthinking
+2025/11/04 15:44:18 Checking config extraction for server mcp/sequentialthinking with source docker-mcp, packages count: 1
+2025/11/04 15:44:18 Source is docker-mcp, extracting config for server mcp/sequentialthinking
+2025/11/04 15:44:18 Checking package 0: identifier=mcp/sequentialthinking, type=oci
+2025/11/04 15:44:18 Extracting config for Docker image: mcp/sequentialthinking
+2025/11/04 15:44:18 Successfully extracted config for mcp/sequentialthinking
+2025/11/04 15:44:18 Stored server mcp/sequentialthinking in local registry
+2025/11/04 15:44:18 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:18 Looking for packages in serverData for mcp/slack
+2025/11/04 15:44:18 Found 1 packages (map[]) for server mcp/slack
+2025/11/04 15:44:18 Checking config extraction for server mcp/slack with source docker-mcp, packages count: 1
+2025/11/04 15:44:18 Source is docker-mcp, extracting config for server mcp/slack
+2025/11/04 15:44:18 Checking package 0: identifier=mcp/slack, type=oci
+2025/11/04 15:44:18 Extracting config for Docker image: mcp/slack
+2025/11/04 15:44:18 Successfully extracted config for mcp/slack
+2025/11/04 15:44:18 Stored server mcp/slack in local registry
+2025/11/04 15:44:18 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:18 Looking for packages in serverData for mcp/inspector
+2025/11/04 15:44:18 Found 1 packages (map[]) for server mcp/inspector
+2025/11/04 15:44:18 Checking config extraction for server mcp/inspector with source docker-mcp, packages count: 1
+2025/11/04 15:44:18 Source is docker-mcp, extracting config for server mcp/inspector
+2025/11/04 15:44:18 Checking package 0: identifier=mcp/inspector, type=oci
+2025/11/04 15:44:18 Extracting config for Docker image: mcp/inspector
+2025/11/04 15:44:18 Successfully extracted config for mcp/inspector
+2025/11/04 15:44:18 Stored server mcp/inspector in local registry
+2025/11/04 15:44:18 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:18 Looking for packages in serverData for mcp/docker
+2025/11/04 15:44:18 Found 1 packages (map[]) for server mcp/docker
+2025/11/04 15:44:18 Checking config extraction for server mcp/docker with source docker-mcp, packages count: 1
+2025/11/04 15:44:18 Source is docker-mcp, extracting config for server mcp/docker
+2025/11/04 15:44:18 Checking package 0: identifier=mcp/docker, type=oci
+2025/11/04 15:44:18 Extracting config for Docker image: mcp/docker
+2025/11/04 15:44:19 Successfully extracted config for mcp/docker
+2025/11/04 15:44:19 Stored server mcp/docker in local registry
+2025/11/04 15:44:19 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:19 Looking for packages in serverData for mcp/redis
+2025/11/04 15:44:19 Found 1 packages (map[]) for server mcp/redis
+2025/11/04 15:44:19 Checking config extraction for server mcp/redis with source docker-mcp, packages count: 1
+2025/11/04 15:44:19 Source is docker-mcp, extracting config for server mcp/redis
+2025/11/04 15:44:19 Checking package 0: identifier=mcp/redis, type=oci
+2025/11/04 15:44:19 Extracting config for Docker image: mcp/redis
+2025/11/04 15:44:19 Successfully extracted config for mcp/redis
+2025/11/04 15:44:19 Stored server mcp/redis in local registry
+2025/11/04 15:44:19 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:19 Looking for packages in serverData for mcp/perplexity-ask
+2025/11/04 15:44:19 Found 1 packages (map[]) for server mcp/perplexity-ask
+2025/11/04 15:44:19 Checking config extraction for server mcp/perplexity-ask with source docker-mcp, packages count: 1
+2025/11/04 15:44:19 Source is docker-mcp, extracting config for server mcp/perplexity-ask
+2025/11/04 15:44:19 Checking package 0: identifier=mcp/perplexity-ask, type=oci
+2025/11/04 15:44:19 Extracting config for Docker image: mcp/perplexity-ask
+2025/11/04 15:44:19 Successfully extracted config for mcp/perplexity-ask
+2025/11/04 15:44:19 Stored server mcp/perplexity-ask in local registry
+2025/11/04 15:44:19 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:19 Looking for packages in serverData for mcp/atlassian
+2025/11/04 15:44:19 Found 1 packages (map[]) for server mcp/atlassian
+2025/11/04 15:44:19 Checking config extraction for server mcp/atlassian with source docker-mcp, packages count: 1
+2025/11/04 15:44:19 Source is docker-mcp, extracting config for server mcp/atlassian
+2025/11/04 15:44:19 Checking package 0: identifier=mcp/atlassian, type=oci
+2025/11/04 15:44:19 Extracting config for Docker image: mcp/atlassian
+2025/11/04 15:44:19 Successfully extracted config for mcp/atlassian
+2025/11/04 15:44:19 Stored server mcp/atlassian in local registry
+2025/11/04 15:44:19 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:19 Looking for packages in serverData for mcp/jetbrains
+2025/11/04 15:44:19 Found 1 packages (map[]) for server mcp/jetbrains
+2025/11/04 15:44:19 Checking config extraction for server mcp/jetbrains with source docker-mcp, packages count: 1
+2025/11/04 15:44:19 Source is docker-mcp, extracting config for server mcp/jetbrains
+2025/11/04 15:44:19 Checking package 0: identifier=mcp/jetbrains, type=oci
+2025/11/04 15:44:19 Extracting config for Docker image: mcp/jetbrains
+2025/11/04 15:44:19 Successfully extracted config for mcp/jetbrains
+2025/11/04 15:44:19 Stored server mcp/jetbrains in local registry
+2025/11/04 15:44:19 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:19 Looking for packages in serverData for mcp/stripe
+2025/11/04 15:44:19 Found 1 packages (map[]) for server mcp/stripe
+2025/11/04 15:44:19 Checking config extraction for server mcp/stripe with source docker-mcp, packages count: 1
+2025/11/04 15:44:19 Source is docker-mcp, extracting config for server mcp/stripe
+2025/11/04 15:44:19 Checking package 0: identifier=mcp/stripe, type=oci
+2025/11/04 15:44:19 Extracting config for Docker image: mcp/stripe
+2025/11/04 15:44:20 Successfully extracted config for mcp/stripe
+2025/11/04 15:44:20 Stored server mcp/stripe in local registry
+2025/11/04 15:44:20 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:20 Looking for packages in serverData for mcp/youtube-transcript
+2025/11/04 15:44:20 Found 1 packages (map[]) for server mcp/youtube-transcript
+2025/11/04 15:44:20 Checking config extraction for server mcp/youtube-transcript with source docker-mcp, packages count: 1
+2025/11/04 15:44:20 Source is docker-mcp, extracting config for server mcp/youtube-transcript
+2025/11/04 15:44:20 Checking package 0: identifier=mcp/youtube-transcript, type=oci
+2025/11/04 15:44:20 Extracting config for Docker image: mcp/youtube-transcript
+2025/11/04 15:44:20 Successfully extracted config for mcp/youtube-transcript
+2025/11/04 15:44:20 Stored server mcp/youtube-transcript in local registry
+2025/11/04 15:44:20 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:20 Looking for packages in serverData for mcp/obsidian
+2025/11/04 15:44:20 Found 1 packages (map[]) for server mcp/obsidian
+2025/11/04 15:44:20 Checking config extraction for server mcp/obsidian with source docker-mcp, packages count: 1
+2025/11/04 15:44:20 Source is docker-mcp, extracting config for server mcp/obsidian
+2025/11/04 15:44:20 Checking package 0: identifier=mcp/obsidian, type=oci
+2025/11/04 15:44:20 Extracting config for Docker image: mcp/obsidian
+2025/11/04 15:44:20 Successfully extracted config for mcp/obsidian
+2025/11/04 15:44:20 Stored server mcp/obsidian in local registry
+2025/11/04 15:44:20 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:20 Looking for packages in serverData for mcp/resend
+2025/11/04 15:44:20 Found 1 packages (map[]) for server mcp/resend
+2025/11/04 15:44:20 Checking config extraction for server mcp/resend with source docker-mcp, packages count: 1
+2025/11/04 15:44:20 Source is docker-mcp, extracting config for server mcp/resend
+2025/11/04 15:44:20 Checking package 0: identifier=mcp/resend, type=oci
+2025/11/04 15:44:20 Extracting config for Docker image: mcp/resend
+2025/11/04 15:44:21 Successfully extracted config for mcp/resend
+2025/11/04 15:44:21 Stored server mcp/resend in local registry
+2025/11/04 15:44:21 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:21 Looking for packages in serverData for mcp/atlas-docs
+2025/11/04 15:44:21 Found 1 packages (map[]) for server mcp/atlas-docs
+2025/11/04 15:44:21 Checking config extraction for server mcp/atlas-docs with source docker-mcp, packages count: 1
+2025/11/04 15:44:21 Source is docker-mcp, extracting config for server mcp/atlas-docs
+2025/11/04 15:44:21 Checking package 0: identifier=mcp/atlas-docs, type=oci
+2025/11/04 15:44:21 Extracting config for Docker image: mcp/atlas-docs
+2025/11/04 15:44:21 Successfully extracted config for mcp/atlas-docs
+2025/11/04 15:44:21 Stored server mcp/atlas-docs in local registry
+2025/11/04 15:44:21 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:21 Looking for packages in serverData for mcp/audiense-insights
+2025/11/04 15:44:21 Found 1 packages (map[]) for server mcp/audiense-insights
+2025/11/04 15:44:21 Checking config extraction for server mcp/audiense-insights with source docker-mcp, packages count: 1
+2025/11/04 15:44:21 Source is docker-mcp, extracting config for server mcp/audiense-insights
+2025/11/04 15:44:21 Checking package 0: identifier=mcp/audiense-insights, type=oci
+2025/11/04 15:44:21 Extracting config for Docker image: mcp/audiense-insights
+2025/11/04 15:44:21 Successfully extracted config for mcp/audiense-insights
+2025/11/04 15:44:21 Stored server mcp/audiense-insights in local registry
+2025/11/04 15:44:21 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:21 Looking for packages in serverData for mcp/basic-memory
+2025/11/04 15:44:21 Found 1 packages (map[]) for server mcp/basic-memory
+2025/11/04 15:44:21 Checking config extraction for server mcp/basic-memory with source docker-mcp, packages count: 1
+2025/11/04 15:44:21 Source is docker-mcp, extracting config for server mcp/basic-memory
+2025/11/04 15:44:21 Checking package 0: identifier=mcp/basic-memory, type=oci
+2025/11/04 15:44:21 Extracting config for Docker image: mcp/basic-memory
+2025/11/04 15:44:21 Successfully extracted config for mcp/basic-memory
+2025/11/04 15:44:21 Stored server mcp/basic-memory in local registry
+2025/11/04 15:44:21 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:21 Looking for packages in serverData for mcp/cyreslab-ai-shodan
+2025/11/04 15:44:21 Found 1 packages (map[]) for server mcp/cyreslab-ai-shodan
+2025/11/04 15:44:21 Checking config extraction for server mcp/cyreslab-ai-shodan with source docker-mcp, packages count: 1
+2025/11/04 15:44:21 Source is docker-mcp, extracting config for server mcp/cyreslab-ai-shodan
+2025/11/04 15:44:21 Checking package 0: identifier=mcp/cyreslab-ai-shodan, type=oci
+2025/11/04 15:44:21 Extracting config for Docker image: mcp/cyreslab-ai-shodan
+2025/11/04 15:44:22 Successfully extracted config for mcp/cyreslab-ai-shodan
+2025/11/04 15:44:22 Stored server mcp/cyreslab-ai-shodan in local registry
+2025/11/04 15:44:22 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:22 Looking for packages in serverData for mcp/bitrefill
+2025/11/04 15:44:22 Found 1 packages (map[]) for server mcp/bitrefill
+2025/11/04 15:44:22 Checking config extraction for server mcp/bitrefill with source docker-mcp, packages count: 1
+2025/11/04 15:44:22 Source is docker-mcp, extracting config for server mcp/bitrefill
+2025/11/04 15:44:22 Checking package 0: identifier=mcp/bitrefill, type=oci
+2025/11/04 15:44:22 Extracting config for Docker image: mcp/bitrefill
+2025/11/04 15:44:22 Successfully extracted config for mcp/bitrefill
+2025/11/04 15:44:22 Stored server mcp/bitrefill in local registry
+2025/11/04 15:44:22 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:22 Looking for packages in serverData for mcp/dart
+2025/11/04 15:44:22 Found 1 packages (map[]) for server mcp/dart
+2025/11/04 15:44:22 Checking config extraction for server mcp/dart with source docker-mcp, packages count: 1
+2025/11/04 15:44:22 Source is docker-mcp, extracting config for server mcp/dart
+2025/11/04 15:44:22 Checking package 0: identifier=mcp/dart, type=oci
+2025/11/04 15:44:22 Extracting config for Docker image: mcp/dart
+2025/11/04 15:44:22 Successfully extracted config for mcp/dart
+2025/11/04 15:44:22 Stored server mcp/dart in local registry
+2025/11/04 15:44:22 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:22 Looking for packages in serverData for mcp/databutton
+2025/11/04 15:44:22 Found 1 packages (map[]) for server mcp/databutton
+2025/11/04 15:44:22 Checking config extraction for server mcp/databutton with source docker-mcp, packages count: 1
+2025/11/04 15:44:22 Source is docker-mcp, extracting config for server mcp/databutton
+2025/11/04 15:44:22 Checking package 0: identifier=mcp/databutton, type=oci
+2025/11/04 15:44:22 Extracting config for Docker image: mcp/databutton
+2025/11/04 15:44:22 Successfully extracted config for mcp/databutton
+2025/11/04 15:44:22 Stored server mcp/databutton in local registry
+2025/11/04 15:44:22 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:22 Looking for packages in serverData for mcp/devhub-cms
+2025/11/04 15:44:22 Found 1 packages (map[]) for server mcp/devhub-cms
+2025/11/04 15:44:22 Checking config extraction for server mcp/devhub-cms with source docker-mcp, packages count: 1
+2025/11/04 15:44:22 Source is docker-mcp, extracting config for server mcp/devhub-cms
+2025/11/04 15:44:22 Checking package 0: identifier=mcp/devhub-cms, type=oci
+2025/11/04 15:44:22 Extracting config for Docker image: mcp/devhub-cms
+2025/11/04 15:44:22 Successfully extracted config for mcp/devhub-cms
+2025/11/04 15:44:22 Stored server mcp/devhub-cms in local registry
+2025/11/04 15:44:22 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:22 Looking for packages in serverData for mcp/e2b
+2025/11/04 15:44:22 Found 1 packages (map[]) for server mcp/e2b
+2025/11/04 15:44:22 Checking config extraction for server mcp/e2b with source docker-mcp, packages count: 1
+2025/11/04 15:44:22 Source is docker-mcp, extracting config for server mcp/e2b
+2025/11/04 15:44:22 Checking package 0: identifier=mcp/e2b, type=oci
+2025/11/04 15:44:22 Extracting config for Docker image: mcp/e2b
+2025/11/04 15:44:23 Successfully extracted config for mcp/e2b
+2025/11/04 15:44:23 Stored server mcp/e2b in local registry
+2025/11/04 15:44:23 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:23 Looking for packages in serverData for mcp/descope
+2025/11/04 15:44:23 Found 1 packages (map[]) for server mcp/descope
+2025/11/04 15:44:23 Checking config extraction for server mcp/descope with source docker-mcp, packages count: 1
+2025/11/04 15:44:23 Source is docker-mcp, extracting config for server mcp/descope
+2025/11/04 15:44:23 Checking package 0: identifier=mcp/descope, type=oci
+2025/11/04 15:44:23 Extracting config for Docker image: mcp/descope
+2025/11/04 15:44:23 Successfully extracted config for mcp/descope
+2025/11/04 15:44:23 Stored server mcp/descope in local registry
+2025/11/04 15:44:23 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:23 Looking for packages in serverData for mcp/exa
+2025/11/04 15:44:23 Found 1 packages (map[]) for server mcp/exa
+2025/11/04 15:44:23 Checking config extraction for server mcp/exa with source docker-mcp, packages count: 1
+2025/11/04 15:44:23 Source is docker-mcp, extracting config for server mcp/exa
+2025/11/04 15:44:23 Checking package 0: identifier=mcp/exa, type=oci
+2025/11/04 15:44:23 Extracting config for Docker image: mcp/exa
+2025/11/04 15:44:23 Successfully extracted config for mcp/exa
+2025/11/04 15:44:23 Stored server mcp/exa in local registry
+2025/11/04 15:44:23 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:23 Looking for packages in serverData for mcp/chroma
+2025/11/04 15:44:23 Found 1 packages (map[]) for server mcp/chroma
+2025/11/04 15:44:23 Checking config extraction for server mcp/chroma with source docker-mcp, packages count: 1
+2025/11/04 15:44:23 Source is docker-mcp, extracting config for server mcp/chroma
+2025/11/04 15:44:23 Checking package 0: identifier=mcp/chroma, type=oci
+2025/11/04 15:44:23 Extracting config for Docker image: mcp/chroma
+2025/11/04 15:44:23 Successfully extracted config for mcp/chroma
+2025/11/04 15:44:23 Stored server mcp/chroma in local registry
+2025/11/04 15:44:23 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:23 Looking for packages in serverData for mcp/glif
+2025/11/04 15:44:23 Found 1 packages (map[]) for server mcp/glif
+2025/11/04 15:44:23 Checking config extraction for server mcp/glif with source docker-mcp, packages count: 1
+2025/11/04 15:44:23 Source is docker-mcp, extracting config for server mcp/glif
+2025/11/04 15:44:23 Checking package 0: identifier=mcp/glif, type=oci
+2025/11/04 15:44:23 Extracting config for Docker image: mcp/glif
+2025/11/04 15:44:24 Successfully extracted config for mcp/glif
+2025/11/04 15:44:24 Stored server mcp/glif in local registry
+2025/11/04 15:44:24 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:24 Looking for packages in serverData for mcp/github-chat
+2025/11/04 15:44:24 Found 1 packages (map[]) for server mcp/github-chat
+2025/11/04 15:44:24 Checking config extraction for server mcp/github-chat with source docker-mcp, packages count: 1
+2025/11/04 15:44:24 Source is docker-mcp, extracting config for server mcp/github-chat
+2025/11/04 15:44:24 Checking package 0: identifier=mcp/github-chat, type=oci
+2025/11/04 15:44:24 Extracting config for Docker image: mcp/github-chat
+2025/11/04 15:44:24 Successfully extracted config for mcp/github-chat
+2025/11/04 15:44:24 Stored server mcp/github-chat in local registry
+2025/11/04 15:44:24 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:24 Looking for packages in serverData for mcp/firecrawl
+2025/11/04 15:44:24 Found 1 packages (map[]) for server mcp/firecrawl
+2025/11/04 15:44:24 Checking config extraction for server mcp/firecrawl with source docker-mcp, packages count: 1
+2025/11/04 15:44:24 Source is docker-mcp, extracting config for server mcp/firecrawl
+2025/11/04 15:44:24 Checking package 0: identifier=mcp/firecrawl, type=oci
+2025/11/04 15:44:24 Extracting config for Docker image: mcp/firecrawl
+2025/11/04 15:44:24 Successfully extracted config for mcp/firecrawl
+2025/11/04 15:44:24 Stored server mcp/firecrawl in local registry
+2025/11/04 15:44:24 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:24 Looking for packages in serverData for mcp/handwriting-ocr
+2025/11/04 15:44:24 Found 1 packages (map[]) for server mcp/handwriting-ocr
+2025/11/04 15:44:24 Checking config extraction for server mcp/handwriting-ocr with source docker-mcp, packages count: 1
+2025/11/04 15:44:24 Source is docker-mcp, extracting config for server mcp/handwriting-ocr
+2025/11/04 15:44:24 Checking package 0: identifier=mcp/handwriting-ocr, type=oci
+2025/11/04 15:44:24 Extracting config for Docker image: mcp/handwriting-ocr
+2025/11/04 15:44:24 Successfully extracted config for mcp/handwriting-ocr
+2025/11/04 15:44:24 Stored server mcp/handwriting-ocr in local registry
+2025/11/04 15:44:24 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:24 Looking for packages in serverData for mcp/hyperbrowser
+2025/11/04 15:44:24 Found 1 packages (map[]) for server mcp/hyperbrowser
+2025/11/04 15:44:24 Checking config extraction for server mcp/hyperbrowser with source docker-mcp, packages count: 1
+2025/11/04 15:44:24 Source is docker-mcp, extracting config for server mcp/hyperbrowser
+2025/11/04 15:44:24 Checking package 0: identifier=mcp/hyperbrowser, type=oci
+2025/11/04 15:44:24 Extracting config for Docker image: mcp/hyperbrowser
+2025/11/04 15:44:25 Successfully extracted config for mcp/hyperbrowser
+2025/11/04 15:44:25 Stored server mcp/hyperbrowser in local registry
+2025/11/04 15:44:25 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:25 Looking for packages in serverData for mcp/iaptic
+2025/11/04 15:44:25 Found 1 packages (map[]) for server mcp/iaptic
+2025/11/04 15:44:25 Checking config extraction for server mcp/iaptic with source docker-mcp, packages count: 1
+2025/11/04 15:44:25 Source is docker-mcp, extracting config for server mcp/iaptic
+2025/11/04 15:44:25 Checking package 0: identifier=mcp/iaptic, type=oci
+2025/11/04 15:44:25 Extracting config for Docker image: mcp/iaptic
+2025/11/04 15:44:25 Successfully extracted config for mcp/iaptic
+2025/11/04 15:44:25 Stored server mcp/iaptic in local registry
+2025/11/04 15:44:25 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:25 Looking for packages in serverData for mcp/multiversx-mx
+2025/11/04 15:44:25 Found 1 packages (map[]) for server mcp/multiversx-mx
+2025/11/04 15:44:25 Checking config extraction for server mcp/multiversx-mx with source docker-mcp, packages count: 1
+2025/11/04 15:44:25 Source is docker-mcp, extracting config for server mcp/multiversx-mx
+2025/11/04 15:44:25 Checking package 0: identifier=mcp/multiversx-mx, type=oci
+2025/11/04 15:44:25 Extracting config for Docker image: mcp/multiversx-mx
+2025/11/04 15:44:25 Successfully extracted config for mcp/multiversx-mx
+2025/11/04 15:44:25 Stored server mcp/multiversx-mx in local registry
+2025/11/04 15:44:25 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:25 Looking for packages in serverData for mcp/hyperspell
+2025/11/04 15:44:25 Found 1 packages (map[]) for server mcp/hyperspell
+2025/11/04 15:44:25 Checking config extraction for server mcp/hyperspell with source docker-mcp, packages count: 1
+2025/11/04 15:44:25 Source is docker-mcp, extracting config for server mcp/hyperspell
+2025/11/04 15:44:25 Checking package 0: identifier=mcp/hyperspell, type=oci
+2025/11/04 15:44:25 Extracting config for Docker image: mcp/hyperspell
+2025/11/04 15:44:25 Successfully extracted config for mcp/hyperspell
+2025/11/04 15:44:25 Stored server mcp/hyperspell in local registry
+2025/11/04 15:44:25 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:25 Looking for packages in serverData for mcp/kagisearch
+2025/11/04 15:44:25 Found 1 packages (map[]) for server mcp/kagisearch
+2025/11/04 15:44:25 Checking config extraction for server mcp/kagisearch with source docker-mcp, packages count: 1
+2025/11/04 15:44:25 Source is docker-mcp, extracting config for server mcp/kagisearch
+2025/11/04 15:44:25 Checking package 0: identifier=mcp/kagisearch, type=oci
+2025/11/04 15:44:25 Extracting config for Docker image: mcp/kagisearch
+2025/11/04 15:44:25 Successfully extracted config for mcp/kagisearch
+2025/11/04 15:44:25 Stored server mcp/kagisearch in local registry
+2025/11/04 15:44:25 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:25 Looking for packages in serverData for mcp/neon
+2025/11/04 15:44:25 Found 1 packages (map[]) for server mcp/neon
+2025/11/04 15:44:25 Checking config extraction for server mcp/neon with source docker-mcp, packages count: 1
+2025/11/04 15:44:25 Source is docker-mcp, extracting config for server mcp/neon
+2025/11/04 15:44:25 Checking package 0: identifier=mcp/neon, type=oci
+2025/11/04 15:44:25 Extracting config for Docker image: mcp/neon
+2025/11/04 15:44:26 Successfully extracted config for mcp/neon
+2025/11/04 15:44:26 Stored server mcp/neon in local registry
+2025/11/04 15:44:26 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:26 Looking for packages in serverData for mcp/octomind
+2025/11/04 15:44:26 Found 1 packages (map[]) for server mcp/octomind
+2025/11/04 15:44:26 Checking config extraction for server mcp/octomind with source docker-mcp, packages count: 1
+2025/11/04 15:44:26 Source is docker-mcp, extracting config for server mcp/octomind
+2025/11/04 15:44:26 Checking package 0: identifier=mcp/octomind, type=oci
+2025/11/04 15:44:26 Extracting config for Docker image: mcp/octomind
+2025/11/04 15:44:26 Successfully extracted config for mcp/octomind
+2025/11/04 15:44:26 Stored server mcp/octomind in local registry
+2025/11/04 15:44:26 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:26 Looking for packages in serverData for mcp/opik
+2025/11/04 15:44:26 Found 1 packages (map[]) for server mcp/opik
+2025/11/04 15:44:26 Checking config extraction for server mcp/opik with source docker-mcp, packages count: 1
+2025/11/04 15:44:26 Source is docker-mcp, extracting config for server mcp/opik
+2025/11/04 15:44:26 Checking package 0: identifier=mcp/opik, type=oci
+2025/11/04 15:44:26 Extracting config for Docker image: mcp/opik
+2025/11/04 15:44:26 Successfully extracted config for mcp/opik
+2025/11/04 15:44:26 Stored server mcp/opik in local registry
+2025/11/04 15:44:26 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:26 Looking for packages in serverData for mcp/oxylabs
+2025/11/04 15:44:26 Found 1 packages (map[]) for server mcp/oxylabs
+2025/11/04 15:44:26 Checking config extraction for server mcp/oxylabs with source docker-mcp, packages count: 1
+2025/11/04 15:44:26 Source is docker-mcp, extracting config for server mcp/oxylabs
+2025/11/04 15:44:26 Checking package 0: identifier=mcp/oxylabs, type=oci
+2025/11/04 15:44:26 Extracting config for Docker image: mcp/oxylabs
+2025/11/04 15:44:26 Successfully extracted config for mcp/oxylabs
+2025/11/04 15:44:26 Stored server mcp/oxylabs in local registry
+2025/11/04 15:44:26 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:26 Looking for packages in serverData for mcp/osp_marketing_tools
+2025/11/04 15:44:26 Found 1 packages (map[]) for server mcp/osp_marketing_tools
+2025/11/04 15:44:26 Checking config extraction for server mcp/osp_marketing_tools with source docker-mcp, packages count: 1
+2025/11/04 15:44:26 Source is docker-mcp, extracting config for server mcp/osp_marketing_tools
+2025/11/04 15:44:26 Checking package 0: identifier=mcp/osp_marketing_tools, type=oci
+2025/11/04 15:44:26 Extracting config for Docker image: mcp/osp_marketing_tools
+2025/11/04 15:44:26 Successfully extracted config for mcp/osp_marketing_tools
+2025/11/04 15:44:26 Stored server mcp/osp_marketing_tools in local registry
+2025/11/04 15:44:26 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:26 Looking for packages in serverData for mcp/scrapegraph
+2025/11/04 15:44:26 Found 1 packages (map[]) for server mcp/scrapegraph
+2025/11/04 15:44:26 Checking config extraction for server mcp/scrapegraph with source docker-mcp, packages count: 1
+2025/11/04 15:44:26 Source is docker-mcp, extracting config for server mcp/scrapegraph
+2025/11/04 15:44:26 Checking package 0: identifier=mcp/scrapegraph, type=oci
+2025/11/04 15:44:26 Extracting config for Docker image: mcp/scrapegraph
+2025/11/04 15:44:27 Successfully extracted config for mcp/scrapegraph
+2025/11/04 15:44:27 Stored server mcp/scrapegraph in local registry
+2025/11/04 15:44:27 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:27 Looking for packages in serverData for mcp/scrapezy
+2025/11/04 15:44:27 Found 1 packages (map[]) for server mcp/scrapezy
+2025/11/04 15:44:27 Checking config extraction for server mcp/scrapezy with source docker-mcp, packages count: 1
+2025/11/04 15:44:27 Source is docker-mcp, extracting config for server mcp/scrapezy
+2025/11/04 15:44:27 Checking package 0: identifier=mcp/scrapezy, type=oci
+2025/11/04 15:44:27 Extracting config for Docker image: mcp/scrapezy
+2025/11/04 15:44:27 Successfully extracted config for mcp/scrapezy
+2025/11/04 15:44:27 Stored server mcp/scrapezy in local registry
+2025/11/04 15:44:27 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:27 Looking for packages in serverData for mcp/shopify
+2025/11/04 15:44:27 Found 1 packages (map[]) for server mcp/shopify
+2025/11/04 15:44:27 Checking config extraction for server mcp/shopify with source docker-mcp, packages count: 1
+2025/11/04 15:44:27 Source is docker-mcp, extracting config for server mcp/shopify
+2025/11/04 15:44:27 Checking package 0: identifier=mcp/shopify, type=oci
+2025/11/04 15:44:27 Extracting config for Docker image: mcp/shopify
+2025/11/04 15:44:27 Successfully extracted config for mcp/shopify
+2025/11/04 15:44:27 Stored server mcp/shopify in local registry
+2025/11/04 15:44:27 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:27 Looking for packages in serverData for mcp/tavily
+2025/11/04 15:44:27 Found 1 packages (map[]) for server mcp/tavily
+2025/11/04 15:44:27 Checking config extraction for server mcp/tavily with source docker-mcp, packages count: 1
+2025/11/04 15:44:27 Source is docker-mcp, extracting config for server mcp/tavily
+2025/11/04 15:44:27 Checking package 0: identifier=mcp/tavily, type=oci
+2025/11/04 15:44:27 Extracting config for Docker image: mcp/tavily
+2025/11/04 15:44:27 Successfully extracted config for mcp/tavily
+2025/11/04 15:44:27 Stored server mcp/tavily in local registry
+2025/11/04 15:44:27 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:27 Looking for packages in serverData for mcp/tembo
+2025/11/04 15:44:27 Found 1 packages (map[]) for server mcp/tembo
+2025/11/04 15:44:27 Checking config extraction for server mcp/tembo with source docker-mcp, packages count: 1
+2025/11/04 15:44:27 Source is docker-mcp, extracting config for server mcp/tembo
+2025/11/04 15:44:27 Checking package 0: identifier=mcp/tembo, type=oci
+2025/11/04 15:44:27 Extracting config for Docker image: mcp/tembo
+2025/11/04 15:44:27 Successfully extracted config for mcp/tembo
+2025/11/04 15:44:27 Stored server mcp/tembo in local registry
+2025/11/04 15:44:27 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:27 Looking for packages in serverData for mcp/triplewhale
+2025/11/04 15:44:27 Found 1 packages (map[]) for server mcp/triplewhale
+2025/11/04 15:44:27 Checking config extraction for server mcp/triplewhale with source docker-mcp, packages count: 1
+2025/11/04 15:44:27 Source is docker-mcp, extracting config for server mcp/triplewhale
+2025/11/04 15:44:27 Checking package 0: identifier=mcp/triplewhale, type=oci
+2025/11/04 15:44:27 Extracting config for Docker image: mcp/triplewhale
+2025/11/04 15:44:28 Successfully extracted config for mcp/triplewhale
+2025/11/04 15:44:28 Stored server mcp/triplewhale in local registry
+2025/11/04 15:44:28 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:28 Looking for packages in serverData for mcp/veyrax
+2025/11/04 15:44:28 Found 1 packages (map[]) for server mcp/veyrax
+2025/11/04 15:44:28 Checking config extraction for server mcp/veyrax with source docker-mcp, packages count: 1
+2025/11/04 15:44:28 Source is docker-mcp, extracting config for server mcp/veyrax
+2025/11/04 15:44:28 Checking package 0: identifier=mcp/veyrax, type=oci
+2025/11/04 15:44:28 Extracting config for Docker image: mcp/veyrax
+2025/11/04 15:44:28 Successfully extracted config for mcp/veyrax
+2025/11/04 15:44:28 Stored server mcp/veyrax in local registry
+2025/11/04 15:44:28 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:28 Looking for packages in serverData for mcp/box
+2025/11/04 15:44:28 Found 1 packages (map[]) for server mcp/box
+2025/11/04 15:44:28 Checking config extraction for server mcp/box with source docker-mcp, packages count: 1
+2025/11/04 15:44:28 Source is docker-mcp, extracting config for server mcp/box
+2025/11/04 15:44:28 Checking package 0: identifier=mcp/box, type=oci
+2025/11/04 15:44:28 Extracting config for Docker image: mcp/box
+2025/11/04 15:44:28 Successfully extracted config for mcp/box
+2025/11/04 15:44:28 Stored server mcp/box in local registry
+2025/11/04 15:44:28 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:28 Looking for packages in serverData for mcp/elasticsearch
+2025/11/04 15:44:28 Found 1 packages (map[]) for server mcp/elasticsearch
+2025/11/04 15:44:28 Checking config extraction for server mcp/elasticsearch with source docker-mcp, packages count: 1
+2025/11/04 15:44:28 Source is docker-mcp, extracting config for server mcp/elasticsearch
+2025/11/04 15:44:28 Checking package 0: identifier=mcp/elasticsearch, type=oci
+2025/11/04 15:44:28 Extracting config for Docker image: mcp/elasticsearch
+2025/11/04 15:44:28 Successfully extracted config for mcp/elasticsearch
+2025/11/04 15:44:28 Stored server mcp/elasticsearch in local registry
+2025/11/04 15:44:28 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:28 Looking for packages in serverData for mcp/heroku
+2025/11/04 15:44:28 Found 1 packages (map[]) for server mcp/heroku
+2025/11/04 15:44:28 Checking config extraction for server mcp/heroku with source docker-mcp, packages count: 1
+2025/11/04 15:44:28 Source is docker-mcp, extracting config for server mcp/heroku
+2025/11/04 15:44:28 Checking package 0: identifier=mcp/heroku, type=oci
+2025/11/04 15:44:28 Extracting config for Docker image: mcp/heroku
+2025/11/04 15:44:28 Successfully extracted config for mcp/heroku
+2025/11/04 15:44:28 Stored server mcp/heroku in local registry
+2025/11/04 15:44:28 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:28 Looking for packages in serverData for mcp/astra-db
+2025/11/04 15:44:28 Found 1 packages (map[]) for server mcp/astra-db
+2025/11/04 15:44:28 Checking config extraction for server mcp/astra-db with source docker-mcp, packages count: 1
+2025/11/04 15:44:28 Source is docker-mcp, extracting config for server mcp/astra-db
+2025/11/04 15:44:28 Checking package 0: identifier=mcp/astra-db, type=oci
+2025/11/04 15:44:28 Extracting config for Docker image: mcp/astra-db
+2025/11/04 15:44:29 Successfully extracted config for mcp/astra-db
+2025/11/04 15:44:29 Stored server mcp/astra-db in local registry
+2025/11/04 15:44:29 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:29 Looking for packages in serverData for mcp/redis-cloud
+2025/11/04 15:44:29 Found 1 packages (map[]) for server mcp/redis-cloud
+2025/11/04 15:44:29 Checking config extraction for server mcp/redis-cloud with source docker-mcp, packages count: 1
+2025/11/04 15:44:29 Source is docker-mcp, extracting config for server mcp/redis-cloud
+2025/11/04 15:44:29 Checking package 0: identifier=mcp/redis-cloud, type=oci
+2025/11/04 15:44:29 Extracting config for Docker image: mcp/redis-cloud
+2025/11/04 15:44:29 Successfully extracted config for mcp/redis-cloud
+2025/11/04 15:44:29 Stored server mcp/redis-cloud in local registry
+2025/11/04 15:44:29 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:29 Looking for packages in serverData for mcp/lara
+2025/11/04 15:44:29 Found 1 packages (map[]) for server mcp/lara
+2025/11/04 15:44:29 Checking config extraction for server mcp/lara with source docker-mcp, packages count: 1
+2025/11/04 15:44:29 Source is docker-mcp, extracting config for server mcp/lara
+2025/11/04 15:44:29 Checking package 0: identifier=mcp/lara, type=oci
+2025/11/04 15:44:29 Extracting config for Docker image: mcp/lara
+2025/11/04 15:44:29 Successfully extracted config for mcp/lara
+2025/11/04 15:44:29 Stored server mcp/lara in local registry
+2025/11/04 15:44:29 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:29 Looking for packages in serverData for mcp/kubernetes
+2025/11/04 15:44:29 Found 1 packages (map[]) for server mcp/kubernetes
+2025/11/04 15:44:29 Checking config extraction for server mcp/kubernetes with source docker-mcp, packages count: 1
+2025/11/04 15:44:29 Source is docker-mcp, extracting config for server mcp/kubernetes
+2025/11/04 15:44:29 Checking package 0: identifier=mcp/kubernetes, type=oci
+2025/11/04 15:44:29 Extracting config for Docker image: mcp/kubernetes
+2025/11/04 15:44:30 Successfully extracted config for mcp/kubernetes
+2025/11/04 15:44:30 Stored server mcp/kubernetes in local registry
+2025/11/04 15:44:30 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:30 Looking for packages in serverData for mcp/notion
+2025/11/04 15:44:30 Found 1 packages (map[]) for server mcp/notion
+2025/11/04 15:44:30 Checking config extraction for server mcp/notion with source docker-mcp, packages count: 1
+2025/11/04 15:44:30 Source is docker-mcp, extracting config for server mcp/notion
+2025/11/04 15:44:30 Checking package 0: identifier=mcp/notion, type=oci
+2025/11/04 15:44:30 Extracting config for Docker image: mcp/notion
+2025/11/04 15:44:30 Successfully extracted config for mcp/notion
+2025/11/04 15:44:30 Stored server mcp/notion in local registry
+2025/11/04 15:44:30 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:30 Looking for packages in serverData for mcp/wolfram-alpha
+2025/11/04 15:44:30 Found 1 packages (map[]) for server mcp/wolfram-alpha
+2025/11/04 15:44:30 Checking config extraction for server mcp/wolfram-alpha with source docker-mcp, packages count: 1
+2025/11/04 15:44:30 Source is docker-mcp, extracting config for server mcp/wolfram-alpha
+2025/11/04 15:44:30 Checking package 0: identifier=mcp/wolfram-alpha, type=oci
+2025/11/04 15:44:30 Extracting config for Docker image: mcp/wolfram-alpha
+2025/11/04 15:44:30 Successfully extracted config for mcp/wolfram-alpha
+2025/11/04 15:44:30 Stored server mcp/wolfram-alpha in local registry
+2025/11/04 15:44:30 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:30 Looking for packages in serverData for mcp/duckduckgo
+2025/11/04 15:44:30 Found 1 packages (map[]) for server mcp/duckduckgo
+2025/11/04 15:44:30 Checking config extraction for server mcp/duckduckgo with source docker-mcp, packages count: 1
+2025/11/04 15:44:30 Source is docker-mcp, extracting config for server mcp/duckduckgo
+2025/11/04 15:44:30 Checking package 0: identifier=mcp/duckduckgo, type=oci
+2025/11/04 15:44:30 Extracting config for Docker image: mcp/duckduckgo
+2025/11/04 15:44:31 Successfully extracted config for mcp/duckduckgo
+2025/11/04 15:44:31 Stored server mcp/duckduckgo in local registry
+2025/11/04 15:44:31 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:31 Looking for packages in serverData for mcp/desktop-commander
+2025/11/04 15:44:31 Found 1 packages (map[]) for server mcp/desktop-commander
+2025/11/04 15:44:31 Checking config extraction for server mcp/desktop-commander with source docker-mcp, packages count: 1
+2025/11/04 15:44:31 Source is docker-mcp, extracting config for server mcp/desktop-commander
+2025/11/04 15:44:31 Checking package 0: identifier=mcp/desktop-commander, type=oci
+2025/11/04 15:44:31 Extracting config for Docker image: mcp/desktop-commander
+2025/11/04 15:44:31 Successfully extracted config for mcp/desktop-commander
+2025/11/04 15:44:31 Stored server mcp/desktop-commander in local registry
+2025/11/04 15:44:31 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:31 Looking for packages in serverData for mcp/edubase
+2025/11/04 15:44:31 Found 1 packages (map[]) for server mcp/edubase
+2025/11/04 15:44:31 Checking config extraction for server mcp/edubase with source docker-mcp, packages count: 1
+2025/11/04 15:44:31 Source is docker-mcp, extracting config for server mcp/edubase
+2025/11/04 15:44:31 Checking package 0: identifier=mcp/edubase, type=oci
+2025/11/04 15:44:31 Extracting config for Docker image: mcp/edubase
+2025/11/04 15:44:31 Successfully extracted config for mcp/edubase
+2025/11/04 15:44:31 Stored server mcp/edubase in local registry
+2025/11/04 15:44:31 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:31 Looking for packages in serverData for mcp/webflow
+2025/11/04 15:44:31 Found 1 packages (map[]) for server mcp/webflow
+2025/11/04 15:44:31 Checking config extraction for server mcp/webflow with source docker-mcp, packages count: 1
+2025/11/04 15:44:31 Source is docker-mcp, extracting config for server mcp/webflow
+2025/11/04 15:44:31 Checking package 0: identifier=mcp/webflow, type=oci
+2025/11/04 15:44:31 Extracting config for Docker image: mcp/webflow
+2025/11/04 15:44:31 Successfully extracted config for mcp/webflow
+2025/11/04 15:44:31 Stored server mcp/webflow in local registry
+2025/11/04 15:44:31 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:31 Looking for packages in serverData for mcp/3d-printer
+2025/11/04 15:44:31 Found 1 packages (map[]) for server mcp/3d-printer
+2025/11/04 15:44:31 Checking config extraction for server mcp/3d-printer with source docker-mcp, packages count: 1
+2025/11/04 15:44:31 Source is docker-mcp, extracting config for server mcp/3d-printer
+2025/11/04 15:44:31 Checking package 0: identifier=mcp/3d-printer, type=oci
+2025/11/04 15:44:31 Extracting config for Docker image: mcp/3d-printer
+2025/11/04 15:44:31 Successfully extracted config for mcp/3d-printer
+2025/11/04 15:44:31 Stored server mcp/3d-printer in local registry
+2025/11/04 15:44:31 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:31 Looking for packages in serverData for mcp/grafana
+2025/11/04 15:44:31 Found 1 packages (map[]) for server mcp/grafana
+2025/11/04 15:44:31 Checking config extraction for server mcp/grafana with source docker-mcp, packages count: 1
+2025/11/04 15:44:31 Source is docker-mcp, extracting config for server mcp/grafana
+2025/11/04 15:44:31 Checking package 0: identifier=mcp/grafana, type=oci
+2025/11/04 15:44:31 Extracting config for Docker image: mcp/grafana
+2025/11/04 15:44:32 Successfully extracted config for mcp/grafana
+2025/11/04 15:44:32 Stored server mcp/grafana in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/pulumi
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/pulumi
+2025/11/04 15:44:32 Checking config extraction for server mcp/pulumi with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/pulumi
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/pulumi, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/pulumi
+2025/11/04 15:44:32 Successfully extracted config for mcp/pulumi
+2025/11/04 15:44:32 Stored server mcp/pulumi in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/kong
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/kong
+2025/11/04 15:44:32 Checking config extraction for server mcp/kong with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/kong
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/kong, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/kong
+2025/11/04 15:44:32 Successfully extracted config for mcp/kong
+2025/11/04 15:44:32 Stored server mcp/kong in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/circleci
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/circleci
+2025/11/04 15:44:32 Checking config extraction for server mcp/circleci with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/circleci
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/circleci, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/circleci
+2025/11/04 15:44:32 Successfully extracted config for mcp/circleci
+2025/11/04 15:44:32 Stored server mcp/circleci in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/neo4j-server
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/neo4j-server
+2025/11/04 15:44:32 Checking config extraction for server mcp/neo4j-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/neo4j-server
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/neo4j-server, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/neo4j-server
+2025/11/04 15:44:32 Successfully extracted config for mcp/neo4j-server
+2025/11/04 15:44:32 Stored server mcp/neo4j-server in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/302_sandbox
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/302_sandbox
+2025/11/04 15:44:32 Checking config extraction for server mcp/302_sandbox with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/302_sandbox
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/302_sandbox, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/302_sandbox
+2025/11/04 15:44:32 Successfully extracted config for mcp/302_sandbox
+2025/11/04 15:44:32 Stored server mcp/302_sandbox in local registry
+2025/11/04 15:44:32 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:32 Looking for packages in serverData for mcp/doit
+2025/11/04 15:44:32 Found 1 packages (map[]) for server mcp/doit
+2025/11/04 15:44:32 Checking config extraction for server mcp/doit with source docker-mcp, packages count: 1
+2025/11/04 15:44:32 Source is docker-mcp, extracting config for server mcp/doit
+2025/11/04 15:44:32 Checking package 0: identifier=mcp/doit, type=oci
+2025/11/04 15:44:32 Extracting config for Docker image: mcp/doit
+2025/11/04 15:44:33 Successfully extracted config for mcp/doit
+2025/11/04 15:44:33 Stored server mcp/doit in local registry
+2025/11/04 15:44:33 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:33 Looking for packages in serverData for mcp/elevenlabs
+2025/11/04 15:44:33 Found 1 packages (map[]) for server mcp/elevenlabs
+2025/11/04 15:44:33 Checking config extraction for server mcp/elevenlabs with source docker-mcp, packages count: 1
+2025/11/04 15:44:33 Source is docker-mcp, extracting config for server mcp/elevenlabs
+2025/11/04 15:44:33 Checking package 0: identifier=mcp/elevenlabs, type=oci
+2025/11/04 15:44:33 Extracting config for Docker image: mcp/elevenlabs
+2025/11/04 15:44:33 Successfully extracted config for mcp/elevenlabs
+2025/11/04 15:44:33 Stored server mcp/elevenlabs in local registry
+2025/11/04 15:44:33 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:33 Looking for packages in serverData for mcp/dappier
+2025/11/04 15:44:33 Found 1 packages (map[]) for server mcp/dappier
+2025/11/04 15:44:33 Checking config extraction for server mcp/dappier with source docker-mcp, packages count: 1
+2025/11/04 15:44:33 Source is docker-mcp, extracting config for server mcp/dappier
+2025/11/04 15:44:33 Checking package 0: identifier=mcp/dappier, type=oci
+2025/11/04 15:44:33 Extracting config for Docker image: mcp/dappier
+2025/11/04 15:44:33 Successfully extracted config for mcp/dappier
+2025/11/04 15:44:33 Stored server mcp/dappier in local registry
+2025/11/04 15:44:33 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:33 Looking for packages in serverData for mcp/risken
+2025/11/04 15:44:33 Found 1 packages (map[]) for server mcp/risken
+2025/11/04 15:44:33 Checking config extraction for server mcp/risken with source docker-mcp, packages count: 1
+2025/11/04 15:44:33 Source is docker-mcp, extracting config for server mcp/risken
+2025/11/04 15:44:33 Checking package 0: identifier=mcp/risken, type=oci
+2025/11/04 15:44:33 Extracting config for Docker image: mcp/risken
+2025/11/04 15:44:33 Successfully extracted config for mcp/risken
+2025/11/04 15:44:33 Stored server mcp/risken in local registry
+2025/11/04 15:44:33 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:33 Looking for packages in serverData for mcp/azure
+2025/11/04 15:44:33 Found 1 packages (map[]) for server mcp/azure
+2025/11/04 15:44:33 Checking config extraction for server mcp/azure with source docker-mcp, packages count: 1
+2025/11/04 15:44:33 Source is docker-mcp, extracting config for server mcp/azure
+2025/11/04 15:44:33 Checking package 0: identifier=mcp/azure, type=oci
+2025/11/04 15:44:33 Extracting config for Docker image: mcp/azure
+2025/11/04 15:44:34 Successfully extracted config for mcp/azure
+2025/11/04 15:44:34 Stored server mcp/azure in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/openapi-schema
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/openapi-schema
+2025/11/04 15:44:34 Checking config extraction for server mcp/openapi-schema with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/openapi-schema
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/openapi-schema, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/openapi-schema
+2025/11/04 15:44:34 Successfully extracted config for mcp/openapi-schema
+2025/11/04 15:44:34 Stored server mcp/openapi-schema in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/context7
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/context7
+2025/11/04 15:44:34 Checking config extraction for server mcp/context7 with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/context7
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/context7, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/context7
+2025/11/04 15:44:34 Successfully extracted config for mcp/context7
+2025/11/04 15:44:34 Stored server mcp/context7 in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/line
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/line
+2025/11/04 15:44:34 Checking config extraction for server mcp/line with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/line
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/line, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/line
+2025/11/04 15:44:34 Successfully extracted config for mcp/line
+2025/11/04 15:44:34 Stored server mcp/line in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/gyazo
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/gyazo
+2025/11/04 15:44:34 Checking config extraction for server mcp/gyazo with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/gyazo
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/gyazo, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/gyazo
+2025/11/04 15:44:34 Successfully extracted config for mcp/gyazo
+2025/11/04 15:44:34 Stored server mcp/gyazo in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/mcp-discord
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/mcp-discord
+2025/11/04 15:44:34 Checking config extraction for server mcp/mcp-discord with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/mcp-discord
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/mcp-discord, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/mcp-discord
+2025/11/04 15:44:34 Successfully extracted config for mcp/mcp-discord
+2025/11/04 15:44:34 Stored server mcp/mcp-discord in local registry
+2025/11/04 15:44:34 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:34 Looking for packages in serverData for mcp/hackle
+2025/11/04 15:44:34 Found 1 packages (map[]) for server mcp/hackle
+2025/11/04 15:44:34 Checking config extraction for server mcp/hackle with source docker-mcp, packages count: 1
+2025/11/04 15:44:34 Source is docker-mcp, extracting config for server mcp/hackle
+2025/11/04 15:44:34 Checking package 0: identifier=mcp/hackle, type=oci
+2025/11/04 15:44:34 Extracting config for Docker image: mcp/hackle
+2025/11/04 15:44:35 Successfully extracted config for mcp/hackle
+2025/11/04 15:44:35 Stored server mcp/hackle in local registry
+2025/11/04 15:44:35 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:35 Looking for packages in serverData for mcp/flexprice
+2025/11/04 15:44:35 Found 1 packages (map[]) for server mcp/flexprice
+2025/11/04 15:44:35 Checking config extraction for server mcp/flexprice with source docker-mcp, packages count: 1
+2025/11/04 15:44:35 Source is docker-mcp, extracting config for server mcp/flexprice
+2025/11/04 15:44:35 Checking package 0: identifier=mcp/flexprice, type=oci
+2025/11/04 15:44:35 Extracting config for Docker image: mcp/flexprice
+2025/11/04 15:44:35 Successfully extracted config for mcp/flexprice
+2025/11/04 15:44:35 Stored server mcp/flexprice in local registry
+2025/11/04 15:44:35 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:35 Looking for packages in serverData for mcp/neo4j-memory
+2025/11/04 15:44:35 Found 1 packages (map[]) for server mcp/neo4j-memory
+2025/11/04 15:44:35 Checking config extraction for server mcp/neo4j-memory with source docker-mcp, packages count: 1
+2025/11/04 15:44:35 Source is docker-mcp, extracting config for server mcp/neo4j-memory
+2025/11/04 15:44:35 Checking package 0: identifier=mcp/neo4j-memory, type=oci
+2025/11/04 15:44:35 Extracting config for Docker image: mcp/neo4j-memory
+2025/11/04 15:44:35 Successfully extracted config for mcp/neo4j-memory
+2025/11/04 15:44:35 Stored server mcp/neo4j-memory in local registry
+2025/11/04 15:44:35 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:35 Looking for packages in serverData for mcp/playwright
+2025/11/04 15:44:35 Found 1 packages (map[]) for server mcp/playwright
+2025/11/04 15:44:35 Checking config extraction for server mcp/playwright with source docker-mcp, packages count: 1
+2025/11/04 15:44:35 Source is docker-mcp, extracting config for server mcp/playwright
+2025/11/04 15:44:35 Checking package 0: identifier=mcp/playwright, type=oci
+2025/11/04 15:44:35 Extracting config for Docker image: mcp/playwright
+2025/11/04 15:44:35 Successfully extracted config for mcp/playwright
+2025/11/04 15:44:35 Stored server mcp/playwright in local registry
+2025/11/04 15:44:35 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:35 Looking for packages in serverData for mcp/razorpay
+2025/11/04 15:44:35 Found 1 packages (map[]) for server mcp/razorpay
+2025/11/04 15:44:35 Checking config extraction for server mcp/razorpay with source docker-mcp, packages count: 1
+2025/11/04 15:44:35 Source is docker-mcp, extracting config for server mcp/razorpay
+2025/11/04 15:44:35 Checking package 0: identifier=mcp/razorpay, type=oci
+2025/11/04 15:44:35 Extracting config for Docker image: mcp/razorpay
+2025/11/04 15:44:36 Successfully extracted config for mcp/razorpay
+2025/11/04 15:44:36 Stored server mcp/razorpay in local registry
+2025/11/04 15:44:36 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:36 Looking for packages in serverData for mcp/fibery
+2025/11/04 15:44:36 Found 1 packages (map[]) for server mcp/fibery
+2025/11/04 15:44:36 Checking config extraction for server mcp/fibery with source docker-mcp, packages count: 1
+2025/11/04 15:44:36 Source is docker-mcp, extracting config for server mcp/fibery
+2025/11/04 15:44:36 Checking package 0: identifier=mcp/fibery, type=oci
+2025/11/04 15:44:36 Extracting config for Docker image: mcp/fibery
+2025/11/04 15:44:36 Successfully extracted config for mcp/fibery
+2025/11/04 15:44:36 Stored server mcp/fibery in local registry
+2025/11/04 15:44:36 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:36 Looking for packages in serverData for mcp/signatures
+2025/11/04 15:44:36 Found 1 packages (map[]) for server mcp/signatures
+2025/11/04 15:44:36 Checking config extraction for server mcp/signatures with source docker-mcp, packages count: 1
+2025/11/04 15:44:36 Source is docker-mcp, extracting config for server mcp/signatures
+2025/11/04 15:44:36 Checking package 0: identifier=mcp/signatures, type=oci
+2025/11/04 15:44:36 Extracting config for Docker image: mcp/signatures
+2025/11/04 15:44:36 Successfully extracted config for mcp/signatures
+2025/11/04 15:44:36 Stored server mcp/signatures in local registry
+2025/11/04 15:44:36 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:36 Looking for packages in serverData for mcp/husqvarna-automower
+2025/11/04 15:44:36 Found 1 packages (map[]) for server mcp/husqvarna-automower
+2025/11/04 15:44:36 Checking config extraction for server mcp/husqvarna-automower with source docker-mcp, packages count: 1
+2025/11/04 15:44:36 Source is docker-mcp, extracting config for server mcp/husqvarna-automower
+2025/11/04 15:44:36 Checking package 0: identifier=mcp/husqvarna-automower, type=oci
+2025/11/04 15:44:36 Extracting config for Docker image: mcp/husqvarna-automower
+2025/11/04 15:44:36 Successfully extracted config for mcp/husqvarna-automower
+2025/11/04 15:44:36 Stored server mcp/husqvarna-automower in local registry
+2025/11/04 15:44:36 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:36 Looking for packages in serverData for mcp/neo4j-cypher
+2025/11/04 15:44:36 Found 1 packages (map[]) for server mcp/neo4j-cypher
+2025/11/04 15:44:36 Checking config extraction for server mcp/neo4j-cypher with source docker-mcp, packages count: 1
+2025/11/04 15:44:36 Source is docker-mcp, extracting config for server mcp/neo4j-cypher
+2025/11/04 15:44:36 Checking package 0: identifier=mcp/neo4j-cypher, type=oci
+2025/11/04 15:44:36 Extracting config for Docker image: mcp/neo4j-cypher
+2025/11/04 15:44:36 Successfully extracted config for mcp/neo4j-cypher
+2025/11/04 15:44:36 Stored server mcp/neo4j-cypher in local registry
+2025/11/04 15:44:36 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:36 Looking for packages in serverData for mcp/neo4j-cloud-aura-api
+2025/11/04 15:44:36 Found 1 packages (map[]) for server mcp/neo4j-cloud-aura-api
+2025/11/04 15:44:36 Checking config extraction for server mcp/neo4j-cloud-aura-api with source docker-mcp, packages count: 1
+2025/11/04 15:44:36 Source is docker-mcp, extracting config for server mcp/neo4j-cloud-aura-api
+2025/11/04 15:44:36 Checking package 0: identifier=mcp/neo4j-cloud-aura-api, type=oci
+2025/11/04 15:44:36 Extracting config for Docker image: mcp/neo4j-cloud-aura-api
+2025/11/04 15:44:37 Successfully extracted config for mcp/neo4j-cloud-aura-api
+2025/11/04 15:44:37 Stored server mcp/neo4j-cloud-aura-api in local registry
+2025/11/04 15:44:37 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:37 Looking for packages in serverData for mcp/wikipedia-mcp
+2025/11/04 15:44:37 Found 1 packages (map[]) for server mcp/wikipedia-mcp
+2025/11/04 15:44:37 Checking config extraction for server mcp/wikipedia-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:37 Source is docker-mcp, extracting config for server mcp/wikipedia-mcp
+2025/11/04 15:44:37 Checking package 0: identifier=mcp/wikipedia-mcp, type=oci
+2025/11/04 15:44:37 Extracting config for Docker image: mcp/wikipedia-mcp
+2025/11/04 15:44:37 Successfully extracted config for mcp/wikipedia-mcp
+2025/11/04 15:44:37 Stored server mcp/wikipedia-mcp in local registry
+2025/11/04 15:44:37 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:37 Looking for packages in serverData for mcp/node-code-sandbox
+2025/11/04 15:44:37 Found 1 packages (map[]) for server mcp/node-code-sandbox
+2025/11/04 15:44:37 Checking config extraction for server mcp/node-code-sandbox with source docker-mcp, packages count: 1
+2025/11/04 15:44:37 Source is docker-mcp, extracting config for server mcp/node-code-sandbox
+2025/11/04 15:44:37 Checking package 0: identifier=mcp/node-code-sandbox, type=oci
+2025/11/04 15:44:37 Extracting config for Docker image: mcp/node-code-sandbox
+2025/11/04 15:44:37 Successfully extracted config for mcp/node-code-sandbox
+2025/11/04 15:44:37 Stored server mcp/node-code-sandbox in local registry
+2025/11/04 15:44:37 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:37 Looking for packages in serverData for mcp/aws-diagram
+2025/11/04 15:44:37 Found 1 packages (map[]) for server mcp/aws-diagram
+2025/11/04 15:44:37 Checking config extraction for server mcp/aws-diagram with source docker-mcp, packages count: 1
+2025/11/04 15:44:37 Source is docker-mcp, extracting config for server mcp/aws-diagram
+2025/11/04 15:44:37 Checking package 0: identifier=mcp/aws-diagram, type=oci
+2025/11/04 15:44:37 Extracting config for Docker image: mcp/aws-diagram
+2025/11/04 15:44:37 Successfully extracted config for mcp/aws-diagram
+2025/11/04 15:44:37 Stored server mcp/aws-diagram in local registry
+2025/11/04 15:44:37 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:37 Looking for packages in serverData for mcp/aws-documentation
+2025/11/04 15:44:37 Found 1 packages (map[]) for server mcp/aws-documentation
+2025/11/04 15:44:37 Checking config extraction for server mcp/aws-documentation with source docker-mcp, packages count: 1
+2025/11/04 15:44:37 Source is docker-mcp, extracting config for server mcp/aws-documentation
+2025/11/04 15:44:37 Checking package 0: identifier=mcp/aws-documentation, type=oci
+2025/11/04 15:44:37 Extracting config for Docker image: mcp/aws-documentation
+2025/11/04 15:44:37 Successfully extracted config for mcp/aws-documentation
+2025/11/04 15:44:37 Stored server mcp/aws-documentation in local registry
+2025/11/04 15:44:37 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:37 Looking for packages in serverData for mcp/aws-cdk-mcp-server
+2025/11/04 15:44:37 Found 1 packages (map[]) for server mcp/aws-cdk-mcp-server
+2025/11/04 15:44:37 Checking config extraction for server mcp/aws-cdk-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:37 Source is docker-mcp, extracting config for server mcp/aws-cdk-mcp-server
+2025/11/04 15:44:37 Checking package 0: identifier=mcp/aws-cdk-mcp-server, type=oci
+2025/11/04 15:44:37 Extracting config for Docker image: mcp/aws-cdk-mcp-server
+2025/11/04 15:44:38 Successfully extracted config for mcp/aws-cdk-mcp-server
+2025/11/04 15:44:38 Stored server mcp/aws-cdk-mcp-server in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/aws-core-mcp-server
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/aws-core-mcp-server
+2025/11/04 15:44:38 Checking config extraction for server mcp/aws-core-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/aws-core-mcp-server
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/aws-core-mcp-server, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/aws-core-mcp-server
+2025/11/04 15:44:38 Successfully extracted config for mcp/aws-core-mcp-server
+2025/11/04 15:44:38 Stored server mcp/aws-core-mcp-server in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/cdata-connectcloud
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/cdata-connectcloud
+2025/11/04 15:44:38 Checking config extraction for server mcp/cdata-connectcloud with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/cdata-connectcloud
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/cdata-connectcloud, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/cdata-connectcloud
+2025/11/04 15:44:38 Successfully extracted config for mcp/cdata-connectcloud
+2025/11/04 15:44:38 Stored server mcp/cdata-connectcloud in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/mongodb
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/mongodb
+2025/11/04 15:44:38 Checking config extraction for server mcp/mongodb with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/mongodb
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/mongodb, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/mongodb
+2025/11/04 15:44:38 Successfully extracted config for mcp/mongodb
+2025/11/04 15:44:38 Stored server mcp/mongodb in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/novita
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/novita
+2025/11/04 15:44:38 Checking config extraction for server mcp/novita with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/novita
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/novita, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/novita
+2025/11/04 15:44:38 Successfully extracted config for mcp/novita
+2025/11/04 15:44:38 Stored server mcp/novita in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/aws-terraform
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/aws-terraform
+2025/11/04 15:44:38 Checking config extraction for server mcp/aws-terraform with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/aws-terraform
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/aws-terraform, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/aws-terraform
+2025/11/04 15:44:38 Successfully extracted config for mcp/aws-terraform
+2025/11/04 15:44:38 Stored server mcp/aws-terraform in local registry
+2025/11/04 15:44:38 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:38 Looking for packages in serverData for mcp/render
+2025/11/04 15:44:38 Found 1 packages (map[]) for server mcp/render
+2025/11/04 15:44:38 Checking config extraction for server mcp/render with source docker-mcp, packages count: 1
+2025/11/04 15:44:38 Source is docker-mcp, extracting config for server mcp/render
+2025/11/04 15:44:38 Checking package 0: identifier=mcp/render, type=oci
+2025/11/04 15:44:38 Extracting config for Docker image: mcp/render
+2025/11/04 15:44:39 Successfully extracted config for mcp/render
+2025/11/04 15:44:39 Stored server mcp/render in local registry
+2025/11/04 15:44:39 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:39 Looking for packages in serverData for mcp/vizro
+2025/11/04 15:44:39 Found 1 packages (map[]) for server mcp/vizro
+2025/11/04 15:44:39 Checking config extraction for server mcp/vizro with source docker-mcp, packages count: 1
+2025/11/04 15:44:39 Source is docker-mcp, extracting config for server mcp/vizro
+2025/11/04 15:44:39 Checking package 0: identifier=mcp/vizro, type=oci
+2025/11/04 15:44:39 Extracting config for Docker image: mcp/vizro
+2025/11/04 15:44:39 Successfully extracted config for mcp/vizro
+2025/11/04 15:44:39 Stored server mcp/vizro in local registry
+2025/11/04 15:44:39 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:39 Looking for packages in serverData for mcp/minecraft-wiki
+2025/11/04 15:44:39 Found 1 packages (map[]) for server mcp/minecraft-wiki
+2025/11/04 15:44:39 Checking config extraction for server mcp/minecraft-wiki with source docker-mcp, packages count: 1
+2025/11/04 15:44:39 Source is docker-mcp, extracting config for server mcp/minecraft-wiki
+2025/11/04 15:44:39 Checking package 0: identifier=mcp/minecraft-wiki, type=oci
+2025/11/04 15:44:39 Extracting config for Docker image: mcp/minecraft-wiki
+2025/11/04 15:44:39 Successfully extracted config for mcp/minecraft-wiki
+2025/11/04 15:44:39 Stored server mcp/minecraft-wiki in local registry
+2025/11/04 15:44:39 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:39 Looking for packages in serverData for mcp/paper-search
+2025/11/04 15:44:39 Found 1 packages (map[]) for server mcp/paper-search
+2025/11/04 15:44:39 Checking config extraction for server mcp/paper-search with source docker-mcp, packages count: 1
+2025/11/04 15:44:39 Source is docker-mcp, extracting config for server mcp/paper-search
+2025/11/04 15:44:39 Checking package 0: identifier=mcp/paper-search, type=oci
+2025/11/04 15:44:39 Extracting config for Docker image: mcp/paper-search
+2025/11/04 15:44:39 Successfully extracted config for mcp/paper-search
+2025/11/04 15:44:39 Stored server mcp/paper-search in local registry
+2025/11/04 15:44:39 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:39 Looking for packages in serverData for mcp/pinecone
+2025/11/04 15:44:39 Found 1 packages (map[]) for server mcp/pinecone
+2025/11/04 15:44:39 Checking config extraction for server mcp/pinecone with source docker-mcp, packages count: 1
+2025/11/04 15:44:39 Source is docker-mcp, extracting config for server mcp/pinecone
+2025/11/04 15:44:39 Checking package 0: identifier=mcp/pinecone, type=oci
+2025/11/04 15:44:39 Extracting config for Docker image: mcp/pinecone
+2025/11/04 15:44:40 Successfully extracted config for mcp/pinecone
+2025/11/04 15:44:40 Stored server mcp/pinecone in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/clickhouse
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/clickhouse
+2025/11/04 15:44:40 Checking config extraction for server mcp/clickhouse with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/clickhouse
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/clickhouse, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/clickhouse
+2025/11/04 15:44:40 Successfully extracted config for mcp/clickhouse
+2025/11/04 15:44:40 Stored server mcp/clickhouse in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/suzieq-mcp
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/suzieq-mcp
+2025/11/04 15:44:40 Checking config extraction for server mcp/suzieq-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/suzieq-mcp
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/suzieq-mcp, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/suzieq-mcp
+2025/11/04 15:44:40 Successfully extracted config for mcp/suzieq-mcp
+2025/11/04 15:44:40 Stored server mcp/suzieq-mcp in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/api-gateway
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/api-gateway
+2025/11/04 15:44:40 Checking config extraction for server mcp/api-gateway with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/api-gateway
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/api-gateway, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/api-gateway
+2025/11/04 15:44:40 Successfully extracted config for mcp/api-gateway
+2025/11/04 15:44:40 Stored server mcp/api-gateway in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/keboola-mcp
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/keboola-mcp
+2025/11/04 15:44:40 Checking config extraction for server mcp/keboola-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/keboola-mcp
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/keboola-mcp, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/keboola-mcp
+2025/11/04 15:44:40 Successfully extracted config for mcp/keboola-mcp
+2025/11/04 15:44:40 Stored server mcp/keboola-mcp in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/openweather
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/openweather
+2025/11/04 15:44:40 Checking config extraction for server mcp/openweather with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/openweather
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/openweather, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/openweather
+2025/11/04 15:44:40 Successfully extracted config for mcp/openweather
+2025/11/04 15:44:40 Stored server mcp/openweather in local registry
+2025/11/04 15:44:40 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:40 Looking for packages in serverData for mcp/openbnb-airbnb
+2025/11/04 15:44:40 Found 1 packages (map[]) for server mcp/openbnb-airbnb
+2025/11/04 15:44:40 Checking config extraction for server mcp/openbnb-airbnb with source docker-mcp, packages count: 1
+2025/11/04 15:44:40 Source is docker-mcp, extracting config for server mcp/openbnb-airbnb
+2025/11/04 15:44:40 Checking package 0: identifier=mcp/openbnb-airbnb, type=oci
+2025/11/04 15:44:40 Extracting config for Docker image: mcp/openbnb-airbnb
+2025/11/04 15:44:41 Successfully extracted config for mcp/openbnb-airbnb
+2025/11/04 15:44:41 Stored server mcp/openbnb-airbnb in local registry
+2025/11/04 15:44:41 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:41 Looking for packages in serverData for mcp/sonarqube
+2025/11/04 15:44:41 Found 1 packages (map[]) for server mcp/sonarqube
+2025/11/04 15:44:41 Checking config extraction for server mcp/sonarqube with source docker-mcp, packages count: 1
+2025/11/04 15:44:41 Source is docker-mcp, extracting config for server mcp/sonarqube
+2025/11/04 15:44:41 Checking package 0: identifier=mcp/sonarqube, type=oci
+2025/11/04 15:44:41 Extracting config for Docker image: mcp/sonarqube
+2025/11/04 15:44:41 Successfully extracted config for mcp/sonarqube
+2025/11/04 15:44:41 Stored server mcp/sonarqube in local registry
+2025/11/04 15:44:41 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:41 Looking for packages in serverData for mcp/tigris
+2025/11/04 15:44:41 Found 1 packages (map[]) for server mcp/tigris
+2025/11/04 15:44:41 Checking config extraction for server mcp/tigris with source docker-mcp, packages count: 1
+2025/11/04 15:44:41 Source is docker-mcp, extracting config for server mcp/tigris
+2025/11/04 15:44:41 Checking package 0: identifier=mcp/tigris, type=oci
+2025/11/04 15:44:41 Extracting config for Docker image: mcp/tigris
+2025/11/04 15:44:41 Successfully extracted config for mcp/tigris
+2025/11/04 15:44:41 Stored server mcp/tigris in local registry
+2025/11/04 15:44:41 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:41 Looking for packages in serverData for mcp/nasdaq-data-link
+2025/11/04 15:44:41 Found 1 packages (map[]) for server mcp/nasdaq-data-link
+2025/11/04 15:44:41 Checking config extraction for server mcp/nasdaq-data-link with source docker-mcp, packages count: 1
+2025/11/04 15:44:41 Source is docker-mcp, extracting config for server mcp/nasdaq-data-link
+2025/11/04 15:44:41 Checking package 0: identifier=mcp/nasdaq-data-link, type=oci
+2025/11/04 15:44:41 Extracting config for Docker image: mcp/nasdaq-data-link
+2025/11/04 15:44:41 Successfully extracted config for mcp/nasdaq-data-link
+2025/11/04 15:44:41 Stored server mcp/nasdaq-data-link in local registry
+2025/11/04 15:44:41 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:41 Looking for packages in serverData for mcp/npm-sentinel
+2025/11/04 15:44:41 Found 1 packages (map[]) for server mcp/npm-sentinel
+2025/11/04 15:44:41 Checking config extraction for server mcp/npm-sentinel with source docker-mcp, packages count: 1
+2025/11/04 15:44:41 Source is docker-mcp, extracting config for server mcp/npm-sentinel
+2025/11/04 15:44:41 Checking package 0: identifier=mcp/npm-sentinel, type=oci
+2025/11/04 15:44:41 Extracting config for Docker image: mcp/npm-sentinel
+2025/11/04 15:44:41 Successfully extracted config for mcp/npm-sentinel
+2025/11/04 15:44:41 Stored server mcp/npm-sentinel in local registry
+2025/11/04 15:44:41 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:41 Looking for packages in serverData for mcp/pluggedin-mcp-proxy
+2025/11/04 15:44:41 Found 1 packages (map[]) for server mcp/pluggedin-mcp-proxy
+2025/11/04 15:44:41 Checking config extraction for server mcp/pluggedin-mcp-proxy with source docker-mcp, packages count: 1
+2025/11/04 15:44:41 Source is docker-mcp, extracting config for server mcp/pluggedin-mcp-proxy
+2025/11/04 15:44:41 Checking package 0: identifier=mcp/pluggedin-mcp-proxy, type=oci
+2025/11/04 15:44:41 Extracting config for Docker image: mcp/pluggedin-mcp-proxy
+2025/11/04 15:44:42 Successfully extracted config for mcp/pluggedin-mcp-proxy
+2025/11/04 15:44:42 Stored server mcp/pluggedin-mcp-proxy in local registry
+2025/11/04 15:44:42 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:42 Looking for packages in serverData for mcp/pref-editor
+2025/11/04 15:44:42 Found 1 packages (map[]) for server mcp/pref-editor
+2025/11/04 15:44:42 Checking config extraction for server mcp/pref-editor with source docker-mcp, packages count: 1
+2025/11/04 15:44:42 Source is docker-mcp, extracting config for server mcp/pref-editor
+2025/11/04 15:44:42 Checking package 0: identifier=mcp/pref-editor, type=oci
+2025/11/04 15:44:42 Extracting config for Docker image: mcp/pref-editor
+2025/11/04 15:44:42 Successfully extracted config for mcp/pref-editor
+2025/11/04 15:44:42 Stored server mcp/pref-editor in local registry
+2025/11/04 15:44:42 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:42 Looking for packages in serverData for mcp/sec-edgar
+2025/11/04 15:44:42 Found 1 packages (map[]) for server mcp/sec-edgar
+2025/11/04 15:44:42 Checking config extraction for server mcp/sec-edgar with source docker-mcp, packages count: 1
+2025/11/04 15:44:42 Source is docker-mcp, extracting config for server mcp/sec-edgar
+2025/11/04 15:44:42 Checking package 0: identifier=mcp/sec-edgar, type=oci
+2025/11/04 15:44:42 Extracting config for Docker image: mcp/sec-edgar
+2025/11/04 15:44:42 Successfully extracted config for mcp/sec-edgar
+2025/11/04 15:44:42 Stored server mcp/sec-edgar in local registry
+2025/11/04 15:44:42 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:42 Looking for packages in serverData for mcp/text-to-graphql
+2025/11/04 15:44:42 Found 1 packages (map[]) for server mcp/text-to-graphql
+2025/11/04 15:44:42 Checking config extraction for server mcp/text-to-graphql with source docker-mcp, packages count: 1
+2025/11/04 15:44:42 Source is docker-mcp, extracting config for server mcp/text-to-graphql
+2025/11/04 15:44:42 Checking package 0: identifier=mcp/text-to-graphql, type=oci
+2025/11/04 15:44:42 Extracting config for Docker image: mcp/text-to-graphql
+2025/11/04 15:44:42 Successfully extracted config for mcp/text-to-graphql
+2025/11/04 15:44:42 Stored server mcp/text-to-graphql in local registry
+2025/11/04 15:44:42 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:42 Looking for packages in serverData for mcp/dockerhub
+2025/11/04 15:44:42 Found 1 packages (map[]) for server mcp/dockerhub
+2025/11/04 15:44:42 Checking config extraction for server mcp/dockerhub with source docker-mcp, packages count: 1
+2025/11/04 15:44:42 Source is docker-mcp, extracting config for server mcp/dockerhub
+2025/11/04 15:44:42 Checking package 0: identifier=mcp/dockerhub, type=oci
+2025/11/04 15:44:42 Extracting config for Docker image: mcp/dockerhub
+2025/11/04 15:44:42 Successfully extracted config for mcp/dockerhub
+2025/11/04 15:44:42 Stored server mcp/dockerhub in local registry
+2025/11/04 15:44:42 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:42 Looking for packages in serverData for mcp/atlan-mcp-server
+2025/11/04 15:44:42 Found 1 packages (map[]) for server mcp/atlan-mcp-server
+2025/11/04 15:44:42 Checking config extraction for server mcp/atlan-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:42 Source is docker-mcp, extracting config for server mcp/atlan-mcp-server
+2025/11/04 15:44:42 Checking package 0: identifier=mcp/atlan-mcp-server, type=oci
+2025/11/04 15:44:42 Extracting config for Docker image: mcp/atlan-mcp-server
+2025/11/04 15:44:43 Successfully extracted config for mcp/atlan-mcp-server
+2025/11/04 15:44:43 Stored server mcp/atlan-mcp-server in local registry
+2025/11/04 15:44:43 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:43 Looking for packages in serverData for mcp/ref-tools-mcp
+2025/11/04 15:44:43 Found 1 packages (map[]) for server mcp/ref-tools-mcp
+2025/11/04 15:44:43 Checking config extraction for server mcp/ref-tools-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:43 Source is docker-mcp, extracting config for server mcp/ref-tools-mcp
+2025/11/04 15:44:43 Checking package 0: identifier=mcp/ref-tools-mcp, type=oci
+2025/11/04 15:44:43 Extracting config for Docker image: mcp/ref-tools-mcp
+2025/11/04 15:44:43 Successfully extracted config for mcp/ref-tools-mcp
+2025/11/04 15:44:43 Stored server mcp/ref-tools-mcp in local registry
+2025/11/04 15:44:43 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:43 Looking for packages in serverData for mcp/securenote-link-mcp-server
+2025/11/04 15:44:43 Found 1 packages (map[]) for server mcp/securenote-link-mcp-server
+2025/11/04 15:44:43 Checking config extraction for server mcp/securenote-link-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:43 Source is docker-mcp, extracting config for server mcp/securenote-link-mcp-server
+2025/11/04 15:44:43 Checking package 0: identifier=mcp/securenote-link-mcp-server, type=oci
+2025/11/04 15:44:43 Extracting config for Docker image: mcp/securenote-link-mcp-server
+2025/11/04 15:44:43 Successfully extracted config for mcp/securenote-link-mcp-server
+2025/11/04 15:44:43 Stored server mcp/securenote-link-mcp-server in local registry
+2025/11/04 15:44:43 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:43 Looking for packages in serverData for mcp/beagle-security-mcp-server
+2025/11/04 15:44:43 Found 1 packages (map[]) for server mcp/beagle-security-mcp-server
+2025/11/04 15:44:43 Checking config extraction for server mcp/beagle-security-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:43 Source is docker-mcp, extracting config for server mcp/beagle-security-mcp-server
+2025/11/04 15:44:43 Checking package 0: identifier=mcp/beagle-security-mcp-server, type=oci
+2025/11/04 15:44:43 Extracting config for Docker image: mcp/beagle-security-mcp-server
+2025/11/04 15:44:43 Successfully extracted config for mcp/beagle-security-mcp-server
+2025/11/04 15:44:43 Stored server mcp/beagle-security-mcp-server in local registry
+2025/11/04 15:44:43 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:43 Looking for packages in serverData for mcp/singlestore
+2025/11/04 15:44:43 Found 1 packages (map[]) for server mcp/singlestore
+2025/11/04 15:44:43 Checking config extraction for server mcp/singlestore with source docker-mcp, packages count: 1
+2025/11/04 15:44:43 Source is docker-mcp, extracting config for server mcp/singlestore
+2025/11/04 15:44:43 Checking package 0: identifier=mcp/singlestore, type=oci
+2025/11/04 15:44:43 Extracting config for Docker image: mcp/singlestore
+2025/11/04 15:44:43 Successfully extracted config for mcp/singlestore
+2025/11/04 15:44:43 Stored server mcp/singlestore in local registry
+2025/11/04 15:44:43 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:43 Looking for packages in serverData for mcp/root
+2025/11/04 15:44:43 Found 1 packages (map[]) for server mcp/root
+2025/11/04 15:44:43 Checking config extraction for server mcp/root with source docker-mcp, packages count: 1
+2025/11/04 15:44:43 Source is docker-mcp, extracting config for server mcp/root
+2025/11/04 15:44:43 Checking package 0: identifier=mcp/root, type=oci
+2025/11/04 15:44:43 Extracting config for Docker image: mcp/root
+2025/11/04 15:44:44 Successfully extracted config for mcp/root
+2025/11/04 15:44:44 Stored server mcp/root in local registry
+2025/11/04 15:44:44 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:44 Looking for packages in serverData for mcp/needle-mcp
+2025/11/04 15:44:44 Found 1 packages (map[]) for server mcp/needle-mcp
+2025/11/04 15:44:44 Checking config extraction for server mcp/needle-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:44 Source is docker-mcp, extracting config for server mcp/needle-mcp
+2025/11/04 15:44:44 Checking package 0: identifier=mcp/needle-mcp, type=oci
+2025/11/04 15:44:44 Extracting config for Docker image: mcp/needle-mcp
+2025/11/04 15:44:44 Successfully extracted config for mcp/needle-mcp
+2025/11/04 15:44:44 Stored server mcp/needle-mcp in local registry
+2025/11/04 15:44:44 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:44 Looking for packages in serverData for mcp/schogini_mcp_image_border
+2025/11/04 15:44:44 Found 1 packages (map[]) for server mcp/schogini_mcp_image_border
+2025/11/04 15:44:44 Checking config extraction for server mcp/schogini_mcp_image_border with source docker-mcp, packages count: 1
+2025/11/04 15:44:44 Source is docker-mcp, extracting config for server mcp/schogini_mcp_image_border
+2025/11/04 15:44:44 Checking package 0: identifier=mcp/schogini_mcp_image_border, type=oci
+2025/11/04 15:44:44 Extracting config for Docker image: mcp/schogini_mcp_image_border
+2025/11/04 15:44:44 Successfully extracted config for mcp/schogini_mcp_image_border
+2025/11/04 15:44:44 Stored server mcp/schogini_mcp_image_border in local registry
+2025/11/04 15:44:44 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:44 Looking for packages in serverData for mcp/arxiv-mcp-server
+2025/11/04 15:44:44 Found 1 packages (map[]) for server mcp/arxiv-mcp-server
+2025/11/04 15:44:44 Checking config extraction for server mcp/arxiv-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:44 Source is docker-mcp, extracting config for server mcp/arxiv-mcp-server
+2025/11/04 15:44:44 Checking package 0: identifier=mcp/arxiv-mcp-server, type=oci
+2025/11/04 15:44:44 Extracting config for Docker image: mcp/arxiv-mcp-server
+2025/11/04 15:44:44 Successfully extracted config for mcp/arxiv-mcp-server
+2025/11/04 15:44:44 Stored server mcp/arxiv-mcp-server in local registry
+2025/11/04 15:44:44 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:44 Looking for packages in serverData for mcp/cockroachdb
+2025/11/04 15:44:44 Found 1 packages (map[]) for server mcp/cockroachdb
+2025/11/04 15:44:44 Checking config extraction for server mcp/cockroachdb with source docker-mcp, packages count: 1
+2025/11/04 15:44:44 Source is docker-mcp, extracting config for server mcp/cockroachdb
+2025/11/04 15:44:44 Checking package 0: identifier=mcp/cockroachdb, type=oci
+2025/11/04 15:44:44 Extracting config for Docker image: mcp/cockroachdb
+2025/11/04 15:44:44 Successfully extracted config for mcp/cockroachdb
+2025/11/04 15:44:44 Stored server mcp/cockroachdb in local registry
+2025/11/04 15:44:44 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:44 Looking for packages in serverData for mcp/atlan
+2025/11/04 15:44:44 Found 1 packages (map[]) for server mcp/atlan
+2025/11/04 15:44:44 Checking config extraction for server mcp/atlan with source docker-mcp, packages count: 1
+2025/11/04 15:44:44 Source is docker-mcp, extracting config for server mcp/atlan
+2025/11/04 15:44:44 Checking package 0: identifier=mcp/atlan, type=oci
+2025/11/04 15:44:44 Extracting config for Docker image: mcp/atlan
+2025/11/04 15:44:45 Successfully extracted config for mcp/atlan
+2025/11/04 15:44:45 Stored server mcp/atlan in local registry
+2025/11/04 15:44:45 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:45 Looking for packages in serverData for mcp/buildkite-mcp-server
+2025/11/04 15:44:45 Found 1 packages (map[]) for server mcp/buildkite-mcp-server
+2025/11/04 15:44:45 Checking config extraction for server mcp/buildkite-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:45 Source is docker-mcp, extracting config for server mcp/buildkite-mcp-server
+2025/11/04 15:44:45 Checking package 0: identifier=mcp/buildkite-mcp-server, type=oci
+2025/11/04 15:44:45 Extracting config for Docker image: mcp/buildkite-mcp-server
+2025/11/04 15:44:45 Successfully extracted config for mcp/buildkite-mcp-server
+2025/11/04 15:44:45 Stored server mcp/buildkite-mcp-server in local registry
+2025/11/04 15:44:45 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:45 Looking for packages in serverData for mcp/onlyoffice-docspace
+2025/11/04 15:44:45 Found 1 packages (map[]) for server mcp/onlyoffice-docspace
+2025/11/04 15:44:45 Checking config extraction for server mcp/onlyoffice-docspace with source docker-mcp, packages count: 1
+2025/11/04 15:44:45 Source is docker-mcp, extracting config for server mcp/onlyoffice-docspace
+2025/11/04 15:44:45 Checking package 0: identifier=mcp/onlyoffice-docspace, type=oci
+2025/11/04 15:44:45 Extracting config for Docker image: mcp/onlyoffice-docspace
+2025/11/04 15:44:45 Successfully extracted config for mcp/onlyoffice-docspace
+2025/11/04 15:44:45 Stored server mcp/onlyoffice-docspace in local registry
+2025/11/04 15:44:45 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:45 Looking for packages in serverData for mcp/buildkite
+2025/11/04 15:44:45 Found 1 packages (map[]) for server mcp/buildkite
+2025/11/04 15:44:45 Checking config extraction for server mcp/buildkite with source docker-mcp, packages count: 1
+2025/11/04 15:44:45 Source is docker-mcp, extracting config for server mcp/buildkite
+2025/11/04 15:44:45 Checking package 0: identifier=mcp/buildkite, type=oci
+2025/11/04 15:44:45 Extracting config for Docker image: mcp/buildkite
+2025/11/04 15:44:45 Successfully extracted config for mcp/buildkite
+2025/11/04 15:44:45 Stored server mcp/buildkite in local registry
+2025/11/04 15:44:45 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:45 Looking for packages in serverData for mcp/omi
+2025/11/04 15:44:45 Found 1 packages (map[]) for server mcp/omi
+2025/11/04 15:44:45 Checking config extraction for server mcp/omi with source docker-mcp, packages count: 1
+2025/11/04 15:44:45 Source is docker-mcp, extracting config for server mcp/omi
+2025/11/04 15:44:45 Checking package 0: identifier=mcp/omi, type=oci
+2025/11/04 15:44:45 Extracting config for Docker image: mcp/omi
+2025/11/04 15:44:45 Successfully extracted config for mcp/omi
+2025/11/04 15:44:45 Stored server mcp/omi in local registry
+2025/11/04 15:44:45 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:45 Looking for packages in serverData for mcp/mcp-playwright
+2025/11/04 15:44:45 Found 1 packages (map[]) for server mcp/mcp-playwright
+2025/11/04 15:44:45 Checking config extraction for server mcp/mcp-playwright with source docker-mcp, packages count: 1
+2025/11/04 15:44:45 Source is docker-mcp, extracting config for server mcp/mcp-playwright
+2025/11/04 15:44:45 Checking package 0: identifier=mcp/mcp-playwright, type=oci
+2025/11/04 15:44:45 Extracting config for Docker image: mcp/mcp-playwright
+2025/11/04 15:44:46 Successfully extracted config for mcp/mcp-playwright
+2025/11/04 15:44:46 Stored server mcp/mcp-playwright in local registry
+2025/11/04 15:44:46 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:46 Looking for packages in serverData for mcp/couchbase
+2025/11/04 15:44:46 Found 1 packages (map[]) for server mcp/couchbase
+2025/11/04 15:44:46 Checking config extraction for server mcp/couchbase with source docker-mcp, packages count: 1
+2025/11/04 15:44:46 Source is docker-mcp, extracting config for server mcp/couchbase
+2025/11/04 15:44:46 Checking package 0: identifier=mcp/couchbase, type=oci
+2025/11/04 15:44:46 Extracting config for Docker image: mcp/couchbase
+2025/11/04 15:44:46 Successfully extracted config for mcp/couchbase
+2025/11/04 15:44:46 Stored server mcp/couchbase in local registry
+2025/11/04 15:44:46 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:46 Looking for packages in serverData for mcp/firewalla-mcp-server
+2025/11/04 15:44:46 Found 1 packages (map[]) for server mcp/firewalla-mcp-server
+2025/11/04 15:44:46 Checking config extraction for server mcp/firewalla-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:46 Source is docker-mcp, extracting config for server mcp/firewalla-mcp-server
+2025/11/04 15:44:46 Checking package 0: identifier=mcp/firewalla-mcp-server, type=oci
+2025/11/04 15:44:46 Extracting config for Docker image: mcp/firewalla-mcp-server
+2025/11/04 15:44:46 Successfully extracted config for mcp/firewalla-mcp-server
+2025/11/04 15:44:46 Stored server mcp/firewalla-mcp-server in local registry
+2025/11/04 15:44:46 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:46 Looking for packages in serverData for mcp/inspektor-gadget
+2025/11/04 15:44:46 Found 1 packages (map[]) for server mcp/inspektor-gadget
+2025/11/04 15:44:46 Checking config extraction for server mcp/inspektor-gadget with source docker-mcp, packages count: 1
+2025/11/04 15:44:46 Source is docker-mcp, extracting config for server mcp/inspektor-gadget
+2025/11/04 15:44:46 Checking package 0: identifier=mcp/inspektor-gadget, type=oci
+2025/11/04 15:44:46 Extracting config for Docker image: mcp/inspektor-gadget
+2025/11/04 15:44:47 Successfully extracted config for mcp/inspektor-gadget
+2025/11/04 15:44:47 Stored server mcp/inspektor-gadget in local registry
+2025/11/04 15:44:47 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:47 Looking for packages in serverData for mcp/metabase
+2025/11/04 15:44:47 Found 1 packages (map[]) for server mcp/metabase
+2025/11/04 15:44:47 Checking config extraction for server mcp/metabase with source docker-mcp, packages count: 1
+2025/11/04 15:44:47 Source is docker-mcp, extracting config for server mcp/metabase
+2025/11/04 15:44:47 Checking package 0: identifier=mcp/metabase, type=oci
+2025/11/04 15:44:47 Extracting config for Docker image: mcp/metabase
+2025/11/04 15:44:47 Successfully extracted config for mcp/metabase
+2025/11/04 15:44:47 Stored server mcp/metabase in local registry
+2025/11/04 15:44:47 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:47 Looking for packages in serverData for mcp/okta-mcp-fctr
+2025/11/04 15:44:47 Found 1 packages (map[]) for server mcp/okta-mcp-fctr
+2025/11/04 15:44:47 Checking config extraction for server mcp/okta-mcp-fctr with source docker-mcp, packages count: 1
+2025/11/04 15:44:47 Source is docker-mcp, extracting config for server mcp/okta-mcp-fctr
+2025/11/04 15:44:47 Checking package 0: identifier=mcp/okta-mcp-fctr, type=oci
+2025/11/04 15:44:47 Extracting config for Docker image: mcp/okta-mcp-fctr
+2025/11/04 15:44:47 Successfully extracted config for mcp/okta-mcp-fctr
+2025/11/04 15:44:47 Stored server mcp/okta-mcp-fctr in local registry
+2025/11/04 15:44:47 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:47 Looking for packages in serverData for mcp/api-mcp-server
+2025/11/04 15:44:47 Found 1 packages (map[]) for server mcp/api-mcp-server
+2025/11/04 15:44:47 Checking config extraction for server mcp/api-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:47 Source is docker-mcp, extracting config for server mcp/api-mcp-server
+2025/11/04 15:44:47 Checking package 0: identifier=mcp/api-mcp-server, type=oci
+2025/11/04 15:44:47 Extracting config for Docker image: mcp/api-mcp-server
+2025/11/04 15:44:47 Successfully extracted config for mcp/api-mcp-server
+2025/11/04 15:44:47 Stored server mcp/api-mcp-server in local registry
+2025/11/04 15:44:47 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:47 Looking for packages in serverData for mcp/smartbear
+2025/11/04 15:44:47 Found 1 packages (map[]) for server mcp/smartbear
+2025/11/04 15:44:47 Checking config extraction for server mcp/smartbear with source docker-mcp, packages count: 1
+2025/11/04 15:44:47 Source is docker-mcp, extracting config for server mcp/smartbear
+2025/11/04 15:44:47 Checking package 0: identifier=mcp/smartbear, type=oci
+2025/11/04 15:44:47 Extracting config for Docker image: mcp/smartbear
+2025/11/04 15:44:48 Successfully extracted config for mcp/smartbear
+2025/11/04 15:44:48 Stored server mcp/smartbear in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/cloud-run-mcp
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/cloud-run-mcp
+2025/11/04 15:44:48 Checking config extraction for server mcp/cloud-run-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/cloud-run-mcp
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/cloud-run-mcp, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/cloud-run-mcp
+2025/11/04 15:44:48 Successfully extracted config for mcp/cloud-run-mcp
+2025/11/04 15:44:48 Stored server mcp/cloud-run-mcp in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/dynatrace-mcp-server
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/dynatrace-mcp-server
+2025/11/04 15:44:48 Checking config extraction for server mcp/dynatrace-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/dynatrace-mcp-server
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/dynatrace-mcp-server, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/dynatrace-mcp-server
+2025/11/04 15:44:48 Successfully extracted config for mcp/dynatrace-mcp-server
+2025/11/04 15:44:48 Stored server mcp/dynatrace-mcp-server in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/sequa
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/sequa
+2025/11/04 15:44:48 Checking config extraction for server mcp/sequa with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/sequa
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/sequa, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/sequa
+2025/11/04 15:44:48 Successfully extracted config for mcp/sequa
+2025/11/04 15:44:48 Stored server mcp/sequa in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/catalog
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/catalog
+2025/11/04 15:44:48 Checking config extraction for server mcp/catalog with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/catalog
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/catalog, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/catalog
+2025/11/04 15:44:48 Successfully extracted config for mcp/catalog
+2025/11/04 15:44:48 Stored server mcp/catalog in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/aks
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/aks
+2025/11/04 15:44:48 Checking config extraction for server mcp/aks with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/aks
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/aks, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/aks
+2025/11/04 15:44:48 Successfully extracted config for mcp/aks
+2025/11/04 15:44:48 Stored server mcp/aks in local registry
+2025/11/04 15:44:48 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:48 Looking for packages in serverData for mcp/pia
+2025/11/04 15:44:48 Found 1 packages (map[]) for server mcp/pia
+2025/11/04 15:44:48 Checking config extraction for server mcp/pia with source docker-mcp, packages count: 1
+2025/11/04 15:44:48 Source is docker-mcp, extracting config for server mcp/pia
+2025/11/04 15:44:48 Checking package 0: identifier=mcp/pia, type=oci
+2025/11/04 15:44:48 Extracting config for Docker image: mcp/pia
+2025/11/04 15:44:49 Successfully extracted config for mcp/pia
+2025/11/04 15:44:49 Stored server mcp/pia in local registry
+2025/11/04 15:44:49 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:49 Looking for packages in serverData for mcp/ramparts
+2025/11/04 15:44:49 Found 1 packages (map[]) for server mcp/ramparts
+2025/11/04 15:44:49 Checking config extraction for server mcp/ramparts with source docker-mcp, packages count: 1
+2025/11/04 15:44:49 Source is docker-mcp, extracting config for server mcp/ramparts
+2025/11/04 15:44:49 Checking package 0: identifier=mcp/ramparts, type=oci
+2025/11/04 15:44:49 Extracting config for Docker image: mcp/ramparts
+2025/11/04 15:44:49 Successfully extracted config for mcp/ramparts
+2025/11/04 15:44:49 Stored server mcp/ramparts in local registry
+2025/11/04 15:44:49 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:49 Looking for packages in serverData for mcp/apify-mcp-server
+2025/11/04 15:44:49 Found 1 packages (map[]) for server mcp/apify-mcp-server
+2025/11/04 15:44:49 Checking config extraction for server mcp/apify-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:49 Source is docker-mcp, extracting config for server mcp/apify-mcp-server
+2025/11/04 15:44:49 Checking package 0: identifier=mcp/apify-mcp-server, type=oci
+2025/11/04 15:44:49 Extracting config for Docker image: mcp/apify-mcp-server
+2025/11/04 15:44:49 Successfully extracted config for mcp/apify-mcp-server
+2025/11/04 15:44:49 Stored server mcp/apify-mcp-server in local registry
+2025/11/04 15:44:49 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:49 Looking for packages in serverData for mcp/markdownify
+2025/11/04 15:44:49 Found 1 packages (map[]) for server mcp/markdownify
+2025/11/04 15:44:49 Checking config extraction for server mcp/markdownify with source docker-mcp, packages count: 1
+2025/11/04 15:44:49 Source is docker-mcp, extracting config for server mcp/markdownify
+2025/11/04 15:44:49 Checking package 0: identifier=mcp/markdownify, type=oci
+2025/11/04 15:44:49 Extracting config for Docker image: mcp/markdownify
+2025/11/04 15:44:49 Successfully extracted config for mcp/markdownify
+2025/11/04 15:44:49 Stored server mcp/markdownify in local registry
+2025/11/04 15:44:49 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:49 Looking for packages in serverData for mcp/markitdown
+2025/11/04 15:44:49 Found 1 packages (map[]) for server mcp/markitdown
+2025/11/04 15:44:49 Checking config extraction for server mcp/markitdown with source docker-mcp, packages count: 1
+2025/11/04 15:44:49 Source is docker-mcp, extracting config for server mcp/markitdown
+2025/11/04 15:44:49 Checking package 0: identifier=mcp/markitdown, type=oci
+2025/11/04 15:44:49 Extracting config for Docker image: mcp/markitdown
+2025/11/04 15:44:49 Successfully extracted config for mcp/markitdown
+2025/11/04 15:44:49 Stored server mcp/markitdown in local registry
+2025/11/04 15:44:49 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:49 Looking for packages in serverData for mcp/camunda
+2025/11/04 15:44:49 Found 1 packages (map[]) for server mcp/camunda
+2025/11/04 15:44:49 Checking config extraction for server mcp/camunda with source docker-mcp, packages count: 1
+2025/11/04 15:44:49 Source is docker-mcp, extracting config for server mcp/camunda
+2025/11/04 15:44:49 Checking package 0: identifier=mcp/camunda, type=oci
+2025/11/04 15:44:49 Extracting config for Docker image: mcp/camunda
+2025/11/04 15:44:50 Successfully extracted config for mcp/camunda
+2025/11/04 15:44:50 Stored server mcp/camunda in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/effect-mcp
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/effect-mcp
+2025/11/04 15:44:50 Checking config extraction for server mcp/effect-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/effect-mcp
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/effect-mcp, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/effect-mcp
+2025/11/04 15:44:50 Successfully extracted config for mcp/effect-mcp
+2025/11/04 15:44:50 Stored server mcp/effect-mcp in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/hdx
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/hdx
+2025/11/04 15:44:50 Checking config extraction for server mcp/hdx with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/hdx
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/hdx, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/hdx
+2025/11/04 15:44:50 Successfully extracted config for mcp/hdx
+2025/11/04 15:44:50 Stored server mcp/hdx in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/mapbox
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/mapbox
+2025/11/04 15:44:50 Checking config extraction for server mcp/mapbox with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/mapbox
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/mapbox, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/mapbox
+2025/11/04 15:44:50 Successfully extracted config for mcp/mapbox
+2025/11/04 15:44:50 Stored server mcp/mapbox in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/mapbox-devkit
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/mapbox-devkit
+2025/11/04 15:44:50 Checking config extraction for server mcp/mapbox-devkit with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/mapbox-devkit
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/mapbox-devkit, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/mapbox-devkit
+2025/11/04 15:44:50 Successfully extracted config for mcp/mapbox-devkit
+2025/11/04 15:44:50 Stored server mcp/mapbox-devkit in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/mcp-code-interpreter
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/mcp-code-interpreter
+2025/11/04 15:44:50 Checking config extraction for server mcp/mcp-code-interpreter with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/mcp-code-interpreter
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/mcp-code-interpreter, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/mcp-code-interpreter
+2025/11/04 15:44:50 Successfully extracted config for mcp/mcp-code-interpreter
+2025/11/04 15:44:50 Stored server mcp/mcp-code-interpreter in local registry
+2025/11/04 15:44:50 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:50 Looking for packages in serverData for mcp/teamwork
+2025/11/04 15:44:50 Found 1 packages (map[]) for server mcp/teamwork
+2025/11/04 15:44:50 Checking config extraction for server mcp/teamwork with source docker-mcp, packages count: 1
+2025/11/04 15:44:50 Source is docker-mcp, extracting config for server mcp/teamwork
+2025/11/04 15:44:50 Checking package 0: identifier=mcp/teamwork, type=oci
+2025/11/04 15:44:50 Extracting config for Docker image: mcp/teamwork
+2025/11/04 15:44:51 Successfully extracted config for mcp/teamwork
+2025/11/04 15:44:51 Stored server mcp/teamwork in local registry
+2025/11/04 15:44:51 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:51 Looking for packages in serverData for mcp/schemacrawler-ai
+2025/11/04 15:44:51 Found 1 packages (map[]) for server mcp/schemacrawler-ai
+2025/11/04 15:44:51 Checking config extraction for server mcp/schemacrawler-ai with source docker-mcp, packages count: 1
+2025/11/04 15:44:51 Source is docker-mcp, extracting config for server mcp/schemacrawler-ai
+2025/11/04 15:44:51 Checking package 0: identifier=mcp/schemacrawler-ai, type=oci
+2025/11/04 15:44:51 Extracting config for Docker image: mcp/schemacrawler-ai
+2025/11/04 15:44:51 Successfully extracted config for mcp/schemacrawler-ai
+2025/11/04 15:44:51 Stored server mcp/schemacrawler-ai in local registry
+2025/11/04 15:44:51 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:51 Looking for packages in serverData for mcp/ast-grep
+2025/11/04 15:44:51 Found 1 packages (map[]) for server mcp/ast-grep
+2025/11/04 15:44:51 Checking config extraction for server mcp/ast-grep with source docker-mcp, packages count: 1
+2025/11/04 15:44:51 Source is docker-mcp, extracting config for server mcp/ast-grep
+2025/11/04 15:44:51 Checking package 0: identifier=mcp/ast-grep, type=oci
+2025/11/04 15:44:51 Extracting config for Docker image: mcp/ast-grep
+2025/11/04 15:44:51 Successfully extracted config for mcp/ast-grep
+2025/11/04 15:44:51 Stored server mcp/ast-grep in local registry
+2025/11/04 15:44:51 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:51 Looking for packages in serverData for mcp/charmhealth-mcp-server
+2025/11/04 15:44:51 Found 1 packages (map[]) for server mcp/charmhealth-mcp-server
+2025/11/04 15:44:51 Checking config extraction for server mcp/charmhealth-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:51 Source is docker-mcp, extracting config for server mcp/charmhealth-mcp-server
+2025/11/04 15:44:51 Checking package 0: identifier=mcp/charmhealth-mcp-server, type=oci
+2025/11/04 15:44:51 Extracting config for Docker image: mcp/charmhealth-mcp-server
+2025/11/04 15:44:51 Successfully extracted config for mcp/charmhealth-mcp-server
+2025/11/04 15:44:51 Stored server mcp/charmhealth-mcp-server in local registry
+2025/11/04 15:44:51 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:51 Looking for packages in serverData for mcp/mcp-python-refactoring
+2025/11/04 15:44:51 Found 1 packages (map[]) for server mcp/mcp-python-refactoring
+2025/11/04 15:44:51 Checking config extraction for server mcp/mcp-python-refactoring with source docker-mcp, packages count: 1
+2025/11/04 15:44:51 Source is docker-mcp, extracting config for server mcp/mcp-python-refactoring
+2025/11/04 15:44:51 Checking package 0: identifier=mcp/mcp-python-refactoring, type=oci
+2025/11/04 15:44:51 Extracting config for Docker image: mcp/mcp-python-refactoring
+2025/11/04 15:44:52 Successfully extracted config for mcp/mcp-python-refactoring
+2025/11/04 15:44:52 Stored server mcp/mcp-python-refactoring in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/pomodash
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/pomodash
+2025/11/04 15:44:52 Checking config extraction for server mcp/pomodash with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/pomodash
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/pomodash, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/pomodash
+2025/11/04 15:44:52 Successfully extracted config for mcp/pomodash
+2025/11/04 15:44:52 Stored server mcp/pomodash in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/neo4j-data-modeling
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/neo4j-data-modeling
+2025/11/04 15:44:52 Checking config extraction for server mcp/neo4j-data-modeling with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/neo4j-data-modeling
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/neo4j-data-modeling, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/neo4j-data-modeling
+2025/11/04 15:44:52 Failed to extract config for mcp/neo4j-data-modeling: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/neo4j-data-modeling in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/oracle
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/oracle
+2025/11/04 15:44:52 Checking config extraction for server mcp/oracle with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/oracle
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/oracle, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/oracle
+2025/11/04 15:44:52 Failed to extract config for mcp/oracle: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/oracle in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/postman
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/postman
+2025/11/04 15:44:52 Checking config extraction for server mcp/postman with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/postman
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/postman, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/postman
+2025/11/04 15:44:52 Failed to extract config for mcp/postman: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/postman in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/hackernews-mcp
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/hackernews-mcp
+2025/11/04 15:44:52 Checking config extraction for server mcp/hackernews-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/hackernews-mcp
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/hackernews-mcp, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/hackernews-mcp
+2025/11/04 15:44:52 Failed to extract config for mcp/hackernews-mcp: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/hackernews-mcp in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/openapi
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/openapi
+2025/11/04 15:44:52 Checking config extraction for server mcp/openapi with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/openapi
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/openapi, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/openapi
+2025/11/04 15:44:52 Failed to extract config for mcp/openapi: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/openapi in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/unreal-engine-mcp-server
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/unreal-engine-mcp-server
+2025/11/04 15:44:52 Checking config extraction for server mcp/unreal-engine-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/unreal-engine-mcp-server
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/unreal-engine-mcp-server, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/unreal-engine-mcp-server
+2025/11/04 15:44:52 Failed to extract config for mcp/unreal-engine-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:52 Stored server mcp/unreal-engine-mcp-server in local registry
+2025/11/04 15:44:52 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:52 Looking for packages in serverData for mcp/vuln-nist-mcp-server
+2025/11/04 15:44:52 Found 1 packages (map[]) for server mcp/vuln-nist-mcp-server
+2025/11/04 15:44:52 Checking config extraction for server mcp/vuln-nist-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:52 Source is docker-mcp, extracting config for server mcp/vuln-nist-mcp-server
+2025/11/04 15:44:52 Checking package 0: identifier=mcp/vuln-nist-mcp-server, type=oci
+2025/11/04 15:44:52 Extracting config for Docker image: mcp/vuln-nist-mcp-server
+2025/11/04 15:44:53 Failed to extract config for mcp/vuln-nist-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/vuln-nist-mcp-server in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/ros2
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/ros2
+2025/11/04 15:44:53 Checking config extraction for server mcp/ros2 with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/ros2
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/ros2, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/ros2
+2025/11/04 15:44:53 Failed to extract config for mcp/ros2: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/ros2 in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/kubectl-mcp-server
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/kubectl-mcp-server
+2025/11/04 15:44:53 Checking config extraction for server mcp/kubectl-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/kubectl-mcp-server
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/kubectl-mcp-server, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/kubectl-mcp-server
+2025/11/04 15:44:53 Failed to extract config for mcp/kubectl-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/kubectl-mcp-server in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/df-mcp
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/df-mcp
+2025/11/04 15:44:53 Checking config extraction for server mcp/df-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/df-mcp
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/df-mcp, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/df-mcp
+2025/11/04 15:44:53 Failed to extract config for mcp/df-mcp: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/df-mcp in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/airtable-mcp-server
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/airtable-mcp-server
+2025/11/04 15:44:53 Checking config extraction for server mcp/airtable-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/airtable-mcp-server
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/airtable-mcp-server, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/airtable-mcp-server
+2025/11/04 15:44:53 Failed to extract config for mcp/airtable-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/airtable-mcp-server in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/quantconnect
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/quantconnect
+2025/11/04 15:44:53 Checking config extraction for server mcp/quantconnect with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/quantconnect
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/quantconnect, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/quantconnect
+2025/11/04 15:44:53 Failed to extract config for mcp/quantconnect: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/quantconnect in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/stackhawk
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/stackhawk
+2025/11/04 15:44:53 Checking config extraction for server mcp/stackhawk with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/stackhawk
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/stackhawk, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/stackhawk
+2025/11/04 15:44:53 Failed to extract config for mcp/stackhawk: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/stackhawk in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/zerodha-kite
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/zerodha-kite
+2025/11/04 15:44:53 Checking config extraction for server mcp/zerodha-kite with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/zerodha-kite
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/zerodha-kite, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/zerodha-kite
+2025/11/04 15:44:53 Failed to extract config for mcp/zerodha-kite: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/zerodha-kite in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/explorium
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/explorium
+2025/11/04 15:44:53 Checking config extraction for server mcp/explorium with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/explorium
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/explorium, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/explorium
+2025/11/04 15:44:53 Failed to extract config for mcp/explorium: Docker Hub returned status 429
+2025/11/04 15:44:53 Stored server mcp/explorium in local registry
+2025/11/04 15:44:53 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:53 Looking for packages in serverData for mcp/maestro-mcp-server
+2025/11/04 15:44:53 Found 1 packages (map[]) for server mcp/maestro-mcp-server
+2025/11/04 15:44:53 Checking config extraction for server mcp/maestro-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:53 Source is docker-mcp, extracting config for server mcp/maestro-mcp-server
+2025/11/04 15:44:53 Checking package 0: identifier=mcp/maestro-mcp-server, type=oci
+2025/11/04 15:44:53 Extracting config for Docker image: mcp/maestro-mcp-server
+2025/11/04 15:44:54 Failed to extract config for mcp/maestro-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/maestro-mcp-server in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/reddit-mcp
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/reddit-mcp
+2025/11/04 15:44:54 Checking config extraction for server mcp/reddit-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/reddit-mcp
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/reddit-mcp, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/reddit-mcp
+2025/11/04 15:44:54 Failed to extract config for mcp/reddit-mcp: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/reddit-mcp in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/google-maps-comprehensive
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/google-maps-comprehensive
+2025/11/04 15:44:54 Checking config extraction for server mcp/google-maps-comprehensive with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/google-maps-comprehensive
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/google-maps-comprehensive, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/google-maps-comprehensive
+2025/11/04 15:44:54 Failed to extract config for mcp/google-maps-comprehensive: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/google-maps-comprehensive in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/rust-mcp-filesystem
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/rust-mcp-filesystem
+2025/11/04 15:44:54 Checking config extraction for server mcp/rust-mcp-filesystem with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/rust-mcp-filesystem
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/rust-mcp-filesystem, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/rust-mcp-filesystem
+2025/11/04 15:44:54 Failed to extract config for mcp/rust-mcp-filesystem: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/rust-mcp-filesystem in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/browserbase
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/browserbase
+2025/11/04 15:44:54 Checking config extraction for server mcp/browserbase with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/browserbase
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/browserbase, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/browserbase
+2025/11/04 15:44:54 Failed to extract config for mcp/browserbase: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/browserbase in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/cylera-mcp-server
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/cylera-mcp-server
+2025/11/04 15:44:54 Checking config extraction for server mcp/cylera-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/cylera-mcp-server
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/cylera-mcp-server, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/cylera-mcp-server
+2025/11/04 15:44:54 Failed to extract config for mcp/cylera-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/cylera-mcp-server in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/next-devtools-mcp
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/next-devtools-mcp
+2025/11/04 15:44:54 Checking config extraction for server mcp/next-devtools-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/next-devtools-mcp
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/next-devtools-mcp, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/next-devtools-mcp
+2025/11/04 15:44:54 Failed to extract config for mcp/next-devtools-mcp: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/next-devtools-mcp in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/sqlite-mcp-server
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/sqlite-mcp-server
+2025/11/04 15:44:54 Checking config extraction for server mcp/sqlite-mcp-server with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/sqlite-mcp-server
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/sqlite-mcp-server, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/sqlite-mcp-server
+2025/11/04 15:44:54 Failed to extract config for mcp/sqlite-mcp-server: Docker Hub returned status 429
+2025/11/04 15:44:54 Stored server mcp/sqlite-mcp-server in local registry
+2025/11/04 15:44:54 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:54 Looking for packages in serverData for mcp/thingsboard
+2025/11/04 15:44:54 Found 1 packages (map[]) for server mcp/thingsboard
+2025/11/04 15:44:54 Checking config extraction for server mcp/thingsboard with source docker-mcp, packages count: 1
+2025/11/04 15:44:54 Source is docker-mcp, extracting config for server mcp/thingsboard
+2025/11/04 15:44:54 Checking package 0: identifier=mcp/thingsboard, type=oci
+2025/11/04 15:44:54 Extracting config for Docker image: mcp/thingsboard
+2025/11/04 15:44:55 Failed to extract config for mcp/thingsboard: Docker Hub returned status 429
+2025/11/04 15:44:55 Stored server mcp/thingsboard in local registry
+2025/11/04 15:44:55 Server data not found in expected structure, falling back to direct access
+2025/11/04 15:44:55 Looking for packages in serverData for mcp/gemini-api-docs-mcp
+2025/11/04 15:44:55 Found 1 packages (map[]) for server mcp/gemini-api-docs-mcp
+2025/11/04 15:44:55 Checking config extraction for server mcp/gemini-api-docs-mcp with source docker-mcp, packages count: 1
+2025/11/04 15:44:55 Source is docker-mcp, extracting config for server mcp/gemini-api-docs-mcp
+2025/11/04 15:44:55 Checking package 0: identifier=mcp/gemini-api-docs-mcp, type=oci
+2025/11/04 15:44:55 Extracting config for Docker image: mcp/gemini-api-docs-mcp
+2025/11/04 15:44:55 Failed to extract config for mcp/gemini-api-docs-mcp: Docker Hub returned status 429
+2025/11/04 15:44:55 Stored server mcp/gemini-api-docs-mcp in local registry

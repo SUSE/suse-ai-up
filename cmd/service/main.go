@@ -100,6 +100,7 @@ func main() {
 	mcpStore := service.NewInMemoryMCPServerStore()
 	registryManager := service.NewRegistryManager(mcpStore, true, 24*time.Hour, []string{})
 	registryHandler := handlers.NewRegistryHandler(mcpStore, registryManager)
+	deploymentHandler := handlers.NewDeploymentHandler(registryHandler, kubeWrapper)
 
 	// Initialize plugin service framework
 	serviceManager := plugins.NewServiceManager(cfg)
@@ -163,6 +164,14 @@ func main() {
 	r.GET("/registry/:id", registryHandler.GetMCPServer)
 	r.PUT("/registry/:id", registryHandler.UpdateMCPServer)
 	r.DELETE("/registry/:id", registryHandler.DeleteMCPServer)
+
+	// Deployment routes (protected)
+	protected := r.Group("/")
+	protected.Use(auth.DevelopmentAuthMiddleware()) // TODO: Use proper auth based on authMode
+	{
+		protected.GET("/deployment/config/*serverId", deploymentHandler.GetMCPConfig)
+		protected.POST("/deployment/deploy", deploymentHandler.DeployMCP)
+	}
 
 	// Plugin service routes
 	pluginsGroup := r.Group("/plugins")

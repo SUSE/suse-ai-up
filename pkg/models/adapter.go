@@ -121,6 +121,15 @@ type ScanJob struct {
 	Error     string             `json:"error,omitempty"`
 }
 
+// MCPConfigTemplate represents a deployment configuration template for MCP servers
+type MCPConfigTemplate struct {
+	Command   string            `json:"command"`         // docker, node, python, etc.
+	Args      []string          `json:"args,omitempty"`  // command arguments
+	Env       map[string]string `json:"env,omitempty"`   // environment variables
+	Transport string            `json:"transport"`       // stdio, http, sse, websocket
+	Image     string            `json:"image,omitempty"` // Docker image if applicable
+}
+
 // MCPServer represents an MCP server entry (enhanced to match MCP registry schema)
 type MCPServer struct {
 	ID               string                 `json:"id"`
@@ -132,7 +141,8 @@ type MCPServer struct {
 	ValidationStatus string                 `json:"validation_status"` // new, approved, certified
 	DiscoveredAt     time.Time              `json:"discovered_at"`
 	Tools            []MCPTool              `json:"tools,omitempty"`
-	Meta             map[string]interface{} `json:"_meta,omitempty"` // Registry metadata
+	Meta             map[string]interface{} `json:"_meta,omitempty"`           // Registry metadata
+	ConfigTemplate   *MCPConfigTemplate     `json:"config_template,omitempty"` // Docker/K8s deployment config
 
 	// Legacy fields for backward compatibility
 	URL      string `json:"url,omitempty"`

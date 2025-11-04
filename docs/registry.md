@@ -170,6 +170,90 @@ Remove an MCP server from the registry.
 DELETE /registry/{id}
 ```
 
+## Deployment Endpoints
+
+The registry includes deployment capabilities for MCP servers, allowing you to deploy Docker-based MCP servers directly to Kubernetes clusters.
+
+### Get Configuration Template
+
+Retrieve the deployment configuration template for an MCP server, including required environment variables and transport settings.
+
+```http
+GET /deployment/config/{serverId}
+```
+
+**Response**:
+```json
+{
+  "command": "docker",
+  "args": ["run", "--rm", "-i", "mcp/filesystem"],
+  "env": {
+    "API_KEY": "",
+    "SECRET_TOKEN": ""
+  },
+  "transport": "stdio",
+  "image": "mcp/filesystem"
+}
+```
+
+**Example**:
+```bash
+curl http://localhost:8911/deployment/config/docker-mcp-filesystem
+```
+
+### Deploy MCP Server
+
+Deploy an MCP server to Kubernetes with provided configuration.
+
+```http
+POST /deployment/deploy
+Content-Type: application/json
+
+{
+  "server_id": "docker-mcp-filesystem",
+  "env_vars": {
+    "API_KEY": "your-api-key-here",
+    "SECRET_TOKEN": "your-secret-token"
+  },
+  "replicas": 1,
+  "resources": {
+    "cpu": "500m",
+    "memory": "512Mi"
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "server_id": "docker-mcp-filesystem",
+  "deployment_id": "mcp-docker-mcp-filesystem-123456",
+  "status": "deployed"
+}
+```
+
+**Required Environment Variables**: All environment variables defined in the configuration template must be provided. Missing variables will result in a 400 Bad Request error.
+
+**Transport Types**:
+- **stdio**: Deploys as a Deployment with no Service (local communication)
+- **http/sse**: Deploys as a Deployment with a ClusterIP Service for network access
+
+**Example Deployment**:
+```bash
+# Get configuration template
+CONFIG=$(curl http://localhost:8911/deployment/config/docker-mcp-brave-search)
+
+# Deploy with environment variables
+curl -X POST http://localhost:8911/deployment/deploy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "server_id": "docker-mcp-brave-search",
+    "env_vars": {
+      "BRAVE_API_KEY": "your-brave-api-key"
+    }
+  }'
+```
+
 ## Registry Management Scripts
 
 The repository includes scripts to help manage the registry:
@@ -265,6 +349,33 @@ go run scripts/publish_servers.go docker
 - **sse**: Server-sent events
 - **websocket**: WebSocket communication
 - **http**: HTTP-based communication
+
+### Configuration Template Format
+
+Docker-based MCP servers include a `config_template` field that provides deployment configuration extracted from Docker Hub documentation.
+
+```json
+{
+  "command": "docker",
+  "args": ["run", "--rm", "-i", "mcp/server-name"],
+  "env": {
+    "API_KEY": "",
+    "SECRET_TOKEN": "",
+    "DATABASE_URL": ""
+  },
+  "transport": "stdio",
+  "image": "mcp/server-name"
+}
+```
+
+**Fields**:
+- **command**: The command to run (usually "docker")
+- **args**: Command arguments including the Docker run command and image
+- **env**: Required environment variables (empty values indicate user must provide)
+- **transport**: Communication protocol ("stdio", "http", "sse")
+- **image**: Docker image name for deployment
+
+**Environment Variable Extraction**: The system automatically extracts required environment variables from Docker Hub README files and configuration examples, identifying API keys, tokens, and other secrets that need to be provided during deployment.
 
 ## Examples
 
