@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  models.AdapterAuthConfig:
+    properties:
+      required:
+        description: true = require auth, false = optional
+        type: boolean
+      token:
+        description: For bearer token validation
+        type: string
+      type:
+        description: '"bearer", "oauth", "none"'
+        type: string
+    type: object
   models.AdapterData:
     properties:
       args:
@@ -8,6 +20,10 @@ definitions:
         items:
           type: string
         type: array
+      authentication:
+        allOf:
+        - $ref: '#/definitions/models.AdapterAuthConfig'
+        description: Authentication configuration
       command:
         description: For local stdio
         example: python
@@ -29,6 +45,10 @@ definitions:
       imageVersion:
         example: latest
         type: string
+      mcpClientConfig:
+        allOf:
+        - $ref: '#/definitions/models.MCPClientConfig'
+        description: For MCP client configuration (alternative to Command/Args)
       name:
         example: my-adapter
         type: string
@@ -46,8 +66,6 @@ definitions:
       useWorkloadIdentity:
         example: false
         type: boolean
-    required:
-    - name
     type: object
   models.AdapterResource:
     properties:
@@ -57,6 +75,10 @@ definitions:
         items:
           type: string
         type: array
+      authentication:
+        allOf:
+        - $ref: '#/definitions/models.AdapterAuthConfig'
+        description: Authentication configuration
       command:
         description: For local stdio
         example: python
@@ -88,6 +110,10 @@ definitions:
         type: string
       lastUpdatedAt:
         type: string
+      mcpClientConfig:
+        allOf:
+        - $ref: '#/definitions/models.MCPClientConfig'
+        description: For MCP client configuration (alternative to Command/Args)
       name:
         example: my-adapter
         type: string
@@ -105,8 +131,6 @@ definitions:
       useWorkloadIdentity:
         example: false
         type: boolean
-    required:
-    - name
     type: object
   models.AdapterStatus:
     properties:
@@ -156,12 +180,18 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      name:
+        example: MCP Example Server
+        type: string
       protocol:
         allOf:
         - $ref: '#/definitions/models.ServerProtocol'
         example: MCP
       status:
         example: healthy
+        type: string
+      vulnerability_score:
+        example: high
         type: string
     type: object
   models.EnvironmentVariable:
@@ -179,6 +209,13 @@ definitions:
         type: boolean
       name:
         type: string
+    type: object
+  models.MCPClientConfig:
+    properties:
+      mcpServers:
+        additionalProperties:
+          $ref: '#/definitions/models.MCPServerConfig'
+        type: object
     type: object
   models.MCPServer:
     properties:
@@ -213,6 +250,15 @@ definitions:
         description: new, approved, certified
         type: string
       version:
+        type: string
+    type: object
+  models.MCPServerConfig:
+    properties:
+      args:
+        items:
+          type: string
+        type: array
+      command:
         type: string
     type: object
   models.MCPTool:
@@ -250,19 +296,30 @@ definitions:
     type: object
   models.ScanConfig:
     properties:
+      excludeAddresses:
+        description: Additional addresses to skip
+        items:
+          type: string
+        type: array
+      excludeProxy:
+        description: 'Default: true'
+        example: true
+        type: boolean
       maxConcurrent:
         example: 10
         type: integer
       ports:
         example:
-        - 8000
-        - 3000
+        - "8000"
+        - "8001"
+        - 9000-9100
         items:
-          type: integer
+          type: string
         type: array
       scanRanges:
         example:
         - 192.168.1.0/24
+        - 10.0.0.1-10.0.0.10
         items:
           type: string
         type: array
@@ -350,12 +407,10 @@ definitions:
     enum:
     - smartagents
     - registry
-    - virtualmcp
     type: string
     x-enum-varnames:
     - ServiceTypeSmartAgents
     - ServiceTypeRegistry
-    - ServiceTypeVirtualMCP
   service.BulkSessionDeleteResponse:
     properties:
       adapterName:
@@ -929,7 +984,7 @@ paths:
     get:
       description: Get all services of a specific type
       parameters:
-      - description: Service type (smartagents, registry, virtualmcp)
+      - description: Service type (smartagents, registry)
         in: path
         name: serviceType
         required: true
@@ -1173,7 +1228,63 @@ paths:
       summary: Upload multiple registry entries
       tags:
       - registry
+  /registry/upload/local-mcp:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload Python scripts and configuration for a local STDIO MCP server
+      parameters:
+      - description: MCP server name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: MCP server description
+        in: formData
+        name: description
+        type: string
+      - description: MCP client configuration JSON
+        in: formData
+        name: config
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Python script files and requirements.txt
+        in: formData
+        items:
+          type: file
+        name: files
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a local MCP server implementation
+      tags:
+      - registry
   /scan:
+    get:
+      description: Retrieve all scan jobs (active and completed)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ScanJob'
+            type: array
+      summary: List all scan jobs
+      tags:
+      - scan
     post:
       consumes:
       - application/json

@@ -1,0 +1,282 @@
+{
+  "servers": [
+    {
+      "id": "docker-1",
+      "name": "@modelcontextprotocol/server-everything",
+      "description": "MCP server that exercises all the features of the MCP protocol",
+      "repository": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+        "source": "github"
+      },
+      "version": "0.6.2",
+      "packages": [
+        {
+          "registryType": "oci",
+          "identifier": "mcp/everything",
+          "transport": {
+            "type": "stdio"
+          }
+        }
+      ],
+      "validation_status": "new",
+      "discovered_at": "2025-11-04T12:57:45.86261+01:00",
+      "_meta": {
+        "source": "docker-mcp"
+      }
+    },
+    {
+      "id": "docker-2",
+      "name": "@modelcontextprotocol/server-filesystem",
+      "description": "MCP server for filesystem access",
+      "repository": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+        "source": "github"
+      },
+      "version": "0.6.3",
+      "packages": [
+        {
+          "registryType": "oci",
+          "identifier": "mcp/filesystem",
+          "transport": {
+            "type": "stdio"
+          }
+        }
+      ],
+      "validation_status": "new",
+      "discovered_at": "2025-11-04T12:57:45.862687+01:00",
+      "tools": [
+        {
+          "name": "read_text_file",
+          "description": "- Read complete contents of a file as text",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "read_media_file",
+          "description": "- Read an image or audio file",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "read_multiple_files",
+          "description": "- Read multiple files simultaneously",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "write_file",
+          "description": "- Create new file or overwrite existing (exercise caution with this)",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "edit_file",
+          "description": "- Make selective edits using advanced pattern matching and formatting",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "create_directory",
+          "description": "- Create new directory or ensure it exists",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "list_directory",
+          "description": "- List directory contents with [FILE] or [DIR] prefixes",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "list_directory_with_sizes",
+          "description": "- List directory contents with [FILE] or [DIR] prefixes, including file sizes",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "move_file",
+          "description": "- Move or rename files and directories",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "search_files",
+          "description": "- Recursively search for files/directories that match or do not match patterns",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "directory_tree",
+          "description": "- Get recursive JSON tree structure of directory contents",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "get_file_info",
+          "description": "- Get detailed file/directory metadata",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "list_allowed_directories",
+          "description": "- List all directories the server is allowed to access",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        }
+      ],
+      "_meta": {
+        "source": "docker-mcp"
+      }
+    },
+    {
+      "id": "docker-3",
+      "name": "@modelcontextprotocol/server-memory",
+      "description": "MCP server for enabling memory for Claude through a knowledge graph",
+      "repository": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+        "source": "github"
+      },
+      "version": "0.6.3",
+      "packages": [
+        {
+          "registryType": "oci",
+          "identifier": "mcp/memory",
+          "transport": {
+            "type": "stdio"
+          }
+        }
+      ],
+      "validation_status": "new",
+      "discovered_at": "2025-11-04T12:57:45.862733+01:00",
+      "tools": [
+        {
+          "name": "create_entities",
+          "description": "- Create multiple new entities in the knowledge graph",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "create_relations",
+          "description": "- Create multiple new relations between entities",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "add_observations",
+          "description": "- Add new observations to existing entities",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "delete_entities",
+          "description": "- Remove entities and their relations",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "delete_observations",
+          "description": "- Remove specific observations from entities",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "delete_relations",
+          "description": "- Remove specific relations from the graph",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "read_graph",
+          "description": "- Read the entire knowledge graph",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "search_nodes",
+          "description": "- Search for nodes based on query",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "name": "open_nodes",
+          "description": "- Retrieve specific nodes by name",
+          "input_schema": {
+            "properties": {},
+            "type": "object"
+          }
+        }
+      ],
+      "_meta": {
+        "source": "docker-mcp"
+      }
+    },
+    {
+      "id": "docker-4",
+      "name": "@modelcontextprotocol/server-sequential-thinking",
+      "description": "MCP server for sequential thinking and problem solving",
+      "repository": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+        "source": "github"
+      },
+      "version": "0.6.2",
+      "packages": [
+        {
+          "registryType": "oci",
+          "identifier": "mcp/sequentialthinking",
+          "transport": {
+            "type": "stdio"
+          }
+        }
+      ],
+      "validation_status": "new",
+      "discovered_at": "2025-11-04T12:57:45.862759+01:00",
+      "_meta": {
+        "source": "docker-mcp"
+      }
+    }
+  ],
+  "source": "docker-mcp",
+  "timestamp": "2025-11-04T12:57:45+01:00"
+}

@@ -960,6 +960,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/registry/upload/local-mcp": {
+            "post": {
+                "description": "Upload Python scripts and configuration for a local STDIO MCP server",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload a local MCP server implementation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP server name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP server description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP client configuration JSON",
+                        "name": "config",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "file"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Python script files and requirements.txt",
+                        "name": "files",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/registry/{id}": {
             "get": {
                 "description": "Retrieve a specific MCP server configuration",
@@ -1074,6 +1136,27 @@ const docTemplate = `{
             }
         },
         "/scan": {
+            "get": {
+                "description": "Retrieve all scan jobs (active and completed)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scan"
+                ],
+                "summary": "List all scan jobs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ScanJob"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Initiates a network scan to discover MCP servers",
                 "consumes": [
@@ -1174,11 +1257,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.AdapterAuthConfig": {
+            "type": "object",
+            "properties": {
+                "required": {
+                    "description": "true = require auth, false = optional",
+                    "type": "boolean"
+                },
+                "token": {
+                    "description": "For bearer token validation",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"bearer\", \"oauth\", \"none\"",
+                    "type": "string"
+                }
+            }
+        },
         "models.AdapterData": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "args": {
                     "type": "array",
@@ -1187,6 +1284,14 @@ const docTemplate = `{
                     },
                     "example": [
                         "my_server.py"
+                    ]
+                },
+                "authentication": {
+                    "description": "Authentication configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
                     ]
                 },
                 "command": {
@@ -1220,6 +1325,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "latest"
                 },
+                "mcpClientConfig": {
+                    "description": "For MCP client configuration (alternative to Command/Args)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPClientConfig"
+                        }
+                    ]
+                },
                 "name": {
                     "type": "string",
                     "example": "my-adapter"
@@ -1249,9 +1362,6 @@ const docTemplate = `{
         },
         "models.AdapterResource": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "args": {
                     "type": "array",
@@ -1260,6 +1370,14 @@ const docTemplate = `{
                     },
                     "example": [
                         "my_server.py"
+                    ]
+                },
+                "authentication": {
+                    "description": "Authentication configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
                     ]
                 },
                 "command": {
@@ -1306,6 +1424,14 @@ const docTemplate = `{
                 },
                 "lastUpdatedAt": {
                     "type": "string"
+                },
+                "mcpClientConfig": {
+                    "description": "For MCP client configuration (alternative to Command/Args)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPClientConfig"
+                        }
+                    ]
                 },
                 "name": {
                     "type": "string",
@@ -1402,6 +1528,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "name": {
+                    "type": "string",
+                    "example": "MCP Example Server"
+                },
                 "protocol": {
                     "allOf": [
                         {
@@ -1413,6 +1543,10 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "healthy"
+                },
+                "vulnerability_score": {
+                    "type": "string",
+                    "example": "high"
                 }
             }
         },
@@ -1436,6 +1570,17 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "models.MCPClientConfig": {
+            "type": "object",
+            "properties": {
+                "mcpServers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.MCPServerConfig"
+                    }
                 }
             }
         },
@@ -1486,6 +1631,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPServerConfig": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "command": {
                     "type": "string"
                 }
             }
@@ -1542,6 +1701,18 @@ const docTemplate = `{
         "models.ScanConfig": {
             "type": "object",
             "properties": {
+                "excludeAddresses": {
+                    "description": "Additional addresses to skip",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludeProxy": {
+                    "description": "Default: true",
+                    "type": "boolean",
+                    "example": true
+                },
                 "maxConcurrent": {
                     "type": "integer",
                     "example": 10
@@ -1549,11 +1720,12 @@ const docTemplate = `{
                 "ports": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     },
                     "example": [
-                        8000,
-                        3000
+                        "8000",
+                        "8001",
+                        "9000-9100"
                     ]
                 },
                 "scanRanges": {
@@ -1562,7 +1734,8 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "192.168.1.0/24"
+                        "192.168.1.0/24",
+                        "10.0.0.1-10.0.0.10"
                     ]
                 },
                 "timeout": {
