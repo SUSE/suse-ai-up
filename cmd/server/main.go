@@ -1,3 +1,4 @@
+// @BasePath /api/v1
 package main
 
 import (
@@ -37,6 +38,7 @@ func main() {
 	deploymentHandler := handlers.NewDeploymentHandler(registryHandler, nil) // TODO: Add Kubernetes client
 	tokenHandler := handlers.NewTokenHandler(adapterStore, tokenManager)
 	mcpAuthHandler := handlers.NewMCPAuthHandler(adapterStore, nil) // TODO: Add auth integration service
+	discoveryHandler := handlers.NewDiscoveryHandler(networkScanner)
 
 	// Setup router
 	router := gin.New()
@@ -124,52 +126,9 @@ func main() {
 		// Discovery endpoints
 		discovery := v1.Group("/discovery")
 		{
-			// @Summary Scan for MCP servers
-			// @Description Performs network scanning to discover MCP servers
-			// @Tags discovery
-			// @Produce json
-			// @Success 200 {object} map[string]interface{}{discovered:[]models.DiscoveredServer,errors:[]error,count:int}
-			// @Router /api/v1/discovery/scan [post]
-			discovery.POST("/scan", func(c *gin.Context) {
-				// Perform network scan
-				results, errors := networkScanner.Scan()
-				c.JSON(200, gin.H{
-					"discovered": results,
-					"errors":     errors,
-					"count":      len(results),
-				})
-			})
-			// @Summary List discovered servers
-			// @Description Returns all discovered MCP servers
-			// @Tags discovery
-			// @Produce json
-			// @Success 200 {object} map[string]interface{}{servers:[]models.DiscoveredServer,count:int}
-			// @Router /api/v1/discovery/servers [get]
-			discovery.GET("/servers", func(c *gin.Context) {
-				// Get all discovered servers
-				servers := networkScanner.GetAllDiscoveredServers()
-				c.JSON(200, gin.H{
-					"servers": servers,
-					"count":   len(servers),
-				})
-			})
-			// @Summary Get discovered server
-			// @Description Returns a specific discovered MCP server by ID
-			// @Tags discovery
-			// @Produce json
-			// @Param id path string true "Server ID"
-			// @Success 200 {object} models.DiscoveredServer
-			// @Failure 404 {object} map[string]string{error:string}
-			// @Router /api/v1/discovery/servers/{id} [get]
-			discovery.GET("/servers/:id", func(c *gin.Context) {
-				// Get specific discovered server
-				server := networkScanner.GetDiscoveredServer(c.Param("id"))
-				if server == nil {
-					c.JSON(404, gin.H{"error": "Server not found"})
-					return
-				}
-				c.JSON(200, server)
-			})
+			discovery.POST("/scan", discoveryHandler.ScanForMCPServers)
+			discovery.GET("/servers", discoveryHandler.ListDiscoveredServers)
+			discovery.GET("/servers/:id", discoveryHandler.GetDiscoveredServer)
 		}
 	}
 

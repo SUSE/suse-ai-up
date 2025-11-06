@@ -16,7 +16,7 @@ Most endpoints do not require authentication in development mode. For production
 Deploy and register a new MCP server.
 
 ```http
-POST /adapters
+POST /api/v1/adapters
 Content-Type: application/json
 ```
 
@@ -49,7 +49,7 @@ Content-Type: application/json
 List all MCP servers the user can access.
 
 ```http
-GET /adapters
+GET /api/v1/adapters
 ```
 
 **Response (200 OK):**
@@ -69,7 +69,7 @@ GET /adapters
 Retrieve metadata for a specific adapter.
 
 ```http
-GET /adapters/{name}
+GET /api/v1/adapters/{name}
 ```
 
 **Parameters:**
@@ -95,7 +95,7 @@ GET /adapters/{name}
 Check the deployment status of a specific adapter.
 
 ```http
-GET /adapters/{name}/status
+GET /api/v1/adapters/{name}/status
 ```
 
 **Parameters:**
@@ -116,7 +116,7 @@ GET /adapters/{name}/status
 Access the running logs of a specific adapter.
 
 ```http
-GET /adapters/{name}/logs
+GET /api/v1/adapters/{name}/logs
 ```
 
 **Parameters:**
@@ -135,7 +135,7 @@ GET /adapters/{name}/logs
 Update the deployment configuration of an adapter.
 
 ```http
-PUT /adapters/{name}
+PUT /api/v1/adapters/{name}
 Content-Type: application/json
 ```
 
@@ -165,7 +165,7 @@ Content-Type: application/json
 Remove a specific adapter and clean up its resources.
 
 ```http
-DELETE /adapters/{name}
+DELETE /api/v1/adapters/{name}
 ```
 
 **Parameters:**
@@ -179,7 +179,7 @@ DELETE /adapters/{name}
 Establish an initial Server-Sent Events connection for MCP communication.
 
 ```http
-GET /adapters/{name}/sse
+GET /api/v1/adapters/{name}/sse
 Accept: text/event-stream
 ```
 
@@ -199,7 +199,7 @@ data: {"jsonrpc":"2.0","id":2,"result":{...}}
 Send subsequent requests using session_id for established sessions.
 
 ```http
-POST /adapters/{name}/messages
+POST /api/v1/adapters/{name}/messages
 Content-Type: application/json
 mcp-session-id: {sessionId}
 ```
@@ -246,7 +246,7 @@ mcp-session-id: {sessionId}
 Establish a streamable HTTP connection for MCP protocol communication.
 
 ```http
-POST /adapters/{name}/mcp
+POST /api/v1/adapters/{name}/mcp
 Content-Type: application/json
 Accept: application/json, text/event-stream
 ```
@@ -283,7 +283,7 @@ data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabili
 List all active sessions for an adapter.
 
 ```http
-GET /adapters/{name}/sessions
+GET /api/v1/adapters/{name}/sessions
 ```
 
 **Parameters:**
@@ -311,7 +311,7 @@ GET /adapters/{name}/sessions
 Get detailed information about a specific session.
 
 ```http
-GET /adapters/{name}/sessions/{sessionId}
+GET /api/v1/adapters/{name}/sessions/{sessionId}
 ```
 
 **Parameters:**
@@ -342,7 +342,7 @@ GET /adapters/{name}/sessions/{sessionId}
 Create a new session or reinitialize an existing one for an adapter.
 
 ```http
-POST /adapters/{name}/sessions
+POST /api/v1/adapters/{name}/sessions
 Content-Type: application/json
 ```
 
@@ -373,7 +373,7 @@ Content-Type: application/json
 Invalidate and remove a specific session.
 
 ```http
-DELETE /adapters/{name}/sessions/{sessionId}
+DELETE /api/v1/adapters/{name}/sessions/{sessionId}
 ```
 
 **Parameters:**
@@ -392,7 +392,7 @@ DELETE /adapters/{name}/sessions/{sessionId}
 Remove all sessions for an adapter.
 
 ```http
-DELETE /adapters/{name}/sessions
+DELETE /api/v1/adapters/{name}/sessions
 ```
 
 **Parameters:**
@@ -522,35 +522,11 @@ GET /api/v1/discovery/servers/{id}
 }
 ```
 
-### List Discovered Servers
-List all discovered MCP servers.
-
-```http
-GET /servers
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": "mcp-1761654988623408000",
-    "address": "http://127.0.0.1:8000",
-    "protocol": "MCP",
-    "connection": "SSE",
-    "status": "healthy",
-    "lastSeen": "2025-10-28T13:36:28Z",
-    "metadata": {
-      "detectionMethod": "sse"
-    }
-  }
-]
-```
-
 ### Register Discovered Server
 Register a discovered server as an adapter.
 
 ```http
-POST /register
+POST /api/v1/register
 Content-Type: application/json
 ```
 
@@ -646,7 +622,7 @@ Content-Type: application/json
 List all registered plugin services.
 
 ```http
-GET /plugins/services
+GET /api/v1/plugins/services
 ```
 
 **Response (200 OK):**
@@ -677,7 +653,7 @@ GET /plugins/services
 Register a new plugin service manually.
 
 ```http
-POST /plugins/register
+POST /api/v1/plugins/register
 Content-Type: application/json
 ```
 
@@ -710,7 +686,7 @@ Content-Type: application/json
 Check the health status of a specific service.
 
 ```http
-GET /plugins/services/{serviceId}/health
+GET /api/v1/plugins/services/{serviceId}/health
 ```
 
 **Parameters:**
@@ -732,7 +708,7 @@ GET /plugins/services/{serviceId}/health
 Remove a registered service.
 
 ```http
-DELETE /plugins/services/{serviceId}
+DELETE /api/v1/plugins/services/{serviceId}
 ```
 
 **Parameters:**

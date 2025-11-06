@@ -1,3 +1,4 @@
+basePath: /api/v1
 definitions:
   auth.TokenInfo:
     properties:
@@ -1353,6 +1354,58 @@ paths:
       summary: Deploy an MCP server
       tags:
       - deployment
+  /discovery/scan:
+    post:
+      description: Performs network scanning to discover MCP servers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Scan for MCP servers
+      tags:
+      - discovery
+  /discovery/servers:
+    get:
+      description: Returns all discovered MCP servers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List discovered servers
+      tags:
+      - discovery
+  /discovery/servers/{id}:
+    get:
+      description: Returns a specific discovered MCP server by ID
+      parameters:
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DiscoveredServer'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get discovered server
+      tags:
+      - discovery
   /plugins/register:
     post:
       consumes:
