@@ -35,7 +35,7 @@ func NewSessionManagementService(sessionStore session.SessionStore, store client
 // @Success 200 {object} SessionListResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [get]
+// @Router /api/v1/adapters/{name}/sessions [get]
 func (sms *SessionManagementService) ListSessions(c *gin.Context) {
 	name := c.Param("name")
 
@@ -71,7 +71,7 @@ func (sms *SessionManagementService) ListSessions(c *gin.Context) {
 // @Success 200 {object} session.SessionDetails
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions/{sessionId} [get]
+// @Router /api/v1/adapters/{name}/sessions/{sessionId} [get]
 func (sms *SessionManagementService) GetSession(c *gin.Context) {
 	name := c.Param("name")
 	sessionID := c.Param("sessionId")
@@ -109,7 +109,7 @@ func (sms *SessionManagementService) GetSession(c *gin.Context) {
 // @Success 200 {object} SessionDeleteResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions/{sessionId} [delete]
+// @Router /api/v1/adapters/{name}/sessions/{sessionId} [delete]
 func (sms *SessionManagementService) DeleteSession(c *gin.Context) {
 	name := c.Param("name")
 	sessionID := c.Param("sessionId")
@@ -155,7 +155,7 @@ func (sms *SessionManagementService) DeleteSession(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [post]
+// @Router /api/v1/adapters/{name}/sessions [post]
 func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 	name := c.Param("name")
 
@@ -201,7 +201,7 @@ func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 // @Success 200 {object} BulkSessionDeleteResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [delete]
+// @Router /api/v1/adapters/{name}/sessions [delete]
 func (sms *SessionManagementService) DeleteAllSessions(c *gin.Context) {
 	name := c.Param("name")
 

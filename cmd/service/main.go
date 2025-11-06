@@ -11,7 +11,7 @@
 //	@license.url	https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
 //
 //	@host		localhost:8911
-//	@BasePath	/api/v1
+//	@BasePath	/
 //
 //	@securityDefinitions.apikey	BearerAuth
 //	@in							header

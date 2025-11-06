@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   auth.TokenInfo:
     properties:
@@ -774,7 +774,7 @@ info:
   title: SUSE AI Universal Proxy - Control Plane
   version: 1.0.0
 paths:
-  /adapters:
+  /api/v1/adapters:
     get:
       description: Returns a list of all MCP server adapters that the user can access.
       produces:
@@ -822,7 +822,7 @@ paths:
       summary: Create a new MCP server adapter
       tags:
       - adapters
-  /adapters/{name}:
+  /api/v1/adapters/{name}:
     delete:
       description: Remove an MCP server adapter and its deployment.
       parameters:
@@ -905,7 +905,36 @@ paths:
       summary: Update an adapter
       tags:
       - adapters
-  /adapters/{name}/logs:
+  /api/v1/adapters/{name}/client-token:
+    get:
+      description: Retrieves a client token for authenticating with the MCP server
+        adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.ClientTokenResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get client token for adapter
+      tags:
+      - adapters
+      - authentication
+  /api/v1/adapters/{name}/logs:
     get:
       description: Access the running logs of an MCP server adapter.
       parameters:
@@ -932,7 +961,7 @@ paths:
       summary: Get adapter logs
       tags:
       - adapters
-  /adapters/{name}/sessions:
+  /api/v1/adapters/{name}/sessions:
     delete:
       description: Remove all active sessions for a specific adapter
       parameters:
@@ -1023,7 +1052,7 @@ paths:
       summary: Reinitialize a session
       tags:
       - sessions
-  /adapters/{name}/sessions/{sessionId}:
+  /api/v1/adapters/{name}/sessions/{sessionId}:
     delete:
       description: Invalidate and remove a specific session
       parameters:
@@ -1086,7 +1115,7 @@ paths:
       summary: Get session details
       tags:
       - sessions
-  /adapters/{name}/status:
+  /api/v1/adapters/{name}/status:
     get:
       description: Check the current deployment status of an MCP server adapter.
       parameters:
@@ -1113,35 +1142,6 @@ paths:
       summary: Get adapter deployment status
       tags:
       - adapters
-  /api/v1/adapters/{name}/client-token:
-    get:
-      description: Retrieves a client token for authenticating with the MCP server
-        adapter.
-      parameters:
-      - description: Adapter name
-        in: path
-        name: name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.ClientTokenResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Get client token for adapter
-      tags:
-      - adapters
-      - authentication
   /api/v1/adapters/{name}/test-auth:
     post:
       consumes:
@@ -1369,41 +1369,60 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates an adapter from a discovered MCP server with automatic
-        security configuration
+      description: Register a discovered MCP server as an adapter
       parameters:
-      - description: Registration request
+      - description: Registration request with discoveredServerId
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.RegisterRequest'
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Register discovered server
+      tags:
+      - discovery
+  /api/v1/discovery/scan:
+    get:
+      description: Retrieve all scan jobs (active and completed)
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.RegisterResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Register a discovered MCP server as an adapter
+            items:
+              $ref: '#/definitions/models.ScanJob'
+            type: array
+      summary: List all scan jobs
       tags:
-      - registration
-      - adapters
-  /api/v1/discovery/scan:
+      - scan
     post:
-      description: Performs network scanning to discover MCP servers
+      consumes:
+      - application/json
+      description: Initiates a network scan to discover MCP servers
+      parameters:
+      - description: Scan configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/models.ScanConfig'
       produces:
       - application/json
       responses:
@@ -1412,20 +1431,48 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Scan for MCP servers
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Start network scan for MCP servers
+      tags:
+      - discovery
+  /api/v1/discovery/scan/{scanId}:
+    get:
+      description: Retrieve the status and results of a network scan
+      parameters:
+      - description: Scan ID
+        in: path
+        name: scanId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ScanJob'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get scan status
       tags:
       - discovery
   /api/v1/discovery/servers:
     get:
-      description: Returns all discovered MCP servers
+      description: Retrieve all discovered MCP servers
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            items:
+              $ref: '#/definitions/models.DiscoveredServer'
+            type: array
       summary: List discovered servers
       tags:
       - discovery
@@ -1832,117 +1879,6 @@ paths:
       summary: List services by type
       tags:
       - plugins
-  /register:
-    post:
-      consumes:
-      - application/json
-      description: Register a discovered MCP server as an adapter
-      parameters:
-      - description: Registration request with discoveredServerId
-        in: body
-        name: request
-        required: true
-        schema:
-          additionalProperties:
-            type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.AdapterResource'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Register discovered server
-      tags:
-      - discovery
-  /scan:
-    get:
-      description: Retrieve all scan jobs (active and completed)
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.ScanJob'
-            type: array
-      summary: List all scan jobs
-      tags:
-      - scan
-    post:
-      consumes:
-      - application/json
-      description: Initiates a network scan to discover MCP servers
-      parameters:
-      - description: Scan configuration
-        in: body
-        name: config
-        required: true
-        schema:
-          $ref: '#/definitions/models.ScanConfig'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Start network scan for MCP servers
-      tags:
-      - discovery
-  /scan/{scanId}:
-    get:
-      description: Retrieve the status and results of a network scan
-      parameters:
-      - description: Scan ID
-        in: path
-        name: scanId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.ScanJob'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Get scan status
-      tags:
-      - discovery
-  /servers:
-    get:
-      description: Retrieve all discovered MCP servers
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.DiscoveredServer'
-            type: array
-      summary: List discovered servers
-      tags:
-      - discovery
 securityDefinitions:
   BearerAuth:
     description: Bearer token for authentication

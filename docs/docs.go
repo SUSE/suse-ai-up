@@ -22,7 +22,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/adapters": {
+        "/api/v1/adapters": {
             "get": {
                 "description": "Returns a list of all MCP server adapters that the user can access.",
                 "produces": [
@@ -95,7 +95,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}": {
+        "/api/v1/adapters/{name}": {
             "get": {
                 "description": "Retrieve details of a specific MCP server adapter including discovered capabilities.",
                 "produces": [
@@ -217,7 +217,49 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/logs": {
+        "/api/v1/adapters/{name}/client-token": {
+            "get": {
+                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Get client token for adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.ClientTokenResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/logs": {
             "get": {
                 "description": "Access the running logs of an MCP server adapter.",
                 "produces": [
@@ -258,7 +300,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/sessions": {
+        "/api/v1/adapters/{name}/sessions": {
             "get": {
                 "description": "Retrieve all active sessions for a specific MCP server adapter",
                 "produces": [
@@ -395,7 +437,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/sessions/{sessionId}": {
+        "/api/v1/adapters/{name}/sessions/{sessionId}": {
             "get": {
                 "description": "Retrieve detailed information about a specific session",
                 "produces": [
@@ -489,7 +531,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/status": {
+        "/api/v1/adapters/{name}/status": {
             "get": {
                 "description": "Check the current deployment status of an MCP server adapter.",
                 "produces": [
@@ -525,48 +567,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/adapters/{name}/client-token": {
-            "get": {
-                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "adapters",
-                    "authentication"
-                ],
-                "summary": "Get client token for adapter",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Adapter name",
-                        "name": "name",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.ClientTokenResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -905,7 +905,7 @@ const docTemplate = `{
         },
         "/api/v1/discovery/register": {
             "post": {
-                "description": "Creates an adapter from a discovered MCP server with automatic security configuration",
+                "description": "Register a discovered MCP server as an adapter",
                 "consumes": [
                     "application/json"
                 ],
@@ -913,59 +913,90 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "registration",
-                    "adapters"
+                    "discovery"
                 ],
-                "summary": "Register a discovered MCP server as an adapter",
+                "summary": "Register discovered server",
                 "parameters": [
                     {
-                        "description": "Registration request",
+                        "description": "Registration request with discoveredServerId",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.RegisterRequest"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.RegisterResponse"
+                            "$ref": "#/definitions/models.AdapterResource"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/service.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/service.ErrorResponse"
                         }
                     }
                 }
             }
         },
         "/api/v1/discovery/scan": {
+            "get": {
+                "description": "Retrieve all scan jobs (active and completed)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scan"
+                ],
+                "summary": "List all scan jobs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ScanJob"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
-                "description": "Performs network scanning to discover MCP servers",
+                "description": "Initiates a network scan to discover MCP servers",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "discovery"
                 ],
-                "summary": "Scan for MCP servers",
+                "summary": "Start network scan for MCP servers",
+                "parameters": [
+                    {
+                        "description": "Scan configuration",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ScanConfig"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -973,13 +1004,54 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan/{scanId}": {
+            "get": {
+                "description": "Retrieve the status and results of a network scan",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get scan status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan ID",
+                        "name": "scanId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ScanJob"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
                     }
                 }
             }
         },
         "/api/v1/discovery/servers": {
             "get": {
-                "description": "Returns all discovered MCP servers",
+                "description": "Retrieve all discovered MCP servers",
                 "produces": [
                     "application/json"
                 ],
@@ -991,8 +1063,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DiscoveredServer"
+                            }
                         }
                     }
                 }
@@ -1603,175 +1677,6 @@ const docTemplate = `{
                         "description": "Not Found",
                         "schema": {
                             "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/register": {
-            "post": {
-                "description": "Register a discovered MCP server as an adapter",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discovery"
-                ],
-                "summary": "Register discovered server",
-                "parameters": [
-                    {
-                        "description": "Registration request with discoveredServerId",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/scan": {
-            "get": {
-                "description": "Retrieve all scan jobs (active and completed)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "scan"
-                ],
-                "summary": "List all scan jobs",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.ScanJob"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Initiates a network scan to discover MCP servers",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discovery"
-                ],
-                "summary": "Start network scan for MCP servers",
-                "parameters": [
-                    {
-                        "description": "Scan configuration",
-                        "name": "config",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.ScanConfig"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/scan/{scanId}": {
-            "get": {
-                "description": "Retrieve the status and results of a network scan",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discovery"
-                ],
-                "summary": "Get scan status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Scan ID",
-                        "name": "scanId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.ScanJob"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/servers": {
-            "get": {
-                "description": "Retrieve all discovered MCP servers",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discovery"
-                ],
-                "summary": "List discovered servers",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.DiscoveredServer"
-                            }
                         }
                     }
                 }
@@ -2942,7 +2847,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "localhost:8911",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "SUSE AI Universal Proxy - Control Plane",
 	Description:      "SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model Context Protocol) server deployments and proxying requests to MCP servers running in Kubernetes.",

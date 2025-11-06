@@ -75,7 +75,7 @@ func NewManagementService(kubeClient *clients.KubeClientWrapper, store clients.A
 // @Success 201 {object} models.AdapterResource
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters [post]
+// @Router /api/v1/adapters [post]
 func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -244,7 +244,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 // @Produce json
 // @Success 200 {array} models.AdapterResource
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters [get]
+// @Router /api/v1/adapters [get]
 func (ms *ManagementService) ListAdapters(c *gin.Context) {
 	ctx := context.Background()
 	adapters, err := ms.store.ListAsync(ctx)
@@ -263,7 +263,7 @@ func (ms *ManagementService) ListAdapters(c *gin.Context) {
 // @Param name path string true "Adapter name"
 // @Success 200 {object} models.AdapterResource
 // @Failure 404 {object} ErrorResponse
-// @Router /adapters/{name} [get]
+// @Router /api/v1/adapters/{name} [get]
 func (ms *ManagementService) GetAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
@@ -307,7 +307,7 @@ func (ms *ManagementService) GetAdapter(c *gin.Context) {
 // @Success 200 {object} models.AdapterResource
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name} [put]
+// @Router /api/v1/adapters/{name} [put]
 func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	name := c.Param("name")
 	var data models.AdapterData
@@ -394,7 +394,7 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 // @Success 204
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name} [delete]
+// @Router /api/v1/adapters/{name} [delete]
 func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
@@ -436,7 +436,7 @@ func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 // @Success 200 {object} models.AdapterStatus
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/status [get]
+// @Router /api/v1/adapters/{name}/status [get]
 func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
@@ -472,7 +472,7 @@ func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 // @Success 200 {object} LogsResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/logs [get]
+// @Router /api/v1/adapters/{name}/logs [get]
 func (ms *ManagementService) GetAdapterLogs(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()

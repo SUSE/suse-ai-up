@@ -86,7 +86,7 @@ func NewDiscoveryService(managementService *ManagementService, tokenManager *aut
 // @Param config body models.ScanConfig true "Scan configuration"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
-// @Router /scan [post]
+// @Router /api/v1/discovery/scan [post]
 func (ds *DiscoveryService) StartScan(c *gin.Context) {
 	var body []byte
 	if b, err := c.GetRawData(); err != nil {
@@ -194,7 +194,7 @@ func (ds *DiscoveryService) StartScan(c *gin.Context) {
 // @Param scanId path string true "Scan ID"
 // @Success 200 {object} models.ScanJob
 // @Failure 404 {object} ErrorResponse
-// @Router /scan/{scanId} [get]
+// @Router /api/v1/discovery/scan/{scanId} [get]
 func (ds *DiscoveryService) GetScanStatus(c *gin.Context) {
 	scanId := c.Param("scanId")
 
@@ -233,7 +233,7 @@ func (ds *DiscoveryService) GetScanStatus(c *gin.Context) {
 // @Tags scan
 // @Produce json
 // @Success 200 {array} models.ScanJob
-// @Router /scan [get]
+// @Router /api/v1/discovery/scan [get]
 func (ds *DiscoveryService) ListScans(c *gin.Context) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -254,7 +254,7 @@ func (ds *DiscoveryService) ListScans(c *gin.Context) {
 // @Tags discovery
 // @Produce json
 // @Success 200 {array} models.DiscoveredServer
-// @Router /servers [get]
+// @Router /api/v1/discovery/servers [get]
 func (ds *DiscoveryService) ListDiscoveredServers(c *gin.Context) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -277,7 +277,7 @@ func (ds *DiscoveryService) ListDiscoveredServers(c *gin.Context) {
 // @Success 201 {object} models.AdapterResource
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /register [post]
+// @Router /api/v1/discovery/register [post]
 func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 	var req struct {
 		DiscoveredServerId string `json:"discoveredServerId" binding:"required"`
