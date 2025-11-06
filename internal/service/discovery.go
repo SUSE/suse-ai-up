@@ -1,6 +1,9 @@
 package service
 
 import (
+	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,20 +20,57 @@ import (
 	"suse-ai-up/pkg/models"
 )
 
+// responseWriter is a simple http.ResponseWriter implementation for testing
+type responseWriter struct {
+	body       bytes.Buffer
+	statusCode int
+	header     http.Header
+}
+
+func (w *responseWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+	return w.header
+}
+
+func (w *responseWriter) Write(data []byte) (int, error) {
+	return w.body.Write(data)
+}
+
+func (w *responseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+}
+
+// generateSecureToken generates a cryptographically secure random token for bearer authentication
+func generateSecureToken() string {
+	// Generate 32 bytes (256 bits) of random data for security
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based token if crypto/rand fails (shouldn't happen)
+		log.Printf("Warning: Failed to generate secure random token: %v, using fallback", err)
+		return fmt.Sprintf("fallback-token-%d", time.Now().UnixNano())
+	}
+	// Return URL-safe base64 encoded token
+	return base64.URLEncoding.EncodeToString(bytes)
+}
+
 // DiscoveryService handles network discovery of MCP servers
 type DiscoveryService struct {
-	httpClient *http.Client
-	scans      map[string]*models.ScanJob
-	cache      map[string]*models.DiscoveredServer
-	mu         sync.RWMutex
+	httpClient        *http.Client
+	scans             map[string]*models.ScanJob
+	cache             map[string]*models.DiscoveredServer
+	managementService *ManagementService
+	mu                sync.RWMutex
 }
 
 // NewDiscoveryService creates a new discovery service
-func NewDiscoveryService() *DiscoveryService {
+func NewDiscoveryService(managementService *ManagementService) *DiscoveryService {
 	return &DiscoveryService{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		scans:      make(map[string]*models.ScanJob),
-		cache:      make(map[string]*models.DiscoveredServer),
+		httpClient:        &http.Client{Timeout: 10 * time.Second},
+		scans:             make(map[string]*models.ScanJob),
+		cache:             make(map[string]*models.DiscoveredServer),
+		managementService: managementService,
 	}
 }
 
@@ -254,6 +294,7 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 		return
 	}
 
+	log.Printf("DEBUG: RegisterServer - server.Connection: %s", server.Connection)
 	// Parse address to extract host
 	host, _, err := ds.parseAddress(server.Address)
 	if err != nil {
@@ -268,7 +309,8 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 		Description: fmt.Sprintf("Auto-discovered MCP server at %s", server.Address),
 	}
 
-	if server.Connection == models.ConnectionTypeRemoteHttp {
+	log.Printf("DEBUG: Server connection is %s, setting to RemoteHttp", server.Connection)
+	if server.Connection == models.ConnectionTypeRemoteHttp || server.Connection == models.ConnectionTypeSSE || server.Connection == models.ConnectionTypeStreamableHttp {
 		adapterData.ConnectionType = models.ConnectionTypeRemoteHttp
 		adapterData.RemoteUrl = server.Address
 	} else if server.Connection == models.ConnectionTypeLocalStdio {
@@ -285,13 +327,122 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 		}
 	}
 
-	// Note: This would need access to ManagementService to actually create the adapter
-	// For now, just return the adapter data that would be created
-	c.JSON(http.StatusCreated, gin.H{
-		"message":     "Server registration prepared",
-		"adapterData": adapterData,
-		"note":        "Integration with ManagementService needed for actual adapter creation",
-	})
+	// Automatic security enhancement for high-risk discovered servers
+	securityEnhanced := false
+	if server.VulnerabilityScore == "high" && server.Metadata["auth_type"] == "none" {
+		log.Printf("DiscoveryService: High-risk server detected (%s), automatically adding bearer authentication", server.Address)
+
+		// Generate secure bearer token
+		secureToken := generateSecureToken()
+
+		// Configure adapter with bearer authentication
+		adapterData.Authentication = &models.AdapterAuthConfig{
+			Required: true,
+			Type:     "bearer",
+			Token:    secureToken,
+		}
+
+		// Update description to indicate security enhancement
+		adapterData.Description += " (Automatically secured with bearer authentication)"
+
+		securityEnhanced = true
+		log.Printf("DiscoveryService: Security enhancement applied - bearer token generated for adapter %s", adapterData.Name)
+	}
+
+	// Create the adapter using ManagementService
+	// We need to create a mock Gin context for the ManagementService.CreateAdapter method
+	// since it expects a Gin context for user authentication and response handling
+
+	// Create a new Gin context for the adapter creation
+	w := &responseWriter{}
+	c2, _ := gin.CreateTestContext(w)
+
+	// Set the user from the original request context
+	if user, exists := c.Get("user"); exists {
+		c2.Set("user", user)
+	} else {
+		// Default to anonymous user if no user context
+		c2.Set("user", "discovered-server-user")
+	}
+
+	// Convert AdapterData to the expected JSON format for ManagementService
+	log.Printf("DEBUG: DiscoveryService adapterData.ConnectionType: %s", adapterData.ConnectionType)
+	log.Printf("DiscoveryService: adapterData.RemoteUrl: %s", adapterData.RemoteUrl)
+	adapterJSON := map[string]interface{}{
+		"name":                 adapterData.Name,
+		"imageName":            adapterData.ImageName,
+		"imageVersion":         adapterData.ImageVersion,
+		"protocol":             string(adapterData.Protocol),
+		"connectionType":       string(adapterData.ConnectionType),
+		"environmentVariables": adapterData.EnvironmentVariables,
+		"replicaCount":         adapterData.ReplicaCount,
+		"description":          adapterData.Description,
+		"useWorkloadIdentity":  adapterData.UseWorkloadIdentity,
+		"remoteUrl":            adapterData.RemoteUrl,
+		"command":              adapterData.Command,
+		"args":                 adapterData.Args,
+		"mcpClientConfig":      adapterData.MCPClientConfig,
+		"authentication":       adapterData.Authentication,
+	}
+
+	log.Printf("DEBUG: JSON being sent: %+v", adapterJSON)
+	// Set the JSON body in the test context
+	jsonBytes, err := json.Marshal(adapterJSON)
+	if err != nil {
+		log.Printf("DiscoveryService: Failed to marshal adapter data: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prepare adapter data"})
+		return
+	}
+
+	c2.Request = &http.Request{
+		Method: "POST",
+		Header: http.Header{"Content-Type": []string{"application/json"}},
+		Body:   io.NopCloser(bytes.NewReader(jsonBytes)),
+	}
+
+	// Call ManagementService.CreateAdapter
+	ds.managementService.CreateAdapter(c2)
+
+	// Check if adapter creation was successful
+	if w.statusCode >= 200 && w.statusCode < 300 {
+		// Parse the response to get the created adapter
+		var response map[string]interface{}
+		if err := json.Unmarshal(w.body.Bytes(), &response); err != nil {
+			log.Printf("DiscoveryService: Failed to parse adapter creation response: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Adapter created but failed to parse response"})
+			return
+		}
+
+		// Prepare response with adapter details
+		responseData := gin.H{
+			"message":          "Adapter successfully created from discovered server",
+			"discoveredServer": server,
+			"adapter":          response,
+		}
+
+		// Add security enhancement information if applied
+		if securityEnhanced {
+			responseData["security"] = gin.H{
+				"enhanced":       true,
+				"auth_type":      "bearer",
+				"token_required": true,
+				"note":           "High-risk server automatically secured with bearer authentication",
+			}
+			log.Printf("DiscoveryService: Adapter %s created with automatic security enhancement", adapterData.Name)
+		}
+
+		c.JSON(http.StatusCreated, responseData)
+	} else {
+		// Adapter creation failed
+		var errorResponse map[string]interface{}
+		if err := json.Unmarshal(w.body.Bytes(), &errorResponse); err != nil {
+			log.Printf("DiscoveryService: Failed to parse error response: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Adapter creation failed"})
+			return
+		}
+
+		c.JSON(w.statusCode, errorResponse)
+	}
 }
 
 // validateScanConfig validates scan configuration and sets defaults

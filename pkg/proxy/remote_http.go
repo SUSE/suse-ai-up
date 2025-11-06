@@ -52,6 +52,9 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		}
 	}
 
+	// Ensure Accept header includes text/event-stream for MCP compatibility
+	req.Header.Set("Accept", "application/json, text/event-stream")
+
 	// Send request
 	resp, err := p.httpClient.Do(req)
 	if err != nil {

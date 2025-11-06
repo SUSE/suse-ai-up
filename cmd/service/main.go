@@ -86,7 +86,7 @@ func main() {
 	}()
 	proxyHandler := service.NewProxyHandler(sessionStore, kubeWrapper, store)
 	log.Println("Creating discovery service...")
-	discoveryService := service.NewDiscoveryService()
+	discoveryService := service.NewDiscoveryService(managementService)
 	log.Println("Discovery service created successfully")
 
 	// Initialize authorization service

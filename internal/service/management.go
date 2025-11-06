@@ -106,6 +106,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		return
 	}
 	log.Printf("CreateAdapter: JSON bound successfully")
+	log.Printf("DEBUG: req.ConnectionType: %s", req.ConnectionType)
 
 	var data models.AdapterData
 	data.Name = req.Name
@@ -137,6 +138,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		data.ConnectionType = models.ConnectionTypeStreamableHttp
 	}
 	log.Printf("CreateAdapter: After defaults: %+v", data)
+	log.Printf("DEBUG: data.ConnectionType after defaults: %s", data.ConnectionType)
 
 	// Validate name
 	log.Printf("CreateAdapter: Validating name: %s", data.Name)
