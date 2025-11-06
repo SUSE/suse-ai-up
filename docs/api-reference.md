@@ -408,46 +408,101 @@ DELETE /adapters/{name}/sessions
 
 ## Network Discovery
 
-### Start Network Scan
-Start a network scan to discover MCP servers on specified IP ranges and ports.
+### Scan for MCP Servers
+Perform network scanning to discover MCP servers on the network.
 
 ```http
-POST /scan
-Content-Type: application/json
+POST /api/v1/discovery/scan
 ```
-
-**Request Body:**
-```json
-{
-  "scanRanges": ["127.0.0.1/32", "192.168.1.0/24"],
-  "ports": [8000, 3000, 5000, 8080],
-  "timeout": "30s",
-  "maxConcurrent": 10
-}
-```
-
-**Response (202 Accepted):**
-```json
-{
-  "scanId": "scan-1761654988618691000",
-  "status": "running",
-  "message": "Scan initiated"
-}
-```
-
-### Get Scan Status
-Get the status and results of a specific scan.
-
-```http
-GET /scan/{scanId}
-```
-
-**Parameters:**
-- `scanId` (path): Scan identifier
 
 **Response (200 OK):**
 ```json
 {
+  "count": 1,
+  "discovered": [
+    {
+      "id": "mcp-192.168.1.74-8002--mcp",
+      "name": "MCP Example Server (No Auth)",
+      "address": "http://192.168.1.74:8002",
+      "protocol": "MCP",
+      "connection": "SSE",
+      "status": "discovered",
+      "vulnerability_score": "high",
+      "metadata": {
+        "auth_type": "none",
+        "endpoint": "/mcp",
+        "port": "8002",
+        "server_name": "MCP Example Server (No Auth)",
+        "vulnerability_score": "high"
+      }
+    }
+  ],
+  "errors": null
+}
+```
+
+### List Discovered Servers
+Get all discovered MCP servers from previous scans.
+
+```http
+GET /api/v1/discovery/servers
+```
+
+**Response (200 OK):**
+```json
+{
+  "count": 1,
+  "servers": [
+    {
+      "id": "mcp-192.168.1.74-8002--mcp",
+      "name": "MCP Example Server (No Auth)",
+      "address": "http://192.168.1.74:8002",
+      "protocol": "MCP",
+      "connection": "SSE",
+      "status": "discovered",
+      "vulnerability_score": "high"
+    }
+  ]
+}
+```
+
+### Get Discovered Server
+Get details of a specific discovered server by ID.
+
+```http
+GET /api/v1/discovery/servers/{id}
+```
+
+**Parameters:**
+- `id` (path): Discovered server ID
+
+**Response (200 OK):**
+```json
+{
+  "id": "mcp-192.168.1.74-8002--mcp",
+  "name": "MCP Example Server (No Auth)",
+  "address": "http://192.168.1.74:8002",
+  "protocol": "MCP",
+  "connection": "SSE",
+  "status": "discovered",
+  "lastSeen": "2025-11-06T14:27:44.929581+01:00",
+  "vulnerability_score": "high",
+  "metadata": {
+    "auth_type": "none",
+    "endpoint": "/mcp",
+    "port": "8002",
+    "server_name": "MCP Example Server (No Auth)",
+    "vulnerability_score": "high"
+  }
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "error": "Server not found"
+}
+```
   "scanId": "scan-1761654988618691000",
   "status": "completed",
   "serverCount": 2,

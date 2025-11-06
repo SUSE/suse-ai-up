@@ -322,10 +322,6 @@ func (as *AuthorizationService) CreateSession(c *gin.Context) {
 // @Tags sessions
 // @Param name path string true "Adapter name"
 // @Param sessionId path string true "Session ID to delete"
-// @Success 200 {object} gin.H{message:string}
-// @Failure 400 {object} gin.H{error:string}
-// @Failure 404 {object} gin.H{error:string}
-// @Failure 500 {object} gin.H{error:string}
 // @Router /adapters/{name}/sessions/{sessionId} [delete]
 func (as *AuthorizationService) DeleteSession(c *gin.Context) {
 	adapterName := c.Param("name")
@@ -368,9 +364,6 @@ func (as *AuthorizationService) DeleteSession(c *gin.Context) {
 // @Description Deletes all sessions for a specific adapter
 // @Tags sessions
 // @Param name path string true "Adapter name"
-// @Success 200 {object} gin.H{message:string,deletedCount:int}
-// @Failure 400 {object} gin.H{error:string}
-// @Failure 500 {object} gin.H{error:string}
 // @Router /adapters/{name}/sessions [delete]
 func (as *AuthorizationService) DeleteAllSessions(c *gin.Context) {
 	adapterName := c.Param("name")

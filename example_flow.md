@@ -191,6 +191,8 @@ mcp-inspector http://192.168.1.74:8002/mcp
 ACCESS_TOKEN="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
 
 # Connect through the adapter's secure proxy endpoint
+# Note: MCP proxy endpoint is not yet implemented in current version
+# This will be available when adapter middleware is complete
 mcp-inspector http://localhost:8911/api/v1/adapters/discovered-//192-168-1-74-8002/mcp \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 
@@ -199,6 +201,7 @@ mcp-inspector http://localhost:8911/api/v1/adapters/discovered-//192-168-1-74-80
 # ✅ Audit logging
 # ✅ Rate limiting (when implemented)
 # ✅ Zero-trust security model
+# 🚧 Currently returns: "MCP proxy not implemented yet"
 ```
 
 ## Step 6: Test MCP Tools
@@ -256,7 +259,7 @@ echo ""
 echo "🛡️  Creating secured adapter..."
 REGISTER_RESULT=$(curl -s -X POST http://localhost:8911/api/v1/register \
   -H "Content-Type: application/json" \
-  -d "{\"discoveredServerId\": \"$SERVER_ID\"}")
+  -d "{"discoveredServerId": "$SERVER_ID"}")
 
 # Extract information for MCP Inspector
 ACCESS_TOKEN=$(echo $REGISTER_RESULT | jq -r '.token_info.accessToken')
@@ -283,6 +286,7 @@ echo "  TOKEN=\"$ACCESS_TOKEN\""
 echo "  mcp-inspector http://localhost:8911/api/v1/adapters/$ADAPTER_NAME/mcp \\"
 echo "    --header \"Authorization: Bearer \$TOKEN\""
 echo "  ✅ Secure: Authentication, audit, rate limiting"
+echo "  🚧 Note: MCP proxy endpoint not yet implemented"
 echo ""
 
 # 6. Test the connection

@@ -31,10 +31,10 @@ func NewTokenHandler(store clients.AdapterResourceStore, tokenManager *auth.Toke
 // @Param name path string true "Adapter name"
 // @Param generate query bool false "Generate new token if none exists" default(true)
 // @Param expiresIn query int false "Token expiration time in hours" default(24)
-// @Success 200 {object} gin.H{token:object}
-// @Failure 400 {object} gin.H{error:string}
-// @Failure 404 {object} gin.H{error:string}
-// @Failure 500 {object} gin.H{error:string}
+// @Success 200 {object} auth.TokenInfo
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 404 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
 // @Router /adapters/{name}/token [get]
 func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 	adapterName := c.Param("name")
@@ -167,10 +167,10 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 // @Tags tokens
 // @Param name path string true "Adapter name"
 // @Param token query string true "Token to validate"
-// @Success 200 {object} gin.H{valid:bool,token:object}
-// @Failure 400 {object} gin.H{error:string}
-// @Failure 404 {object} gin.H{error:string}
-// @Router /adapters/{name}/token/validate [get]
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 404 {object} handlers.ErrorResponse
+// @Router /adapters/{name}/token/validate [post]
 func (th *TokenHandler) ValidateToken(c *gin.Context) {
 	adapterName := c.Param("name")
 	if adapterName == "" {
@@ -246,10 +246,10 @@ func (th *TokenHandler) ValidateToken(c *gin.Context) {
 // @Tags tokens
 // @Param name path string true "Adapter name"
 // @Param expiresIn query int false "Token expiration time in hours" default(24)
-// @Success 200 {object} gin.H{token:object}
-// @Failure 400 {object} gin.H{error:string}
-// @Failure 404 {object} gin.H{error:string}
-// @Failure 500 {object} gin.H{error:string}
+// @Success 200 {object} auth.TokenInfo
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 404 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
 // @Router /adapters/{name}/token/refresh [post]
 func (th *TokenHandler) RefreshToken(c *gin.Context) {
 	adapterName := c.Param("name")

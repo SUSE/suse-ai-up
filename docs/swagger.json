@@ -1,20 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model Context Protocol) server deployments and proxying requests to MCP servers running in Kubernetes.",
-        "title": "SUSE AI Universal Proxy - Control Plane",
-        "contact": {
-            "name": "SUSE AI Universal Proxy Team",
-            "url": "https://github.com/SUSE/suse-ai-up"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://github.com/SUSE/suse-ai-up/blob/main/LICENSE"
-        },
-        "version": "1.0.0"
+        "contact": {}
     },
-    "host": "localhost:8911",
-    "basePath": "/",
     "paths": {
         "/adapters": {
             "get": {
@@ -91,14 +79,14 @@
         },
         "/adapters/{name}": {
             "get": {
-                "description": "Retrieve metadata for a specific MCP server adapter.",
+                "description": "Retrieve details of a specific MCP server adapter including discovered capabilities.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "adapters"
                 ],
-                "summary": "Get adapter details",
+                "summary": "Get an adapter",
                 "parameters": [
                     {
                         "type": "string",
@@ -206,6 +194,48 @@
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/adapters/{name}/client-token": {
+            "get": {
+                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Get client token for adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.ClientTokenResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -524,6 +554,337 @@
                 }
             }
         },
+        "/adapters/{name}/test-auth": {
+            "post": {
+                "description": "Tests the authentication configuration by attempting to connect to the MCP server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Test adapter authentication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/adapters/{name}/token": {
+            "get": {
+                "description": "Retrieves the current token for an adapter or generates a new one if none exists",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get adapter token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Generate new token if none exists",
+                        "name": "generate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 24,
+                        "description": "Token expiration time in hours",
+                        "name": "expiresIn",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/adapters/{name}/token/refresh": {
+            "post": {
+                "description": "Generates a new token for an adapter, invalidating the old one",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Refresh adapter token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 24,
+                        "description": "Token expiration time in hours",
+                        "name": "expiresIn",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/adapters/{name}/token/validate": {
+            "post": {
+                "description": "Validates a token and returns its claims and validity",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Validate token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to validate",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/adapters/{name}/validate-auth": {
+            "post": {
+                "description": "Validates the authentication configuration for an adapter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Validate adapter authentication configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Authentication configuration to validate",
+                        "name": "authConfig",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deployment/config/{serverId}": {
+            "get": {
+                "description": "Retrieve the configuration template for deploying an MCP server",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployment"
+                ],
+                "summary": "Get MCP server configuration template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "serverId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPConfigTemplate"
+                        }
+                    },
+                    "404": {
+                        "description": "Server not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/deployment/deploy": {
+            "post": {
+                "description": "Deploy an MCP server to Kubernetes with provided configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployment"
+                ],
+                "summary": "Deploy an MCP server",
+                "parameters": [
+                    {
+                        "description": "Deployment configuration",
+                        "name": "deployment",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DeployResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/plugins/register": {
             "post": {
                 "description": "Register a plugin service with the proxy",
@@ -726,7 +1087,7 @@
         },
         "/public/registry": {
             "get": {
-                "description": "Retrieve filtered JSON data from the official Model Context Protocol registry (only active latest versions)",
+                "description": "Retrieve filtered JSON data from MCP registries (official or docker)",
                 "produces": [
                     "application/json"
                 ],
@@ -734,6 +1095,24 @@
                     "registry"
                 ],
                 "summary": "Get public registry data",
+                "parameters": [
+                    {
+                        "enum": [
+                            "official",
+                            "docker"
+                        ],
+                        "type": "string",
+                        "description": "Registry source: 'official' or 'docker'",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by provider (works for both official and docker sources)",
+                        "name": "provider",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1251,19 +1630,172 @@
         }
     },
     "definitions": {
+        "auth.TokenInfo": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "audience": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "issuedAt": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tokenId": {
+                    "type": "string"
+                },
+                "tokenType": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.DeployRequest": {
+            "type": "object",
+            "required": [
+                "server_id"
+            ],
+            "properties": {
+                "env_vars": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "resources": {
+                    "$ref": "#/definitions/handlers.ResourceLimits"
+                },
+                "server_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.DeployResponse": {
+            "type": "object",
+            "properties": {
+                "deployment_id": {
+                    "type": "string"
+                },
+                "manifests": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "server_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "discoveredServerId"
+            ],
+            "properties": {
+                "discoveredServerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "adapter": {
+                    "$ref": "#/definitions/models.AdapterResource"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "security_note": {
+                    "type": "string"
+                },
+                "token_info": {
+                    "$ref": "#/definitions/auth.TokenInfo"
+                }
+            }
+        },
+        "handlers.ResourceLimits": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "string"
+                },
+                "memory": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.APIKeyConfig": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "location": {
+                    "description": "\"header\", \"query\", \"cookie\"",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Header name, query param, or cookie name",
+                    "type": "string"
+                }
+            }
+        },
         "models.AdapterAuthConfig": {
             "type": "object",
             "properties": {
+                "apiKey": {
+                    "$ref": "#/definitions/models.APIKeyConfig"
+                },
+                "basic": {
+                    "$ref": "#/definitions/models.BasicAuthConfig"
+                },
+                "bearerToken": {
+                    "$ref": "#/definitions/models.BearerTokenConfig"
+                },
+                "oauth": {
+                    "$ref": "#/definitions/models.OAuthConfig"
+                },
                 "required": {
                     "description": "true = require auth, false = optional",
                     "type": "boolean"
                 },
                 "token": {
-                    "description": "For bearer token validation",
+                    "description": "Legacy field for backward compatibility",
                     "type": "string"
                 },
                 "type": {
-                    "description": "\"bearer\", \"oauth\", \"none\"",
+                    "description": "\"bearer\", \"oauth\", \"basic\", \"apikey\", \"none\"",
                     "type": "string"
                 }
             }
@@ -1324,6 +1856,14 @@
                     "allOf": [
                         {
                             "$ref": "#/definitions/models.MCPClientConfig"
+                        }
+                    ]
+                },
+                "mcpFunctionality": {
+                    "description": "MCP Functionality (discovered from server)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPFunctionality"
                         }
                     ]
                 },
@@ -1427,6 +1967,14 @@
                         }
                     ]
                 },
+                "mcpFunctionality": {
+                    "description": "MCP Functionality (discovered from server)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPFunctionality"
+                        }
+                    ]
+                },
                 "name": {
                     "type": "string",
                     "example": "my-adapter"
@@ -1476,6 +2024,33 @@
                 "updatedReplicas": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "models.BasicAuthConfig": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BearerTokenConfig": {
+            "type": "object",
+            "properties": {
+                "dynamic": {
+                    "description": "Use token manager",
+                    "type": "boolean"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "token": {
+                    "description": "Static token",
+                    "type": "string"
                 }
             }
         },
@@ -1567,6 +2142,20 @@
                 }
             }
         },
+        "models.MCPArgument": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.MCPClientConfig": {
             "type": "object",
             "properties": {
@@ -1578,6 +2167,100 @@
                 }
             }
         },
+        "models.MCPConfigTemplate": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "description": "command arguments",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "command": {
+                    "description": "docker, node, python, etc.",
+                    "type": "string"
+                },
+                "env": {
+                    "description": "environment variables",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "image": {
+                    "description": "Docker image if applicable",
+                    "type": "string"
+                },
+                "transport": {
+                    "description": "stdio, http, sse, websocket",
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPFunctionality": {
+            "type": "object",
+            "properties": {
+                "lastRefreshed": {
+                    "type": "string"
+                },
+                "prompts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPPrompt"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPResource"
+                    }
+                },
+                "serverInfo": {
+                    "$ref": "#/definitions/models.MCPServerInfo"
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPTool"
+                    }
+                }
+            }
+        },
+        "models.MCPPrompt": {
+            "type": "object",
+            "properties": {
+                "arguments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPArgument"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPResource": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "mimeType": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
         "models.MCPServer": {
             "type": "object",
             "properties": {
@@ -1585,6 +2268,14 @@
                     "description": "Registry metadata",
                     "type": "object",
                     "additionalProperties": true
+                },
+                "config_template": {
+                    "description": "Docker/K8s deployment config",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPConfigTemplate"
+                        }
+                    ]
                 },
                 "description": {
                     "type": "string"
@@ -1643,6 +2334,24 @@
                 }
             }
         },
+        "models.MCPServerInfo": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "name": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "models.MCPTool": {
             "type": "object",
             "properties": {
@@ -1654,6 +2363,32 @@
                     "additionalProperties": true
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.OAuthConfig": {
+            "type": "object",
+            "properties": {
+                "authUrl": {
+                    "type": "string"
+                },
+                "clientId": {
+                    "type": "string"
+                },
+                "clientSecret": {
+                    "type": "string"
+                },
+                "redirectUri": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tokenUrl": {
                     "type": "string"
                 }
             }
@@ -1873,6 +2608,23 @@
                 }
             }
         },
+        "service.ClientTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "service.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -2025,14 +2777,6 @@
                     "type": "string"
                 }
             }
-        }
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "description": "Bearer token for authentication",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
         }
     }
 }

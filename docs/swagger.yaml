@@ -1,15 +1,114 @@
-basePath: /
 definitions:
+  auth.TokenInfo:
+    properties:
+      accessToken:
+        type: string
+      audience:
+        type: string
+      expiresAt:
+        type: string
+      issuedAt:
+        type: string
+      issuer:
+        type: string
+      refreshToken:
+        type: string
+      scope:
+        type: string
+      subject:
+        type: string
+      tokenId:
+        type: string
+      tokenType:
+        type: string
+    type: object
+  handlers.DeployRequest:
+    properties:
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      replicas:
+        type: integer
+      resources:
+        $ref: '#/definitions/handlers.ResourceLimits'
+      server_id:
+        type: string
+    required:
+    - server_id
+    type: object
+  handlers.DeployResponse:
+    properties:
+      deployment_id:
+        type: string
+      manifests:
+        additionalProperties:
+          type: string
+        type: object
+      server_id:
+        type: string
+      status:
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      discoveredServerId:
+        type: string
+    required:
+    - discoveredServerId
+    type: object
+  handlers.RegisterResponse:
+    properties:
+      adapter:
+        $ref: '#/definitions/models.AdapterResource'
+      message:
+        type: string
+      security_note:
+        type: string
+      token_info:
+        $ref: '#/definitions/auth.TokenInfo'
+    type: object
+  handlers.ResourceLimits:
+    properties:
+      cpu:
+        type: string
+      memory:
+        type: string
+    type: object
+  models.APIKeyConfig:
+    properties:
+      key:
+        type: string
+      location:
+        description: '"header", "query", "cookie"'
+        type: string
+      name:
+        description: Header name, query param, or cookie name
+        type: string
+    type: object
   models.AdapterAuthConfig:
     properties:
+      apiKey:
+        $ref: '#/definitions/models.APIKeyConfig'
+      basic:
+        $ref: '#/definitions/models.BasicAuthConfig'
+      bearerToken:
+        $ref: '#/definitions/models.BearerTokenConfig'
+      oauth:
+        $ref: '#/definitions/models.OAuthConfig'
       required:
         description: true = require auth, false = optional
         type: boolean
       token:
-        description: For bearer token validation
+        description: Legacy field for backward compatibility
         type: string
       type:
-        description: '"bearer", "oauth", "none"'
+        description: '"bearer", "oauth", "basic", "apikey", "none"'
         type: string
     type: object
   models.AdapterData:
@@ -49,6 +148,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.MCPClientConfig'
         description: For MCP client configuration (alternative to Command/Args)
+      mcpFunctionality:
+        allOf:
+        - $ref: '#/definitions/models.MCPFunctionality'
+        description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
@@ -114,6 +217,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.MCPClientConfig'
         description: For MCP client configuration (alternative to Command/Args)
+      mcpFunctionality:
+        allOf:
+        - $ref: '#/definitions/models.MCPFunctionality'
+        description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
@@ -149,6 +256,24 @@ definitions:
       updatedReplicas:
         example: 1
         type: integer
+    type: object
+  models.BasicAuthConfig:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  models.BearerTokenConfig:
+    properties:
+      dynamic:
+        description: Use token manager
+        type: boolean
+      expiresAt:
+        type: string
+      token:
+        description: Static token
+        type: string
     type: object
   models.ConnectionType:
     enum:
@@ -210,6 +335,15 @@ definitions:
       name:
         type: string
     type: object
+  models.MCPArgument:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      required:
+        type: boolean
+    type: object
   models.MCPClientConfig:
     properties:
       mcpServers:
@@ -217,12 +351,79 @@ definitions:
           $ref: '#/definitions/models.MCPServerConfig'
         type: object
     type: object
+  models.MCPConfigTemplate:
+    properties:
+      args:
+        description: command arguments
+        items:
+          type: string
+        type: array
+      command:
+        description: docker, node, python, etc.
+        type: string
+      env:
+        additionalProperties:
+          type: string
+        description: environment variables
+        type: object
+      image:
+        description: Docker image if applicable
+        type: string
+      transport:
+        description: stdio, http, sse, websocket
+        type: string
+    type: object
+  models.MCPFunctionality:
+    properties:
+      lastRefreshed:
+        type: string
+      prompts:
+        items:
+          $ref: '#/definitions/models.MCPPrompt'
+        type: array
+      resources:
+        items:
+          $ref: '#/definitions/models.MCPResource'
+        type: array
+      serverInfo:
+        $ref: '#/definitions/models.MCPServerInfo'
+      tools:
+        items:
+          $ref: '#/definitions/models.MCPTool'
+        type: array
+    type: object
+  models.MCPPrompt:
+    properties:
+      arguments:
+        items:
+          $ref: '#/definitions/models.MCPArgument'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.MCPResource:
+    properties:
+      description:
+        type: string
+      mimeType:
+        type: string
+      name:
+        type: string
+      uri:
+        type: string
+    type: object
   models.MCPServer:
     properties:
       _meta:
         additionalProperties: true
         description: Registry metadata
         type: object
+      config_template:
+        allOf:
+        - $ref: '#/definitions/models.MCPConfigTemplate'
+        description: Docker/K8s deployment config
       description:
         type: string
       discovered_at:
@@ -261,6 +462,18 @@ definitions:
       command:
         type: string
     type: object
+  models.MCPServerInfo:
+    properties:
+      capabilities:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      protocol:
+        type: string
+      version:
+        type: string
+    type: object
   models.MCPTool:
     properties:
       description:
@@ -269,6 +482,23 @@ definitions:
         additionalProperties: true
         type: object
       name:
+        type: string
+    type: object
+  models.OAuthConfig:
+    properties:
+      authUrl:
+        type: string
+      clientId:
+        type: string
+      clientSecret:
+        type: string
+      redirectUri:
+        type: string
+      scopes:
+        items:
+          type: string
+        type: array
+      tokenUrl:
         type: string
     type: object
   models.Package:
@@ -418,6 +648,17 @@ definitions:
       message:
         type: string
     type: object
+  service.ClientTokenResponse:
+    properties:
+      expiresAt:
+        type: string
+      message:
+        type: string
+      token:
+        type: string
+      type:
+        type: string
+    type: object
   service.ErrorResponse:
     properties:
       error:
@@ -518,19 +759,8 @@ definitions:
       tokenType:
         type: string
     type: object
-host: localhost:8911
 info:
-  contact:
-    name: SUSE AI Universal Proxy Team
-    url: https://github.com/SUSE/suse-ai-up
-  description: SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model
-    Context Protocol) server deployments and proxying requests to MCP servers running
-    in Kubernetes.
-  license:
-    name: MIT
-    url: https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
-  title: SUSE AI Universal Proxy - Control Plane
-  version: 1.0.0
+  contact: {}
 paths:
   /adapters:
     get:
@@ -606,7 +836,8 @@ paths:
       tags:
       - adapters
     get:
-      description: Retrieve metadata for a specific MCP server adapter.
+      description: Retrieve details of a specific MCP server adapter including discovered
+        capabilities.
       parameters:
       - description: Adapter name
         in: path
@@ -624,7 +855,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/service.ErrorResponse'
-      summary: Get adapter details
+      summary: Get an adapter
       tags:
       - adapters
     put:
@@ -662,6 +893,35 @@ paths:
       summary: Update an adapter
       tags:
       - adapters
+  /adapters/{name}/client-token:
+    get:
+      description: Retrieves a client token for authenticating with the MCP server
+        adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.ClientTokenResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get client token for adapter
+      tags:
+      - adapters
+      - authentication
   /adapters/{name}/logs:
     get:
       description: Access the running logs of an MCP server adapter.
@@ -870,6 +1130,229 @@ paths:
       summary: Get adapter deployment status
       tags:
       - adapters
+  /adapters/{name}/test-auth:
+    post:
+      consumes:
+      - application/json
+      description: Tests the authentication configuration by attempting to connect
+        to the MCP server.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Test adapter authentication
+      tags:
+      - adapters
+      - authentication
+  /adapters/{name}/token:
+    get:
+      description: Retrieves the current token for an adapter or generates a new one
+        if none exists
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: true
+        description: Generate new token if none exists
+        in: query
+        name: generate
+        type: boolean
+      - default: 24
+        description: Token expiration time in hours
+        in: query
+        name: expiresIn
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get adapter token
+      tags:
+      - tokens
+  /adapters/{name}/token/refresh:
+    post:
+      description: Generates a new token for an adapter, invalidating the old one
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: 24
+        description: Token expiration time in hours
+        in: query
+        name: expiresIn
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh adapter token
+      tags:
+      - tokens
+  /adapters/{name}/token/validate:
+    post:
+      description: Validates a token and returns its claims and validity
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Token to validate
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Validate token
+      tags:
+      - tokens
+  /adapters/{name}/validate-auth:
+    post:
+      consumes:
+      - application/json
+      description: Validates the authentication configuration for an adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Authentication configuration to validate
+        in: body
+        name: authConfig
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdapterAuthConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Validate adapter authentication configuration
+      tags:
+      - adapters
+      - authentication
+  /deployment/config/{serverId}:
+    get:
+      description: Retrieve the configuration template for deploying an MCP server
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: serverId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPConfigTemplate'
+        "404":
+          description: Server not found
+          schema:
+            type: string
+      summary: Get MCP server configuration template
+      tags:
+      - deployment
+  /deployment/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy an MCP server to Kubernetes with provided configuration
+      parameters:
+      - description: Deployment configuration
+        in: body
+        name: deployment
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.DeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Deploy an MCP server
+      tags:
+      - deployment
   /plugins/register:
     post:
       consumes:
@@ -1003,8 +1486,19 @@ paths:
       - plugins
   /public/registry:
     get:
-      description: Retrieve filtered JSON data from the official Model Context Protocol
-        registry (only active latest versions)
+      description: Retrieve filtered JSON data from MCP registries (official or docker)
+      parameters:
+      - description: 'Registry source: ''official'' or ''docker'''
+        enum:
+        - official
+        - docker
+        in: query
+        name: source
+        type: string
+      - description: Filter by provider (works for both official and docker sources)
+        in: query
+        name: provider
+        type: string
       produces:
       - application/json
       responses:
@@ -1349,10 +1843,4 @@ paths:
       summary: List discovered servers
       tags:
       - discovery
-securityDefinitions:
-  BearerAuth:
-    description: Bearer token for authentication
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

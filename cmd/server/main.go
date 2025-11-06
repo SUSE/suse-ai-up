@@ -124,6 +124,12 @@ func main() {
 		// Discovery endpoints
 		discovery := v1.Group("/discovery")
 		{
+			// @Summary Scan for MCP servers
+			// @Description Performs network scanning to discover MCP servers
+			// @Tags discovery
+			// @Produce json
+			// @Success 200 {object} map[string]interface{}{discovered:[]models.DiscoveredServer,errors:[]error,count:int}
+			// @Router /api/v1/discovery/scan [post]
 			discovery.POST("/scan", func(c *gin.Context) {
 				// Perform network scan
 				results, errors := networkScanner.Scan()
@@ -133,6 +139,12 @@ func main() {
 					"count":      len(results),
 				})
 			})
+			// @Summary List discovered servers
+			// @Description Returns all discovered MCP servers
+			// @Tags discovery
+			// @Produce json
+			// @Success 200 {object} map[string]interface{}{servers:[]models.DiscoveredServer,count:int}
+			// @Router /api/v1/discovery/servers [get]
 			discovery.GET("/servers", func(c *gin.Context) {
 				// Get all discovered servers
 				servers := networkScanner.GetAllDiscoveredServers()
@@ -141,6 +153,14 @@ func main() {
 					"count":   len(servers),
 				})
 			})
+			// @Summary Get discovered server
+			// @Description Returns a specific discovered MCP server by ID
+			// @Tags discovery
+			// @Produce json
+			// @Param id path string true "Server ID"
+			// @Success 200 {object} models.DiscoveredServer
+			// @Failure 404 {object} map[string]string{error:string}
+			// @Router /api/v1/discovery/servers/{id} [get]
 			discovery.GET("/servers/:id", func(c *gin.Context) {
 				// Get specific discovered server
 				server := networkScanner.GetDiscoveredServer(c.Param("id"))
