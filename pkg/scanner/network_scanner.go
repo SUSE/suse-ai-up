@@ -17,12 +17,14 @@ import (
 
 // NetworkScanner performs network scanning to discover MCP servers
 type NetworkScanner struct {
-	config  *models.ScanConfig
-	results chan models.DiscoveredServer
-	errors  chan error
-	wg      sync.WaitGroup
-	ctx     context.Context
-	cancel  context.CancelFunc
+	config            *models.ScanConfig
+	results           chan models.DiscoveredServer
+	errors            chan error
+	wg                sync.WaitGroup
+	ctx               context.Context
+	cancel            context.CancelFunc
+	discoveredServers []models.DiscoveredServer // Store discovered servers for retrieval
+	mu                sync.RWMutex              // Protect discoveredServers slice
 }
 
 // MCPDetectionConfig holds configuration for MCP server detection
@@ -38,11 +40,12 @@ type MCPDetectionConfig struct {
 func NewNetworkScanner(config *models.ScanConfig) *NetworkScanner {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &NetworkScanner{
-		config:  config,
-		results: make(chan models.DiscoveredServer, 100),
-		errors:  make(chan error, 100),
-		ctx:     ctx,
-		cancel:  cancel,
+		config:            config,
+		results:           make(chan models.DiscoveredServer, 100),
+		errors:            make(chan error, 100),
+		ctx:               ctx,
+		cancel:            cancel,
+		discoveredServers: make([]models.DiscoveredServer, 0),
 	}
 }
 
@@ -50,19 +53,6 @@ func NewNetworkScanner(config *models.ScanConfig) *NetworkScanner {
 func (ns *NetworkScanner) Scan() ([]models.DiscoveredServer, []error) {
 	var discovered []models.DiscoveredServer
 	var scanErrors []error
-
-	// Start collecting results and errors
-	go func() {
-		for result := range ns.results {
-			discovered = append(discovered, result)
-		}
-	}()
-
-	go func() {
-		for err := range ns.errors {
-			scanErrors = append(scanErrors, err)
-		}
-	}()
 
 	// Parse ports from config
 	ports, err := ns.expandPorts(ns.config.Ports)
@@ -118,10 +108,36 @@ func (ns *NetworkScanner) Scan() ([]models.DiscoveredServer, []error) {
 		}
 	}
 
+	// Use WaitGroup to wait for result collection to complete
+	var collectionWg sync.WaitGroup
+	collectionWg.Add(2)
+
+	// Start collecting results and errors
+	go func() {
+		defer collectionWg.Done()
+		for result := range ns.results {
+			discovered = append(discovered, result)
+			// Also store in scanner for later retrieval
+			ns.mu.Lock()
+			ns.discoveredServers = append(ns.discoveredServers, result)
+			ns.mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer collectionWg.Done()
+		for err := range ns.errors {
+			scanErrors = append(scanErrors, err)
+		}
+	}()
+
 	// Wait for all scans to complete
 	ns.wg.Wait()
 	close(ns.results)
 	close(ns.errors)
+
+	// Wait for result collection to complete
+	collectionWg.Wait()
 
 	return discovered, scanErrors
 }
@@ -336,15 +352,32 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 
 // parseMCPResponse parses a JSON-RPC response to determine if it's from an MCP server
 func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte, address, portStr, endpoint string) *models.DiscoveredServer {
-	// Check if response looks like JSON-RPC
-	if !strings.Contains(string(bodyBytes), `"jsonrpc"`) {
+	bodyStr := string(bodyBytes)
+
+	// Check if response looks like JSON-RPC (either direct or in SSE format)
+	if !strings.Contains(bodyStr, `"jsonrpc"`) {
 		return nil
 	}
 
-	// Parse JSON-RPC response
+	// Handle Server-Sent Events (SSE) format
 	var jsonResponse map[string]interface{}
-	if err := json.Unmarshal(bodyBytes, &jsonResponse); err != nil {
-		return nil
+	if strings.Contains(bodyStr, "event: message") && strings.Contains(bodyStr, "data: ") {
+		// Extract JSON from SSE format
+		lines := strings.Split(bodyStr, "\n")
+		for _, line := range lines {
+			if strings.HasPrefix(line, "data: ") {
+				jsonData := strings.TrimPrefix(line, "data: ")
+				if err := json.Unmarshal([]byte(jsonData), &jsonResponse); err != nil {
+					continue
+				}
+				break
+			}
+		}
+	} else {
+		// Direct JSON response
+		if err := json.Unmarshal(bodyBytes, &jsonResponse); err != nil {
+			return nil
+		}
 	}
 
 	// Check for valid MCP response structure
@@ -395,7 +428,11 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 			serverName = name
 		}
 
+		// Generate unique ID for the discovered server
+		serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
+
 		server := &models.DiscoveredServer{
+			ID:         serverID,
 			Address:    fmt.Sprintf("http://%s", address),
 			Protocol:   models.ServerProtocolMCP,
 			Connection: connectionType,
@@ -461,4 +498,29 @@ func (ns *NetworkScanner) detectProtocol(resp *http.Response) string {
 	}
 
 	return "unknown"
+}
+
+// GetDiscoveredServer retrieves a discovered server by ID
+func (ns *NetworkScanner) GetDiscoveredServer(serverID string) *models.DiscoveredServer {
+	ns.mu.RLock()
+	defer ns.mu.RUnlock()
+
+	for _, server := range ns.discoveredServers {
+		if server.ID == serverID {
+			return &server
+		}
+	}
+
+	return nil
+}
+
+// GetAllDiscoveredServers returns all discovered servers
+func (ns *NetworkScanner) GetAllDiscoveredServers() []models.DiscoveredServer {
+	ns.mu.RLock()
+	defer ns.mu.RUnlock()
+
+	// Return a copy to avoid race conditions
+	result := make([]models.DiscoveredServer, len(ns.discoveredServers))
+	copy(result, ns.discoveredServers)
+	return result
 }

@@ -316,6 +316,94 @@ func (as *AuthorizationService) CreateSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, sessionDetails)
 }
 
+// DeleteSession handles DELETE /adapters/{name}/sessions/{sessionId}
+// @Summary Delete specific session
+// @Description Deletes a specific session for an adapter
+// @Tags sessions
+// @Param name path string true "Adapter name"
+// @Param sessionId path string true "Session ID to delete"
+// @Success 200 {object} gin.H{message:string}
+// @Failure 400 {object} gin.H{error:string}
+// @Failure 404 {object} gin.H{error:string}
+// @Failure 500 {object} gin.H{error:string}
+// @Router /adapters/{name}/sessions/{sessionId} [delete]
+func (as *AuthorizationService) DeleteSession(c *gin.Context) {
+	adapterName := c.Param("name")
+	sessionID := c.Param("sessionId")
+
+	if adapterName == "" || sessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Adapter name and session ID are required"})
+		return
+	}
+
+	// Get session details to verify it belongs to the specified adapter
+	sessionDetails, err := as.sessionStore.GetDetails(sessionID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
+		return
+	}
+
+	if sessionDetails.AdapterName != adapterName {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found for this adapter"})
+		return
+	}
+
+	// Delete the session
+	if err := as.sessionStore.Delete(sessionID); err != nil {
+		log.Printf("AuthorizationService: Failed to delete session %s: %v", sessionID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete session"})
+		return
+	}
+
+	log.Printf("AuthorizationService: Successfully deleted session %s for adapter %s", sessionID, adapterName)
+	c.JSON(http.StatusOK, gin.H{
+		"adapterName": adapterName,
+		"sessionId":   sessionID,
+		"message":     "Session deleted successfully",
+	})
+}
+
+// DeleteAllSessions handles DELETE /adapters/{name}/sessions
+// @Summary Delete all sessions for adapter
+// @Description Deletes all sessions for a specific adapter
+// @Tags sessions
+// @Param name path string true "Adapter name"
+// @Success 200 {object} gin.H{message:string,deletedCount:int}
+// @Failure 400 {object} gin.H{error:string}
+// @Failure 500 {object} gin.H{error:string}
+// @Router /adapters/{name}/sessions [delete]
+func (as *AuthorizationService) DeleteAllSessions(c *gin.Context) {
+	adapterName := c.Param("name")
+
+	if adapterName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Adapter name is required"})
+		return
+	}
+
+	// Get all sessions for this adapter before deletion
+	sessions, err := as.sessionStore.ListByAdapter(adapterName)
+	if err != nil {
+		log.Printf("AuthorizationService: Failed to list sessions for adapter %s: %v", adapterName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve sessions"})
+		return
+	}
+
+	// Delete all sessions for this adapter
+	if err := as.sessionStore.DeleteByAdapter(adapterName); err != nil {
+		log.Printf("AuthorizationService: Failed to delete sessions for adapter %s: %v", adapterName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete sessions"})
+		return
+	}
+
+	deletedCount := len(sessions)
+	log.Printf("AuthorizationService: Successfully deleted %d sessions for adapter %s", deletedCount, adapterName)
+	c.JSON(http.StatusOK, gin.H{
+		"adapterName":  adapterName,
+		"deletedCount": deletedCount,
+		"message":      "All sessions deleted successfully",
+	})
+}
+
 // OAuthCallback handles GET /oauth/callback (for OAuth redirects)
 func (as *AuthorizationService) OAuthCallback(c *gin.Context) {
 	code := c.Query("code")

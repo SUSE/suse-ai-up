@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -29,7 +31,8 @@ func (p *RemoteHttpProxyPlugin) CanHandle(connectionType models.ConnectionType) 
 }
 
 func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.AdapterResource, sessionStore session.SessionStore) error {
-	targetURL, err := url.Parse(adapter.RemoteUrl + "/mcp")
+	// Use the RemoteUrl directly - it should already include the full MCP endpoint
+	targetURL, err := url.Parse(adapter.RemoteUrl)
 	if err != nil {
 		return err
 	}
@@ -52,8 +55,22 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		}
 	}
 
+	// Apply authentication if configured
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := p.applyAuthentication(req, adapter.Authentication); err != nil {
+			return fmt.Errorf("failed to apply authentication: %w", err)
+		}
+	}
+
 	// Ensure Accept header includes text/event-stream for MCP compatibility
 	req.Header.Set("Accept", "application/json, text/event-stream")
+
+	// Validate MCP protocol if this is a JSON request
+	if req.Header.Get("Content-Type") == "application/json" {
+		if err := p.validateMCPMessage(c.Request.Body); err != nil {
+			return fmt.Errorf("invalid MCP protocol message: %w", err)
+		}
+	}
 
 	// Send request
 	resp, err := p.httpClient.Do(req)
@@ -75,8 +92,8 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 }
 
 func (p *RemoteHttpProxyPlugin) GetStatus(adapter models.AdapterResource) (models.AdapterStatus, error) {
-	// Simple health check
-	resp, err := p.httpClient.Get(adapter.RemoteUrl + "/mcp")
+	// Simple health check - use RemoteUrl directly since it includes full endpoint
+	resp, err := p.httpClient.Get(adapter.RemoteUrl)
 	if err != nil {
 		return models.AdapterStatus{ReplicaStatus: "Unavailable"}, nil
 	}
@@ -90,6 +107,151 @@ func (p *RemoteHttpProxyPlugin) GetStatus(adapter models.AdapterResource) (model
 	return models.AdapterStatus{ReplicaStatus: status}, nil
 }
 
+// applyAuthentication applies authentication to HTTP request based on adapter config
+func (p *RemoteHttpProxyPlugin) applyAuthentication(req *http.Request, auth *models.AdapterAuthConfig) error {
+	if auth == nil || !auth.Required {
+		return nil // No authentication required
+	}
+
+	switch auth.Type {
+	case "bearer":
+		return p.applyBearerAuth(req, auth)
+	case "oauth":
+		return p.applyOAuthAuth(req, auth)
+	case "basic":
+		return p.applyBasicAuth(req, auth)
+	case "apikey":
+		return p.applyAPIKeyAuth(req, auth)
+	default:
+		return fmt.Errorf("unsupported authentication type: %s", auth.Type)
+	}
+}
+
+// applyBearerAuth applies bearer authentication to request
+func (p *RemoteHttpProxyPlugin) applyBearerAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
+	token := auth.Token // Legacy field
+
+	// Check new bearer token configuration
+	if auth.BearerToken != nil {
+		if auth.BearerToken.Token != "" {
+			token = auth.BearerToken.Token
+		}
+		// Note: Dynamic token generation would require token manager integration
+	}
+
+	if token == "" {
+		return fmt.Errorf("no bearer token available")
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	return nil
+}
+
+// applyOAuthAuth applies OAuth authentication to request
+func (p *RemoteHttpProxyPlugin) applyOAuthAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
+	// For now, this is a placeholder
+	// In a full implementation, this would handle OAuth token management
+	return fmt.Errorf("OAuth authentication not yet implemented for request signing")
+}
+
+// applyBasicAuth applies basic authentication to request
+func (p *RemoteHttpProxyPlugin) applyBasicAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
+	if auth.Basic == nil {
+		return fmt.Errorf("basic authentication configuration not found")
+	}
+
+	req.SetBasicAuth(auth.Basic.Username, auth.Basic.Password)
+	return nil
+}
+
+// applyAPIKeyAuth applies API key authentication to request
+func (p *RemoteHttpProxyPlugin) applyAPIKeyAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
+	if auth.APIKey == nil {
+		return fmt.Errorf("API key configuration not found")
+	}
+
+	location := strings.ToLower(auth.APIKey.Location)
+	name := auth.APIKey.Name
+	key := auth.APIKey.Key
+
+	switch location {
+	case "header":
+		req.Header.Set(name, key)
+	case "query":
+		// Add to query parameters
+		if req.URL == nil {
+			return fmt.Errorf("request URL is nil")
+		}
+		query := req.URL.Query()
+		query.Set(name, key)
+		req.URL.RawQuery = query.Encode()
+	case "cookie":
+		// Add cookie
+		req.AddCookie(&http.Cookie{Name: name, Value: key})
+	default:
+		return fmt.Errorf("unsupported API key location: %s", location)
+	}
+
+	return nil
+}
+
 func (p *RemoteHttpProxyPlugin) GetLogs(adapter models.AdapterResource) (string, error) {
 	return "Remote server - no logs available", nil
+}
+
+// validateMCPMessage validates that the request body is a valid MCP JSON-RPC 2.0 message
+func (p *RemoteHttpProxyPlugin) validateMCPMessage(body io.Reader) error {
+	var message map[string]interface{}
+	if err := json.NewDecoder(body).Decode(&message); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	// Check for JSON-RPC 2.0 structure
+	jsonrpc, ok := message["jsonrpc"]
+	if !ok {
+		return fmt.Errorf("missing 'jsonrpc' field")
+	}
+
+	jsonrpcStr, ok := jsonrpc.(string)
+	if !ok || jsonrpcStr != "2.0" {
+		return fmt.Errorf("invalid or missing 'jsonrpc' version, expected '2.0'")
+	}
+
+	// Should have either 'method' (request) or 'result'/'error' (response)
+	hasMethod := message["method"] != nil
+	hasResult := message["result"] != nil
+	hasError := message["error"] != nil
+
+	if !hasMethod && !hasResult && !hasError {
+		return fmt.Errorf("invalid MCP message: must have 'method', 'result', or 'error' field")
+	}
+
+	// Additional MCP-specific validation
+	if hasMethod {
+		if _, ok := message["method"].(string); !ok {
+			return fmt.Errorf("'method' must be a string")
+		}
+
+		// Validate common MCP method names
+		if methodStr, ok := message["method"].(string); ok {
+			validMethods := map[string]bool{
+				"initialize":          true,
+				"tools/list":          true,
+				"tools/call":          true,
+				"resources/list":      true,
+				"resources/read":      true,
+				"prompts/list":        true,
+				"prompts/get":         true,
+				"completion/complete": true,
+			}
+
+			if !validMethods[methodStr] && !strings.HasPrefix(methodStr, "tools/") &&
+				!strings.HasPrefix(methodStr, "resources/") && !strings.HasPrefix(methodStr, "prompts/") {
+				// Allow custom methods but log for debugging
+				fmt.Printf("MCP Validation: Unknown method '%s' - allowing but may be unsupported\n", methodStr)
+			}
+		}
+	}
+
+	return nil
 }

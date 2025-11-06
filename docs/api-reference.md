@@ -509,21 +509,79 @@ Content-Type: application/json
 **Response (200 OK):**
 ```json
 {
-  "message": "Server registration prepared",
-  "adapterData": {
-    "name": "discovered-127-0-0-1-1761654999",
+  "message": "Adapter created successfully",
+  "adapter": {
+    "id": "discovered-127-0-0-1-8000",
+    "name": "discovered-127-0-0-1-8000",
     "imageName": "mcp-proxy",
     "imageVersion": "1.0.0",
     "protocol": "MCP",
-    "connectionType": "SSE",
+    "connectionType": "RemoteHttp",
     "environmentVariables": {
-      "MCP_PROXY_URL": "http://127.0.0.1:8000/mcp"
+      "MCP_PROXY_URL": "http://127.0.0.1:8000",
+      "MCP_SERVER_AUTH_TYPE": "none"
     },
-    "replicaCount": 0,
-    "description": "Auto-discovered MCP server at http://127.0.0.1:8000",
-    "useWorkloadIdentity": false
+    "replicaCount": 1,
+    "description": "Auto-discovered MCP server at http://127.0.0.1:8000 [AUTO-SECURED]",
+    "useWorkloadIdentity": false,
+    "remoteUrl": "http://127.0.0.1:8000",
+    "authentication": {
+      "required": true,
+      "type": "bearer",
+      "bearerToken": {
+        "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "dynamic": true,
+        "expiresAt": "2025-01-07T12:00:00Z"
+      }
+    },
+    "createdBy": "system",
+    "createdAt": "2025-01-06T12:00:00Z",
+    "lastUpdatedAt": "2025-01-06T12:00:00Z"
   },
-  "note": "Integration with ManagementService needed for actual adapter creation"
+  "security_note": "High-risk server automatically secured with bearer token authentication. Original server had no authentication.",
+  "token_info": {
+    "tokenId": "token-1736169600",
+    "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "tokenType": "Bearer",
+    "expiresAt": "2025-01-07T12:00:00Z",
+    "issuedAt": "2025-01-06T12:00:00Z",
+    "audience": "http://localhost:8911/adapters/discovered-127-0-0-1-8000",
+    "issuer": "suse-ai-up",
+    "subject": "adapter-discovered-127-0-0-1-8000",
+    "scope": "mcp:read mcp:write server:mcp-127-0-0-1-8000-1234567890 risk:high"
+  }
+}
+```
+
+**Security Behavior:**
+
+- **High vulnerability servers** (`vulnerability_score: "high"`): Automatically secured with bearer token authentication
+- **Medium vulnerability servers** (`vulnerability_score: "medium"`): Optional authentication configured
+- **Low vulnerability servers** (`vulnerability_score: "low"`): No additional authentication needed
+
+**Error Responses:**
+
+**400 Bad Request:**
+```json
+{
+  "error": "Invalid request body",
+  "details": "discoveredServerId is required"
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "error": "Discovered server not found",
+  "details": "Server ID 'mcp-invalid-id' not found in discovery results"
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "error": "Failed to create adapter",
+  "details": "Failed to configure authentication: token generation failed"
 }
 ```
 

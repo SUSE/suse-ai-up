@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"suse-ai-up/pkg/models"
 )
 
 // AuthMode represents the authentication mode for an adapter
@@ -120,6 +121,27 @@ func (tm *TokenManager) GenerateBearerToken(adapterName, audience string, expire
 		Subject:     adapterName,
 		Scope:       "mcp:read mcp:write",
 	}, nil
+}
+
+// CreateTokenForAdapter creates a token specifically for an adapter created from a discovered server
+func (tm *TokenManager) CreateTokenForAdapter(adapterName string, server *models.DiscoveredServer) (*TokenInfo, error) {
+	audience := fmt.Sprintf("http://localhost:8911/adapters/%s", adapterName)
+
+	// Adjust expiration based on vulnerability score
+	expiresInHours := 24 // default
+	if server.VulnerabilityScore == "high" {
+		expiresInHours = 12 // Shorter expiration for high-risk servers
+	}
+
+	tokenInfo, err := tm.GenerateBearerToken(adapterName, audience, expiresInHours)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add metadata about the discovered server
+	tokenInfo.Scope = fmt.Sprintf("mcp:read mcp:write server:%s risk:%s", server.ID, server.VulnerabilityScore)
+
+	return tokenInfo, nil
 }
 
 // ValidateToken validates a JWT token and returns the claims

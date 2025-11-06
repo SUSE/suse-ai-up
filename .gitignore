@@ -7,3 +7,10 @@ service
 .DS_Store
 service.log
 test.go
+*.sh
+*.log
+service.log
+SESSION_TERMINATION_FIX.md
+test_gin_server.go
+test_server.go
+service.log

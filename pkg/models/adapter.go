@@ -41,6 +41,8 @@ type AdapterData struct {
 	MCPClientConfig MCPClientConfig `json:"mcpClientConfig,omitempty"`
 	// Authentication configuration
 	Authentication *AdapterAuthConfig `json:"authentication,omitempty"`
+	// MCP Functionality (discovered from server)
+	MCPFunctionality *MCPFunctionality `json:"mcpFunctionality,omitempty"`
 }
 
 // NewAdapterData creates a new AdapterData with defaults
@@ -199,11 +201,85 @@ type MCPClientConfig struct {
 	MCPServers map[string]MCPServerConfig `json:"mcpServers"`
 }
 
+// MCPServerInfo represents MCP server information from initialize response
+type MCPServerInfo struct {
+	Name         string                 `json:"name"`
+	Version      string                 `json:"version"`
+	Protocol     string                 `json:"protocol"`
+	Capabilities map[string]interface{} `json:"capabilities"`
+}
+
+// MCPPrompt represents an MCP prompt
+type MCPPrompt struct {
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Arguments   []MCPArgument `json:"arguments,omitempty"`
+}
+
+// MCPArgument represents an MCP prompt argument
+type MCPArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+}
+
+// MCPResource represents an MCP resource
+type MCPResource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
+
+// MCPFunctionality represents discovered MCP server capabilities
+type MCPFunctionality struct {
+	ServerInfo    MCPServerInfo `json:"serverInfo"`
+	Tools         []MCPTool     `json:"tools,omitempty"`
+	Prompts       []MCPPrompt   `json:"prompts,omitempty"`
+	Resources     []MCPResource `json:"resources,omitempty"`
+	LastRefreshed time.Time     `json:"lastRefreshed"`
+}
+
+// BearerTokenConfig represents bearer token authentication configuration
+type BearerTokenConfig struct {
+	Token     string    `json:"token,omitempty"` // Static token
+	Dynamic   bool      `json:"dynamic"`         // Use token manager
+	ExpiresAt time.Time `json:"expiresAt,omitempty"`
+}
+
+// OAuthConfig represents OAuth authentication configuration
+type OAuthConfig struct {
+	ClientID     string   `json:"clientId,omitempty"`
+	ClientSecret string   `json:"clientSecret,omitempty"`
+	AuthURL      string   `json:"authUrl,omitempty"`
+	TokenURL     string   `json:"tokenUrl,omitempty"`
+	Scopes       []string `json:"scopes,omitempty"`
+	RedirectURI  string   `json:"redirectUri,omitempty"`
+}
+
+// BasicAuthConfig represents basic authentication configuration
+type BasicAuthConfig struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+// APIKeyConfig represents API key authentication configuration
+type APIKeyConfig struct {
+	Key      string `json:"key,omitempty"`
+	Location string `json:"location,omitempty"` // "header", "query", "cookie"
+	Name     string `json:"name,omitempty"`     // Header name, query param, or cookie name
+}
+
 // AdapterAuthConfig represents authentication configuration for an adapter
 type AdapterAuthConfig struct {
-	Required bool   `json:"required"`        // true = require auth, false = optional
-	Type     string `json:"type"`            // "bearer", "oauth", "none"
-	Token    string `json:"token,omitempty"` // For bearer token validation
+	Required    bool               `json:"required"` // true = require auth, false = optional
+	Type        string             `json:"type"`     // "bearer", "oauth", "basic", "apikey", "none"
+	BearerToken *BearerTokenConfig `json:"bearerToken,omitempty"`
+	OAuth       *OAuthConfig       `json:"oauth,omitempty"`
+	Basic       *BasicAuthConfig   `json:"basic,omitempty"`
+	APIKey      *APIKeyConfig      `json:"apiKey,omitempty"`
+	// Legacy field for backward compatibility
+	Token string `json:"token,omitempty"` // For bearer token validation
 }
 
 // RegistrySource represents a source of MCP registry data

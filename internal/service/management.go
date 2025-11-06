@@ -52,11 +52,17 @@ type ManagementService struct {
 	kubeClient   *clients.KubeClientWrapper
 	store        clients.AdapterResourceStore
 	sessionStore session.SessionStore
+	mcpDiscovery *MCPDiscoveryService
 }
 
 // NewManagementService creates a new ManagementService
 func NewManagementService(kubeClient *clients.KubeClientWrapper, store clients.AdapterResourceStore, sessionStore session.SessionStore) *ManagementService {
-	return &ManagementService{kubeClient: kubeClient, store: store, sessionStore: sessionStore}
+	return &ManagementService{
+		kubeClient:   kubeClient,
+		store:        store,
+		sessionStore: sessionStore,
+		mcpDiscovery: NewMCPDiscoveryService(),
+	}
 }
 
 // CreateAdapter handles POST /adapters
@@ -202,13 +208,33 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		log.Printf("Skipping deployment for non-K8s adapter %s (type: %s)", data.Name, data.ConnectionType)
 	}
 
+	// Discover MCP capabilities for supported connection types
+	if data.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		data.ConnectionType == models.ConnectionTypeStreamableHttp {
+		log.Printf("CreateAdapter: Discovering MCP capabilities for adapter %s", data.Name)
+
+		// Wait a moment for the adapter to be ready (especially for deployed adapters)
+		if data.ConnectionType == models.ConnectionTypeStreamableHttp {
+			time.Sleep(2 * time.Second)
+		}
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(resource)
+		if err != nil {
+			log.Printf("CreateAdapter: Failed to discover MCP capabilities for %s: %v", data.Name, err)
+			// Don't fail the creation, just log the error
+		} else {
+			resource.MCPFunctionality = functionality
+			log.Printf("CreateAdapter: Successfully discovered capabilities for %s", data.Name)
+		}
+	}
+
 	// Store in memory/Cosmos
 	if err := ms.store.UpsertAsync(resource, ctx); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": resource.ID, "name": resource.Name})
+	c.JSON(http.StatusCreated, resource)
 }
 
 // ListAdapters handles GET /adapters
@@ -230,8 +256,8 @@ func (ms *ManagementService) ListAdapters(c *gin.Context) {
 }
 
 // GetAdapter handles GET /adapters/:name
-// @Summary Get adapter details
-// @Description Retrieve metadata for a specific MCP server adapter.
+// @Summary Get an adapter
+// @Description Retrieve details of a specific MCP server adapter including discovered capabilities.
 // @Tags adapters
 // @Produce json
 // @Param name path string true "Adapter name"
@@ -246,6 +272,27 @@ func (ms *ManagementService) GetAdapter(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 		return
 	}
+
+	// Check if MCP functionality needs refresh
+	refresh := c.Query("refresh") == "true"
+	if refresh && (adapter.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		adapter.ConnectionType == models.ConnectionTypeStreamableHttp) {
+		log.Printf("GetAdapter: Refreshing MCP capabilities for adapter %s", name)
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(*adapter)
+		if err != nil {
+			log.Printf("GetAdapter: Failed to refresh MCP capabilities for %s: %v", name, err)
+			// Don't fail the request, just log the error
+		} else {
+			adapter.MCPFunctionality = functionality
+			// Update the stored adapter with refreshed capabilities
+			if err := ms.store.UpsertAsync(*adapter, ctx); err != nil {
+				log.Printf("GetAdapter: Failed to store refreshed capabilities for %s: %v", name, err)
+			}
+			log.Printf("GetAdapter: Successfully refreshed capabilities for %s", name)
+		}
+	}
+
 	c.JSON(http.StatusOK, adapter)
 }
 
@@ -286,15 +333,48 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	updated.Create(data, existing.CreatedBy, existing.CreatedAt)
 
 	// Check if deployment needs update (only for K8s)
+	deploymentUpdated := false
 	if (existing.ConnectionType == models.ConnectionTypeSSE || existing.ConnectionType == models.ConnectionTypeStreamableHttp) && ms.needsDeploymentUpdate(*existing, data) {
 		if ms.kubeClient != nil {
 			if err := ms.deployAdapter(&data, ctx); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update deployment: %v", err)})
 				return
 			}
+			deploymentUpdated = true
 		} else {
 			log.Printf("Skipping Kubernetes deployment update for adapter %s (running in local mode)", name)
 		}
+	}
+
+	// Rediscover MCP capabilities if connection type changed or deployment was updated
+	shouldRediscover := false
+	if existing.ConnectionType != data.ConnectionType ||
+		existing.RemoteUrl != data.RemoteUrl ||
+		(data.Authentication != nil && existing.Authentication != data.Authentication) ||
+		deploymentUpdated {
+		shouldRediscover = true
+	}
+
+	if shouldRediscover && (data.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		data.ConnectionType == models.ConnectionTypeStreamableHttp) {
+		log.Printf("UpdateAdapter: Rediscovering MCP capabilities for adapter %s", name)
+
+		// Wait a moment for the adapter to be ready if deployment was updated
+		if deploymentUpdated {
+			time.Sleep(2 * time.Second)
+		}
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(updated)
+		if err != nil {
+			log.Printf("UpdateAdapter: Failed to rediscover MCP capabilities for %s: %v", name, err)
+			// Don't fail the update, just log the error
+		} else {
+			updated.MCPFunctionality = functionality
+			log.Printf("UpdateAdapter: Successfully rediscovered capabilities for %s", name)
+		}
+	} else {
+		// Preserve existing functionality if not rediscovering
+		updated.MCPFunctionality = existing.MCPFunctionality
 	}
 
 	if err := ms.store.UpsertAsync(updated, ctx); err != nil {

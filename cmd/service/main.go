@@ -107,6 +107,10 @@ func main() {
 
 	authorizationService := service.NewAuthorizationService(sessionStore, baseURL)
 
+	// Initialize MCP auth integration service
+	mcpAuthIntegration := service.NewMCPAuthIntegrationService(tokenManager)
+	mcpAuthHandler := handlers.NewMCPAuthHandler(store, mcpAuthIntegration)
+
 	// Initialize MCP registry services
 	mcpStore := service.NewInMemoryMCPServerStore()
 	registryManager := service.NewRegistryManager(mcpStore, true, 24*time.Hour, []string{})
@@ -125,6 +129,13 @@ func main() {
 	// Set up Gin router
 	r := gin.New()
 	r.Use(gin.Recovery())
+
+	// Add debug middleware to trace requests
+	r.Use(func(c *gin.Context) {
+		log.Printf("DEBUG: Incoming request: %s %s", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+		log.Printf("DEBUG: Request completed with status: %d", c.Writer.Status())
+	})
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -230,10 +241,19 @@ func main() {
 		api.GET("/:name/sessions", authorizationService.ListSessions)
 		api.POST("/:name/sessions", authorizationService.CreateSession)
 
+		// Session management routes
+		api.DELETE("/:name/sessions/:sessionId", authorizationService.DeleteSession)
+		api.DELETE("/:name/sessions", authorizationService.DeleteAllSessions)
+
 		// Token management routes
 		api.GET("/:name/token", tokenHandler.GetAdapterToken)
 		api.GET("/:name/token/validate", tokenHandler.ValidateToken)
 		api.POST("/:name/token/refresh", tokenHandler.RefreshToken)
+
+		// MCP client authentication routes
+		api.GET("/:name/client-token", mcpAuthHandler.GetClientToken)
+		api.POST("/:name/validate-auth", mcpAuthHandler.ValidateAuthConfig)
+		api.POST("/:name/test-auth", mcpAuthHandler.TestAuthConnection)
 	}
 
 	// OAuth callback routes
@@ -260,6 +280,9 @@ func main() {
 	if port == "" {
 		port = "8911"
 	}
+	bindAddr := "0.0.0.0:" + port
 	log.Printf("Server listening on http://localhost:%s", port)
-	log.Fatal(r.Run(":" + port))
+	log.Printf("Actually binding to: %s", bindAddr)
+
+	log.Fatal(r.Run(bindAddr))
 }

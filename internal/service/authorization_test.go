@@ -3,11 +3,15 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"suse-ai-up/pkg/session"
 )
 
@@ -154,5 +158,172 @@ func TestBuildAuthorizationURL(t *testing.T) {
 
 	if state := params.Get("state"); state == "" {
 		t.Error("State parameter is missing")
+	}
+}
+
+func TestDeleteSession(t *testing.T) {
+	// Create test session store
+	sessionStore := session.NewInMemorySessionStore()
+
+	// Create test session
+	sessionID := "test-session-123"
+	adapterName := "test-adapter"
+
+	sessionDetails := session.SessionDetails{
+		SessionID:      sessionID,
+		AdapterName:    adapterName,
+		TargetAddress:  "http://localhost:8000",
+		ConnectionType: "StreamableHttp",
+		CreatedAt:      time.Now(),
+		LastActivity:   time.Now(),
+		Status:         "active",
+	}
+
+	err := sessionStore.SetWithDetails(sessionID, adapterName, sessionDetails.TargetAddress, sessionDetails.ConnectionType)
+	if err != nil {
+		t.Fatalf("Failed to create test session: %v", err)
+	}
+
+	// Create authorization service
+	authService := NewAuthorizationService(sessionStore, "http://localhost:8911")
+
+	// Test DELETE /adapters/{name}/sessions/{sessionId}
+	router := gin.New()
+	router.DELETE("/adapters/:name/sessions/:sessionId", authService.DeleteSession)
+
+	req, _ := http.NewRequest("DELETE", "/adapters/test-adapter/sessions/test-session-123", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if response["message"] != "Session deleted successfully" {
+		t.Errorf("Expected message 'Session deleted successfully', got %v", response["message"])
+	}
+
+	if response["adapterName"] != "test-adapter" {
+		t.Errorf("Expected adapterName 'test-adapter', got %v", response["adapterName"])
+	}
+
+	if response["sessionId"] != "test-session-123" {
+		t.Errorf("Expected sessionId 'test-session-123', got %v", response["sessionId"])
+	}
+
+	// Verify session is deleted
+	_, exists := sessionStore.Get(sessionID)
+	if exists {
+		t.Error("Session should have been deleted but still exists")
+	}
+}
+
+func TestDeleteSessionNotFound(t *testing.T) {
+	// Create test session store
+	sessionStore := session.NewInMemorySessionStore()
+
+	// Create authorization service
+	authService := NewAuthorizationService(sessionStore, "http://localhost:8911")
+
+	// Test DELETE /adapters/{name}/sessions/{sessionId} with non-existent session
+	router := gin.New()
+	router.DELETE("/adapters/:name/sessions/:sessionId", authService.DeleteSession)
+
+	req, _ := http.NewRequest("DELETE", "/adapters/test-adapter/sessions/non-existent-session", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if response["error"] != "Session not found" {
+		t.Errorf("Expected error 'Session not found', got %v", response["error"])
+	}
+}
+
+func TestDeleteAllSessions(t *testing.T) {
+	// Create test session store
+	sessionStore := session.NewInMemorySessionStore()
+
+	// Create test sessions
+	adapterName := "test-adapter"
+	sessions := []string{"session-1", "session-2", "session-3"}
+
+	for _, sessionID := range sessions {
+		sessionDetails := session.SessionDetails{
+			SessionID:      sessionID,
+			AdapterName:    adapterName,
+			TargetAddress:  "http://localhost:8000",
+			ConnectionType: "StreamableHttp",
+			CreatedAt:      time.Now(),
+			LastActivity:   time.Now(),
+			Status:         "active",
+		}
+		err := sessionStore.SetWithDetails(sessionID, adapterName, sessionDetails.TargetAddress, sessionDetails.ConnectionType)
+		if err != nil {
+			t.Fatalf("Failed to create test session %s: %v", sessionID, err)
+		}
+	}
+
+	// Verify sessions exist
+	for _, sessionID := range sessions {
+		_, exists := sessionStore.Get(sessionID)
+		if !exists {
+			t.Errorf("Session %s should exist but doesn't", sessionID)
+		}
+	}
+
+	// Create authorization service
+	authService := NewAuthorizationService(sessionStore, "http://localhost:8911")
+
+	// Test DELETE /adapters/{name}/sessions
+	router := gin.New()
+	router.DELETE("/adapters/:name/sessions", authService.DeleteAllSessions)
+
+	req, _ := http.NewRequest("DELETE", "/adapters/test-adapter/sessions", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if response["message"] != "All sessions deleted successfully" {
+		t.Errorf("Expected message 'All sessions deleted successfully', got %v", response["message"])
+	}
+
+	if response["adapterName"] != "test-adapter" {
+		t.Errorf("Expected adapterName 'test-adapter', got %v", response["adapterName"])
+	}
+
+	if response["deletedCount"] != float64(3) { // JSON numbers are float64
+		t.Errorf("Expected deletedCount 3, got %v", response["deletedCount"])
+	}
+
+	// Verify all sessions are deleted
+	for _, sessionID := range sessions {
+		_, exists := sessionStore.Get(sessionID)
+		if exists {
+			t.Errorf("Session %s should have been deleted but still exists", sessionID)
+		}
 	}
 }

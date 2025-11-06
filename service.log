@@ -1,13 +1,14 @@
-2025/11/05 16:42:10 Starting SUSE AI Universal Proxy service...
-2025/11/05 16:42:10 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
-2025/11/05 16:42:10 Creating discovery service...
-2025/11/05 16:42:10 Discovery service created successfully
-2025/11/05 16:42:10 Plugin service framework initialized
+2025/11/06 12:36:00 Starting SUSE AI Universal Proxy service...
+2025/11/06 12:36:00 Warning: Kubernetes client created but connectivity test failed: Get "https://127.0.0.1:6443/api/v1/namespaces?limit=1": tls: failed to verify certificate: x509: certificate signed by unknown authority. Running in local mode without Kubernetes deployment.
+2025/11/06 12:36:00 Token manager initialized successfully
+2025/11/06 12:36:00 Creating discovery service...
+2025/11/06 12:36:00 Discovery service created successfully
+2025/11/06 12:36:00 Plugin service framework initialized
 [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
  - using env:	export GIN_MODE=release
  - using code:	gin.SetMode(gin.ReleaseMode)
 
-2025/11/05 16:42:10 Using development authentication
+2025/11/06 12:36:00 Using development authentication
 [GIN-debug] POST   /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).StartScan-fm (4 handlers)
 [GIN-debug] GET    /scan                     --> suse-ai-up/internal/service.(*DiscoveryService).ListScans-fm (4 handlers)
 [GIN-debug] GET    /scan/:scanId             --> suse-ai-up/internal/service.(*DiscoveryService).GetScanStatus-fm (4 handlers)
@@ -46,88 +47,21 @@
 [GIN-debug] DELETE /adapters/:name/auth/tokens --> suse-ai-up/internal/service.(*AuthorizationService).RevokeTokens-fm (4 handlers)
 [GIN-debug] GET    /adapters/:name/sessions  --> suse-ai-up/internal/service.(*AuthorizationService).ListSessions-fm (4 handlers)
 [GIN-debug] POST   /adapters/:name/sessions  --> suse-ai-up/internal/service.(*AuthorizationService).CreateSession-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name/sessions/:sessionId --> suse-ai-up/internal/service.(*AuthorizationService).DeleteSession-fm (4 handlers)
+[GIN-debug] DELETE /adapters/:name/sessions  --> suse-ai-up/internal/service.(*AuthorizationService).DeleteAllSessions-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/token     --> suse-ai-up/internal/handlers.(*TokenHandler).GetAdapterToken-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/token/validate --> suse-ai-up/internal/handlers.(*TokenHandler).ValidateToken-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/token/refresh --> suse-ai-up/internal/handlers.(*TokenHandler).RefreshToken-fm (4 handlers)
+[GIN-debug] GET    /adapters/:name/client-token --> suse-ai-up/internal/handlers.(*MCPAuthHandler).GetClientToken-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/validate-auth --> suse-ai-up/internal/handlers.(*MCPAuthHandler).ValidateAuthConfig-fm (4 handlers)
+[GIN-debug] POST   /adapters/:name/test-auth --> suse-ai-up/internal/handlers.(*MCPAuthHandler).TestAuthConnection-fm (4 handlers)
 [GIN-debug] GET    /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
 [GIN-debug] POST   /oauth/callback           --> suse-ai-up/internal/service.(*AuthorizationService).OAuthCallback-fm (4 handlers)
 [GIN-debug] GET    /docs                     --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
 [GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
-2025/11/05 16:42:10 Server listening on http://localhost:8911
+2025/11/06 12:36:00 Server listening on http://localhost:8911
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8911
-2025/11/05 16:43:10 DiscoveryService: runScan called for scanId: scan-1762357390439801000
-2025/11/05 16:43:10 DiscoveryService: Starting scan scan-1762357390439801000 with config: {ScanRanges:[192.168.1.74/32 127.0.0.1/32 localhost] Ports:[8002] Timeout:10s MaxConcurrent:10 ExcludeProxy:<nil> ExcludeAddresses:[]}
-2025/11/05 16:43:10 DiscoveryService: expandCIDR called with: 192.168.1.74/32
-2025/11/05 16:43:10 DiscoveryService: Returning host route IP: [192.168.1.74]
-2025/11/05 16:43:10 DiscoveryService: expandCIDR called with: 127.0.0.1/32
-2025/11/05 16:43:10 DiscoveryService: Returning host route IP: [127.0.0.1]
-2025/11/05 16:43:10 DiscoveryService: expandCIDR called with: localhost
-2025/11/05 16:43:10 DiscoveryService: Failed to expand IP range localhost: invalid IP address or CIDR: localhost
-2025/11/05 16:43:10 DiscoveryService: Found 1 MCP servers
-2025/11/05 16:43:25 DEBUG: RegisterServer - server.Connection: SSE
-2025/11/05 16:43:25 DEBUG: Server connection is SSE, setting to RemoteHttp
-2025/11/05 16:43:25 DiscoveryService: High-risk server detected (http://192.168.1.74:8002), automatically adding bearer authentication
-2025/11/05 16:43:25 DiscoveryService: Security enhancement applied - bearer token generated for adapter discovered-192-168-1-74-1762357405
-[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
- - using env:	export GIN_MODE=release
- - using code:	gin.SetMode(gin.ReleaseMode)
-
-2025/11/05 16:43:25 DEBUG: DiscoveryService adapterData.ConnectionType: RemoteHttp
-2025/11/05 16:43:25 DiscoveryService: adapterData.RemoteUrl: http://192.168.1.74:8002
-2025/11/05 16:43:25 DEBUG: JSON being sent: map[args:[] authentication:0x14000d22660 command: connectionType:RemoteHttp description:Auto-discovered MCP server at http://192.168.1.74:8002 (Automatically secured with bearer authentication) environmentVariables:map[] imageName: imageVersion: mcpClientConfig:{MCPServers:map[]} name:discovered-192-168-1-74-1762357405 protocol:MCP remoteUrl:http://192.168.1.74:8002 replicaCount:0 useWorkloadIdentity:false]
-2025/11/05 16:43:25 CreateAdapter: Starting adapter creation
-2025/11/05 16:43:25 CreateAdapter: JSON bound successfully
-2025/11/05 16:43:25 DEBUG: req.ConnectionType: RemoteHttp
-2025/11/05 16:43:25 CreateAdapter: After defaults: {Name:discovered-192-168-1-74-1762357405 ImageName: ImageVersion: Protocol:MCP ConnectionType:RemoteHttp EnvironmentVariables:map[] ReplicaCount:1 Description:Auto-discovered MCP server at http://192.168.1.74:8002 (Automatically secured with bearer authentication) UseWorkloadIdentity:false RemoteUrl:http://192.168.1.74:8002 Command: Args:[] MCPClientConfig:{MCPServers:map[]} Authentication:0x14000d228a0}
-2025/11/05 16:43:25 DEBUG: data.ConnectionType after defaults: RemoteHttp
-2025/11/05 16:43:25 CreateAdapter: Validating name: discovered-192-168-1-74-1762357405
-2025/11/05 16:43:25 CreateAdapter: Name validation passed
-2025/11/05 16:43:25 CreateAdapter: User: dev
-2025/11/05 16:43:25 CreateAdapter: Adapter does not exist, proceeding
-2025/11/05 16:43:25 Skipping deployment for non-K8s adapter discovered-192-168-1-74-1762357405 (type: RemoteHttp)
-2025/11/05 16:43:25 DiscoveryService: Adapter discovered-192-168-1-74-1762357405 created with automatic security enhancement
-AUTH: Invalid token for adapter discovered-192-168-1-74-1762357405 from ::1
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/openid-configuration
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /.well-known/openid-configuration/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:43:49 DEBUG: DynamicRouter processing path: GET /adapters/discovered-192-168-1-74-1762357405/mcp/.well-known/openid-configuration
-AUTH: Successful authentication for adapter discovered-192-168-1-74-1762357405 from ::1
-2025/11/05 16:44:58 ForwardStreamableHttp: Request for adapter discovered-192-168-1-74-1762357405
-AUTH: Invalid token for adapter discovered-192-168-1-74-1762357405 from ::1
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/openid-configuration
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-protected-resource
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/oauth-authorization-server
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /.well-known/openid-configuration/adapters/discovered-192-168-1-74-1762357405/mcp
-2025/11/05 16:45:10 DEBUG: DynamicRouter processing path: GET /adapters/discovered-192-168-1-74-1762357405/mcp/.well-known/openid-configuration
-2025/11/05 16:49:40 ForwardStreamableHttp: Request for adapter discovered-192-168-1-74-1762357405
-2025/11/05 16:49:40 ForwardStreamableHttp: Unsupported connection type 
-2025/11/05 16:50:39 DEBUG: RegisterServer - server.Connection: SSE
-2025/11/05 16:50:39 DEBUG: Server connection is SSE, setting to RemoteHttp
-2025/11/05 16:50:39 DiscoveryService: High-risk server detected (http://192.168.1.74:8002), automatically adding bearer authentication
-2025/11/05 16:50:39 DiscoveryService: Security enhancement applied - bearer token generated for adapter discovered-192-168-1-74-1762357839
-[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
- - using env:	export GIN_MODE=release
- - using code:	gin.SetMode(gin.ReleaseMode)
-
-2025/11/05 16:50:39 DEBUG: DiscoveryService adapterData.ConnectionType: RemoteHttp
-2025/11/05 16:50:39 DiscoveryService: adapterData.RemoteUrl: http://192.168.1.74:8002
-2025/11/05 16:50:39 DEBUG: JSON being sent: map[args:[] authentication:0x14000cecb10 command: connectionType:RemoteHttp description:Auto-discovered MCP server at http://192.168.1.74:8002 (Automatically secured with bearer authentication) environmentVariables:map[] imageName: imageVersion: mcpClientConfig:{MCPServers:map[]} name:discovered-192-168-1-74-1762357839 protocol:MCP remoteUrl:http://192.168.1.74:8002 replicaCount:0 useWorkloadIdentity:false]
-2025/11/05 16:50:39 CreateAdapter: Starting adapter creation
-2025/11/05 16:50:39 CreateAdapter: JSON bound successfully
-2025/11/05 16:50:39 DEBUG: req.ConnectionType: RemoteHttp
-2025/11/05 16:50:39 CreateAdapter: After defaults: {Name:discovered-192-168-1-74-1762357839 ImageName: ImageVersion: Protocol:MCP ConnectionType:RemoteHttp EnvironmentVariables:map[] ReplicaCount:1 Description:Auto-discovered MCP server at http://192.168.1.74:8002 (Automatically secured with bearer authentication) UseWorkloadIdentity:false RemoteUrl:http://192.168.1.74:8002 Command: Args:[] MCPClientConfig:{MCPServers:map[]} Authentication:0x14000cecc90}
-2025/11/05 16:50:39 DEBUG: data.ConnectionType after defaults: RemoteHttp
-2025/11/05 16:50:39 CreateAdapter: Validating name: discovered-192-168-1-74-1762357839
-2025/11/05 16:50:39 CreateAdapter: Name validation passed
-2025/11/05 16:50:39 CreateAdapter: User: dev
-2025/11/05 16:50:39 CreateAdapter: Adapter does not exist, proceeding
-2025/11/05 16:50:39 Skipping deployment for non-K8s adapter discovered-192-168-1-74-1762357839 (type: RemoteHttp)
-2025/11/05 16:50:39 DiscoveryService: Adapter discovered-192-168-1-74-1762357839 created with automatic security enhancement
+[GIN-debug] [ERROR] listen tcp :8911: bind: address already in use
+2025/11/06 12:36:00 listen tcp :8911: bind: address already in use
