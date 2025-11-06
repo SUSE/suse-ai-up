@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"suse-ai-up/pkg/auth"
 	"suse-ai-up/pkg/models"
 )
 
@@ -61,16 +62,18 @@ type DiscoveryService struct {
 	scans             map[string]*models.ScanJob
 	cache             map[string]*models.DiscoveredServer
 	managementService *ManagementService
+	tokenManager      *auth.TokenManager
 	mu                sync.RWMutex
 }
 
 // NewDiscoveryService creates a new discovery service
-func NewDiscoveryService(managementService *ManagementService) *DiscoveryService {
+func NewDiscoveryService(managementService *ManagementService, tokenManager *auth.TokenManager) *DiscoveryService {
 	return &DiscoveryService{
 		httpClient:        &http.Client{Timeout: 10 * time.Second},
 		scans:             make(map[string]*models.ScanJob),
 		cache:             make(map[string]*models.DiscoveredServer),
 		managementService: managementService,
+		tokenManager:      tokenManager,
 	}
 }
 
@@ -329,17 +332,40 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 
 	// Automatic security enhancement for high-risk discovered servers
 	securityEnhanced := false
+	var generatedTokenInfo *auth.TokenInfo
 	if server.VulnerabilityScore == "high" && server.Metadata["auth_type"] == "none" {
 		log.Printf("DiscoveryService: High-risk server detected (%s), automatically adding bearer authentication", server.Address)
 
-		// Generate secure bearer token
-		secureToken := generateSecureToken()
-
-		// Configure adapter with bearer authentication
-		adapterData.Authentication = &models.AdapterAuthConfig{
-			Required: true,
-			Type:     "bearer",
-			Token:    secureToken,
+		if ds.tokenManager != nil {
+			// Generate OAuth 2.1 compliant JWT token
+			tokenInfo, err := ds.tokenManager.GenerateBearerToken(adapterData.Name, server.Address, 24)
+			if err != nil {
+				log.Printf("DiscoveryService: Failed to generate JWT token, falling back to legacy: %v", err)
+				// Fallback to legacy token generation
+				secureToken := generateSecureToken()
+				adapterData.Authentication = &models.AdapterAuthConfig{
+					Required: true,
+					Type:     "bearer",
+					Token:    secureToken,
+				}
+			} else {
+				// Use JWT token
+				adapterData.Authentication = &models.AdapterAuthConfig{
+					Required: true,
+					Type:     "bearer",
+					Token:    tokenInfo.AccessToken,
+				}
+				generatedTokenInfo = tokenInfo
+				log.Printf("DiscoveryService: JWT token generated (ID: %s, Expires: %s)", tokenInfo.TokenID, tokenInfo.ExpiresAt.Format(time.RFC3339))
+			}
+		} else {
+			// Fallback to legacy token generation
+			secureToken := generateSecureToken()
+			adapterData.Authentication = &models.AdapterAuthConfig{
+				Required: true,
+				Type:     "bearer",
+				Token:    secureToken,
+			}
 		}
 
 		// Update description to indicate security enhancement
@@ -422,12 +448,26 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 
 		// Add security enhancement information if applied
 		if securityEnhanced {
-			responseData["security"] = gin.H{
+			securityInfo := gin.H{
 				"enhanced":       true,
 				"auth_type":      "bearer",
 				"token_required": true,
 				"note":           "High-risk server automatically secured with bearer authentication",
 			}
+
+			// Include token information if JWT was generated
+			if generatedTokenInfo != nil {
+				securityInfo["token_info"] = gin.H{
+					"token_id":   generatedTokenInfo.TokenID,
+					"token_type": generatedTokenInfo.TokenType,
+					"expires_at": generatedTokenInfo.ExpiresAt.Format(time.RFC3339),
+					"issued_at":  generatedTokenInfo.IssuedAt.Format(time.RFC3339),
+					"scope":      generatedTokenInfo.Scope,
+					"note":       "Save this token information for MCP Inspector client configuration",
+				}
+			}
+
+			responseData["security"] = securityInfo
 			log.Printf("DiscoveryService: Adapter %s created with automatic security enhancement", adapterData.Name)
 		}
 

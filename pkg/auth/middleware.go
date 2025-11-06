@@ -17,8 +17,8 @@ func DevelopmentAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// OAuthConfig holds OAuth configuration
-type OAuthConfig struct {
+// ExternalOAuthConfig holds external OAuth provider configuration
+type ExternalOAuthConfig struct {
 	Provider string
 	ClientID string
 	TenantID string
@@ -30,11 +30,11 @@ type OAuthConfig struct {
 
 // OAuthMiddleware provides OAuth authentication
 type OAuthMiddleware struct {
-	config *OAuthConfig
+	config *ExternalOAuthConfig
 }
 
 // NewOAuthMiddleware creates a new OAuth middleware
-func NewOAuthMiddleware(config *OAuthConfig) *OAuthMiddleware {
+func NewOAuthMiddleware(config *ExternalOAuthConfig) *OAuthMiddleware {
 	return &OAuthMiddleware{config: config}
 }
 

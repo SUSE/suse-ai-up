@@ -84,16 +84,27 @@ func main() {
 			}
 		}
 	}()
-	proxyHandler := service.NewProxyHandler(sessionStore, kubeWrapper, store)
-	log.Println("Creating discovery service...")
-	discoveryService := service.NewDiscoveryService(managementService)
-	log.Println("Discovery service created successfully")
 
 	// Initialize authorization service
 	baseURL := os.Getenv("PROXY_BASE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8911"
 	}
+
+	// Initialize token manager for OAuth 2.1 compliant token handling
+	tokenManager, err := auth.NewTokenManager(baseURL)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize token manager: %v. Using legacy token validation.", err)
+		tokenManager = nil
+	} else {
+		log.Println("Token manager initialized successfully")
+	}
+
+	proxyHandler := service.NewProxyHandler(sessionStore, kubeWrapper, store)
+	log.Println("Creating discovery service...")
+	discoveryService := service.NewDiscoveryService(managementService, tokenManager)
+	log.Println("Discovery service created successfully")
+
 	authorizationService := service.NewAuthorizationService(sessionStore, baseURL)
 
 	// Initialize MCP registry services
@@ -134,7 +145,7 @@ func main() {
 	switch authMode {
 	case "oauth":
 		// Configure OAuth middleware (placeholder config)
-		oauthConfig := &auth.OAuthConfig{
+		oauthConfig := &auth.ExternalOAuthConfig{
 			Provider: "azure", // or "oauth"
 			Required: false,   // Set to true for production
 		}
@@ -191,7 +202,10 @@ func main() {
 	})
 
 	// Create adapter authentication middleware
-	adapterAuthMiddleware := auth.NewAdapterAuthMiddleware(store)
+	adapterAuthMiddleware := auth.NewAdapterAuthMiddleware(store, tokenManager)
+
+	// Create token handler for token management APIs
+	tokenHandler := handlers.NewTokenHandler(store, tokenManager)
 
 	// Routes
 	api := r.Group("/adapters")
@@ -215,6 +229,11 @@ func main() {
 		api.DELETE("/:name/auth/tokens", authorizationService.RevokeTokens)
 		api.GET("/:name/sessions", authorizationService.ListSessions)
 		api.POST("/:name/sessions", authorizationService.CreateSession)
+
+		// Token management routes
+		api.GET("/:name/token", tokenHandler.GetAdapterToken)
+		api.GET("/:name/token/validate", tokenHandler.ValidateToken)
+		api.POST("/:name/token/refresh", tokenHandler.RefreshToken)
 	}
 
 	// OAuth callback routes
