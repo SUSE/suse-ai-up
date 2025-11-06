@@ -88,11 +88,12 @@ graph LR
 ### 🔀 Proxy Service
 The core reverse proxy and management layer for MCP servers. Handles routing, discovery, and lifecycle operations.
 
-- **[Overview](docs/proxy/overview.md)** - Architecture and key concepts
-- **[Getting Started](docs/proxy/getting-started.md)** - Installation and setup
-- **[API Reference](docs/proxy/api-reference.md)** - Complete API documentation
-- **[Examples](docs/proxy/examples.md)** - Usage examples and tutorials
-- **[Security](docs/proxy/security.md)** - Security features and best practices
+- **[Overview](docs/overview.md)** - Architecture and key concepts
+- **[Getting Started](docs/getting-started.md)** - Installation and setup
+- **[API Reference](docs/api-reference.md)** - Complete API documentation
+- **[Examples](docs/examples.md)** - Usage examples and tutorials
+- **[Security](docs/security.md)** - Security features and best practices
+- **[OAuth Implementation](docs/oauth-implementation.md)** - OAuth 2.1 compliant token management
 
 ### 🤖 Smart Agents Service
 AI orchestrator to enable a local model to act on behalf of a remote LLM to provide more security while maintaining full control over the data.
@@ -111,7 +112,11 @@ Comprehensive MCP server registry with discovery, deployment, and management cap
 
 ## 📚 Documentation
 
-- **[Documentation Index](docs/README.md)** - Navigate the complete documentation
+- **[Documentation Index](docs/index.html)** - Navigate complete documentation
+- **[OAuth Implementation](docs/oauth-implementation.md)** - OAuth 2.1 compliant token management system
+- **[Adapters Guide](docs/adapters.md)** - Adapter configuration and management
+- **[Discovery Service](docs/discovery.md)** - Network discovery and auto-registration
+- **[Registry Management](docs/registry.md)** - MCP server registry operations
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines and contribution process
 - **[License](LICENSE.md)** - Apache 2.0 license information
 
