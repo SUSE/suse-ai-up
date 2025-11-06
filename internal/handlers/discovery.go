@@ -21,7 +21,7 @@ func NewDiscoveryHandler(networkScanner *scanner.NetworkScanner) *DiscoveryHandl
 // @Tags discovery
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /discovery/scan [post]
+// @Router /api/v1/discovery/scan [post]
 func (h *DiscoveryHandler) ScanForMCPServers(c *gin.Context) {
 	// Perform network scan
 	results, errors := h.networkScanner.Scan()
@@ -38,7 +38,7 @@ func (h *DiscoveryHandler) ScanForMCPServers(c *gin.Context) {
 // @Tags discovery
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /discovery/servers [get]
+// @Router /api/v1/discovery/servers [get]
 func (h *DiscoveryHandler) ListDiscoveredServers(c *gin.Context) {
 	// Get all discovered servers
 	servers := h.networkScanner.GetAllDiscoveredServers()
@@ -56,7 +56,7 @@ func (h *DiscoveryHandler) ListDiscoveredServers(c *gin.Context) {
 // @Param id path string true "Server ID"
 // @Success 200 {object} models.DiscoveredServer
 // @Failure 404 {object} map[string]interface{}
-// @Router /discovery/servers/{id} [get]
+// @Router /api/v1/discovery/servers/{id} [get]
 func (h *DiscoveryHandler) GetDiscoveredServer(c *gin.Context) {
 	// Get specific discovered server
 	server := h.networkScanner.GetDiscoveredServer(c.Param("id"))

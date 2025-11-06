@@ -35,7 +35,7 @@ func NewTokenHandler(store clients.AdapterResourceStore, tokenManager *auth.Toke
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /adapters/{name}/token [get]
+// @Router /api/v1/adapters/{name}/token [get]
 func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 	adapterName := c.Param("name")
 	if adapterName == "" {
@@ -170,7 +170,7 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
-// @Router /adapters/{name}/token/validate [post]
+// @Router /api/v1/adapters/{name}/token/validate [post]
 func (th *TokenHandler) ValidateToken(c *gin.Context) {
 	adapterName := c.Param("name")
 	if adapterName == "" {
@@ -250,7 +250,7 @@ func (th *TokenHandler) ValidateToken(c *gin.Context) {
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /adapters/{name}/token/refresh [post]
+// @Router /api/v1/adapters/{name}/token/refresh [post]
 func (th *TokenHandler) RefreshToken(c *gin.Context) {
 	adapterName := c.Param("name")
 	if adapterName == "" {

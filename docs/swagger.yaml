@@ -760,8 +760,19 @@ definitions:
       tokenType:
         type: string
     type: object
+host: localhost:8911
 info:
-  contact: {}
+  contact:
+    name: SUSE AI Universal Proxy Team
+    url: https://github.com/SUSE/suse-ai-up
+  description: SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model
+    Context Protocol) server deployments and proxying requests to MCP servers running
+    in Kubernetes.
+  license:
+    name: MIT
+    url: https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
+  title: SUSE AI Universal Proxy - Control Plane
+  version: 1.0.0
 paths:
   /adapters:
     get:
@@ -894,35 +905,6 @@ paths:
       summary: Update an adapter
       tags:
       - adapters
-  /adapters/{name}/client-token:
-    get:
-      description: Retrieves a client token for authenticating with the MCP server
-        adapter.
-      parameters:
-      - description: Adapter name
-        in: path
-        name: name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.ClientTokenResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Get client token for adapter
-      tags:
-      - adapters
-      - authentication
   /adapters/{name}/logs:
     get:
       description: Access the running logs of an MCP server adapter.
@@ -1131,7 +1113,36 @@ paths:
       summary: Get adapter deployment status
       tags:
       - adapters
-  /adapters/{name}/test-auth:
+  /api/v1/adapters/{name}/client-token:
+    get:
+      description: Retrieves a client token for authenticating with the MCP server
+        adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.ClientTokenResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get client token for adapter
+      tags:
+      - adapters
+      - authentication
+  /api/v1/adapters/{name}/test-auth:
     post:
       consumes:
       - application/json
@@ -1167,7 +1178,7 @@ paths:
       tags:
       - adapters
       - authentication
-  /adapters/{name}/token:
+  /api/v1/adapters/{name}/token:
     get:
       description: Retrieves the current token for an adapter or generates a new one
         if none exists
@@ -1207,7 +1218,7 @@ paths:
       summary: Get adapter token
       tags:
       - tokens
-  /adapters/{name}/token/refresh:
+  /api/v1/adapters/{name}/token/refresh:
     post:
       description: Generates a new token for an adapter, invalidating the old one
       parameters:
@@ -1241,7 +1252,7 @@ paths:
       summary: Refresh adapter token
       tags:
       - tokens
-  /adapters/{name}/token/validate:
+  /api/v1/adapters/{name}/token/validate:
     post:
       description: Validates a token and returns its claims and validity
       parameters:
@@ -1272,7 +1283,7 @@ paths:
       summary: Validate token
       tags:
       - tokens
-  /adapters/{name}/validate-auth:
+  /api/v1/adapters/{name}/validate-auth:
     post:
       consumes:
       - application/json
@@ -1305,7 +1316,7 @@ paths:
       tags:
       - adapters
       - authentication
-  /deployment/config/{serverId}:
+  /api/v1/deployment/config/{serverId}:
     get:
       description: Retrieve the configuration template for deploying an MCP server
       parameters:
@@ -1328,7 +1339,7 @@ paths:
       summary: Get MCP server configuration template
       tags:
       - deployment
-  /deployment/deploy:
+  /api/v1/deployment/deploy:
     post:
       consumes:
       - application/json
@@ -1354,7 +1365,43 @@ paths:
       summary: Deploy an MCP server
       tags:
       - deployment
-  /discovery/scan:
+  /api/v1/discovery/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates an adapter from a discovered MCP server with automatic
+        security configuration
+      parameters:
+      - description: Registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Register a discovered MCP server as an adapter
+      tags:
+      - registration
+      - adapters
+  /api/v1/discovery/scan:
     post:
       description: Performs network scanning to discover MCP servers
       produces:
@@ -1368,7 +1415,7 @@ paths:
       summary: Scan for MCP servers
       tags:
       - discovery
-  /discovery/servers:
+  /api/v1/discovery/servers:
     get:
       description: Returns all discovered MCP servers
       produces:
@@ -1382,7 +1429,7 @@ paths:
       summary: List discovered servers
       tags:
       - discovery
-  /discovery/servers/{id}:
+  /api/v1/discovery/servers/{id}:
     get:
       description: Returns a specific discovered MCP server by ID
       parameters:
@@ -1406,6 +1453,254 @@ paths:
       summary: Get discovered server
       tags:
       - discovery
+  /api/v1/registry/{id}:
+    delete:
+      description: Remove an MCP server entry
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete an MCP server
+      tags:
+      - registry
+    get:
+      description: Retrieve a specific MCP server configuration
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get an MCP server by ID
+      tags:
+      - registry
+    put:
+      consumes:
+      - application/json
+      description: Update an existing MCP server configuration or validation status
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Update an MCP server
+      tags:
+      - registry
+  /api/v1/registry/browse:
+    get:
+      description: Search and filter MCP servers from all configured sources
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Filter by transport type (stdio, sse, websocket)
+        in: query
+        name: transport
+        type: string
+      - description: Filter by registry type (oci, npm)
+        in: query
+        name: registryType
+        type: string
+      - description: Filter by validation status
+        in: query
+        name: validationStatus
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MCPServer'
+            type: array
+      summary: Browse registry servers with search and filters
+      tags:
+      - registry
+  /api/v1/registry/public:
+    get:
+      description: Retrieve filtered JSON data from MCP registries (official or docker)
+      parameters:
+      - description: 'Registry source: ''official'' or ''docker'''
+        enum:
+        - official
+        - docker
+        in: query
+        name: source
+        type: string
+      - description: Filter by provider (works for both official and docker sources)
+        in: query
+        name: provider
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get public registry data
+      tags:
+      - registry
+  /api/v1/registry/sync/official:
+    post:
+      description: Manually trigger synchronization with the official MCP registry
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Sync from official MCP registry
+      tags:
+      - registry
+  /api/v1/registry/upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload a single MCP server registry entry
+      parameters:
+      - description: MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a single registry entry
+      tags:
+      - registry
+  /api/v1/registry/upload/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Upload multiple MCP server registry entries in bulk
+      parameters:
+      - description: Array of MCP server data
+        in: body
+        name: servers
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.MCPServer'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload multiple registry entries
+      tags:
+      - registry
+  /api/v1/registry/upload/local-mcp:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload Python scripts and configuration for a local STDIO MCP server
+      parameters:
+      - description: MCP server name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: MCP server description
+        in: formData
+        name: description
+        type: string
+      - description: MCP client configuration JSON
+        in: formData
+        name: config
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Python script files and requirements.txt
+        in: formData
+        items:
+          type: file
+        name: files
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a local MCP server implementation
+      tags:
+      - registry
   /plugins/register:
     post:
       consumes:
@@ -1537,36 +1832,6 @@ paths:
       summary: List services by type
       tags:
       - plugins
-  /public/registry:
-    get:
-      description: Retrieve filtered JSON data from MCP registries (official or docker)
-      parameters:
-      - description: 'Registry source: ''official'' or ''docker'''
-        enum:
-        - official
-        - docker
-        in: query
-        name: source
-        type: string
-      - description: Filter by provider (works for both official and docker sources)
-        in: query
-        name: provider
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Get public registry data
-      tags:
-      - registry
   /register:
     post:
       consumes:
@@ -1599,224 +1864,6 @@ paths:
       summary: Register discovered server
       tags:
       - discovery
-  /registry/{id}:
-    delete:
-      description: Remove an MCP server entry
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Delete an MCP server
-      tags:
-      - registry
-    get:
-      description: Retrieve a specific MCP server configuration
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Get an MCP server by ID
-      tags:
-      - registry
-    put:
-      consumes:
-      - application/json
-      description: Update an existing MCP server configuration or validation status
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated MCP server data
-        in: body
-        name: server
-        required: true
-        schema:
-          $ref: '#/definitions/models.MCPServer'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Update an MCP server
-      tags:
-      - registry
-  /registry/browse:
-    get:
-      description: Search and filter MCP servers from all configured sources
-      parameters:
-      - description: Search query
-        in: query
-        name: q
-        type: string
-      - description: Filter by transport type (stdio, sse, websocket)
-        in: query
-        name: transport
-        type: string
-      - description: Filter by registry type (oci, npm)
-        in: query
-        name: registryType
-        type: string
-      - description: Filter by validation status
-        in: query
-        name: validationStatus
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.MCPServer'
-            type: array
-      summary: Browse registry servers with search and filters
-      tags:
-      - registry
-  /registry/sync/official:
-    post:
-      description: Manually trigger synchronization with the official MCP registry
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Sync from official MCP registry
-      tags:
-      - registry
-  /registry/upload:
-    post:
-      consumes:
-      - application/json
-      description: Upload a single MCP server registry entry
-      parameters:
-      - description: MCP server data
-        in: body
-        name: server
-        required: true
-        schema:
-          $ref: '#/definitions/models.MCPServer'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Upload a single registry entry
-      tags:
-      - registry
-  /registry/upload/bulk:
-    post:
-      consumes:
-      - application/json
-      description: Upload multiple MCP server registry entries in bulk
-      parameters:
-      - description: Array of MCP server data
-        in: body
-        name: servers
-        required: true
-        schema:
-          items:
-            $ref: '#/definitions/models.MCPServer'
-          type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Upload multiple registry entries
-      tags:
-      - registry
-  /registry/upload/local-mcp:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Upload Python scripts and configuration for a local STDIO MCP server
-      parameters:
-      - description: MCP server name
-        in: formData
-        name: name
-        required: true
-        type: string
-      - description: MCP server description
-        in: formData
-        name: description
-        type: string
-      - description: MCP client configuration JSON
-        in: formData
-        name: config
-        required: true
-        type: string
-      - collectionFormat: csv
-        description: Python script files and requirements.txt
-        in: formData
-        items:
-          type: file
-        name: files
-        required: true
-        type: array
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Upload a local MCP server implementation
-      tags:
-      - registry
   /scan:
     get:
       description: Retrieve all scan jobs (active and completed)
@@ -1896,4 +1943,10 @@ paths:
       summary: List discovered servers
       tags:
       - discovery
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token for authentication
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

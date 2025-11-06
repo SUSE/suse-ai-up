@@ -9,7 +9,14 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "contact": {
+            "name": "SUSE AI Universal Proxy Team",
+            "url": "https://github.com/SUSE/suse-ai-up"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://github.com/SUSE/suse-ai-up/blob/main/LICENSE"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -205,48 +212,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/adapters/{name}/client-token": {
-            "get": {
-                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "adapters",
-                    "authentication"
-                ],
-                "summary": "Get client token for adapter",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Adapter name",
-                        "name": "name",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.ClientTokenResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -565,7 +530,49 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/test-auth": {
+        "/api/v1/adapters/{name}/client-token": {
+            "get": {
+                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Get client token for adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.ClientTokenResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/test-auth": {
             "post": {
                 "description": "Tests the authentication configuration by attempting to connect to the MCP server.",
                 "consumes": [
@@ -617,7 +624,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/token": {
+        "/api/v1/adapters/{name}/token": {
             "get": {
                 "description": "Retrieves the current token for an adapter or generates a new one if none exists",
                 "tags": [
@@ -675,7 +682,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/token/refresh": {
+        "/api/v1/adapters/{name}/token/refresh": {
             "post": {
                 "description": "Generates a new token for an adapter, invalidating the old one",
                 "tags": [
@@ -726,7 +733,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/token/validate": {
+        "/api/v1/adapters/{name}/token/validate": {
             "post": {
                 "description": "Validates a token and returns its claims and validity",
                 "tags": [
@@ -772,7 +779,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/adapters/{name}/validate-auth": {
+        "/api/v1/adapters/{name}/validate-auth": {
             "post": {
                 "description": "Validates the authentication configuration for an adapter.",
                 "consumes": [
@@ -821,7 +828,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/deployment/config/{serverId}": {
+        "/api/v1/deployment/config/{serverId}": {
             "get": {
                 "description": "Retrieve the configuration template for deploying an MCP server",
                 "produces": [
@@ -856,7 +863,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/deployment/deploy": {
+        "/api/v1/deployment/deploy": {
             "post": {
                 "description": "Deploy an MCP server to Kubernetes with provided configuration",
                 "consumes": [
@@ -896,7 +903,60 @@ const docTemplate = `{
                 }
             }
         },
-        "/discovery/scan": {
+        "/api/v1/discovery/register": {
+            "post": {
+                "description": "Creates an adapter from a discovered MCP server with automatic security configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registration",
+                    "adapters"
+                ],
+                "summary": "Register a discovered MCP server as an adapter",
+                "parameters": [
+                    {
+                        "description": "Registration request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan": {
             "post": {
                 "description": "Performs network scanning to discover MCP servers",
                 "produces": [
@@ -917,7 +977,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/discovery/servers": {
+        "/api/v1/discovery/servers": {
             "get": {
                 "description": "Returns all discovered MCP servers",
                 "produces": [
@@ -938,7 +998,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/discovery/servers/{id}": {
+        "/api/v1/discovery/servers/{id}": {
             "get": {
                 "description": "Returns a specific discovered MCP server by ID",
                 "produces": [
@@ -969,6 +1029,380 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/browse": {
+            "get": {
+                "description": "Search and filter MCP servers from all configured sources",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Browse registry servers with search and filters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by transport type (stdio, sse, websocket)",
+                        "name": "transport",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by registry type (oci, npm)",
+                        "name": "registryType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by validation status",
+                        "name": "validationStatus",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MCPServer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/public": {
+            "get": {
+                "description": "Retrieve filtered JSON data from MCP registries (official or docker)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Get public registry data",
+                "parameters": [
+                    {
+                        "enum": [
+                            "official",
+                            "docker"
+                        ],
+                        "type": "string",
+                        "description": "Registry source: 'official' or 'docker'",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by provider (works for both official and docker sources)",
+                        "name": "provider",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/sync/official": {
+            "post": {
+                "description": "Manually trigger synchronization with the official MCP registry",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Sync from official MCP registry",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload": {
+            "post": {
+                "description": "Upload a single MCP server registry entry",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload a single registry entry",
+                "parameters": [
+                    {
+                        "description": "MCP server data",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload/bulk": {
+            "post": {
+                "description": "Upload multiple MCP server registry entries in bulk",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload multiple registry entries",
+                "parameters": [
+                    {
+                        "description": "Array of MCP server data",
+                        "name": "servers",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MCPServer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload/local-mcp": {
+            "post": {
+                "description": "Upload Python scripts and configuration for a local STDIO MCP server",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload a local MCP server implementation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP server name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP server description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP client configuration JSON",
+                        "name": "config",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "file"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Python script files and requirements.txt",
+                        "name": "files",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/{id}": {
+            "get": {
+                "description": "Retrieve a specific MCP server configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Get an MCP server by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing MCP server configuration or validation status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Update an MCP server",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated MCP server data",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove an MCP server entry",
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Delete an MCP server",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -1174,51 +1608,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/public/registry": {
-            "get": {
-                "description": "Retrieve filtered JSON data from MCP registries (official or docker)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Get public registry data",
-                "parameters": [
-                    {
-                        "enum": [
-                            "official",
-                            "docker"
-                        ],
-                        "type": "string",
-                        "description": "Registry source: 'official' or 'docker'",
-                        "name": "source",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by provider (works for both official and docker sources)",
-                        "name": "provider",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/register": {
             "post": {
                 "description": "Register a discovered MCP server as an adapter",
@@ -1263,335 +1652,6 @@ const docTemplate = `{
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/browse": {
-            "get": {
-                "description": "Search and filter MCP servers from all configured sources",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Browse registry servers with search and filters",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by transport type (stdio, sse, websocket)",
-                        "name": "transport",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by registry type (oci, npm)",
-                        "name": "registryType",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by validation status",
-                        "name": "validationStatus",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.MCPServer"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/sync/official": {
-            "post": {
-                "description": "Manually trigger synchronization with the official MCP registry",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Sync from official MCP registry",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/upload": {
-            "post": {
-                "description": "Upload a single MCP server registry entry",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Upload a single registry entry",
-                "parameters": [
-                    {
-                        "description": "MCP server data",
-                        "name": "server",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/upload/bulk": {
-            "post": {
-                "description": "Upload multiple MCP server registry entries in bulk",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Upload multiple registry entries",
-                "parameters": [
-                    {
-                        "description": "Array of MCP server data",
-                        "name": "servers",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.MCPServer"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/upload/local-mcp": {
-            "post": {
-                "description": "Upload Python scripts and configuration for a local STDIO MCP server",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Upload a local MCP server implementation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP server name",
-                        "name": "name",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "MCP server description",
-                        "name": "description",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "MCP client configuration JSON",
-                        "name": "config",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "file"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "Python script files and requirements.txt",
-                        "name": "files",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/registry/{id}": {
-            "get": {
-                "description": "Retrieve a specific MCP server configuration",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Get an MCP server by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP Server ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Update an existing MCP server configuration or validation status",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Update an MCP server",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP Server ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated MCP server data",
-                        "name": "server",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Remove an MCP server entry",
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Delete an MCP server",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP Server ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -2867,17 +2927,25 @@ const docTemplate = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Bearer token for authentication",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
+	Version:          "1.0.0",
+	Host:             "localhost:8911",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "SUSE AI Universal Proxy - Control Plane",
+	Description:      "SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model Context Protocol) server deployments and proxying requests to MCP servers running in Kubernetes.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

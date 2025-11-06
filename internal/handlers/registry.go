@@ -52,7 +52,7 @@ func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInt
 // @Param id path string true "MCP Server ID"
 // @Success 200 {object} models.MCPServer
 // @Failure 404 {string} string "Not Found"
-// @Router /registry/{id} [get]
+// @Router /api/v1/registry/{id} [get]
 func (h *RegistryHandler) GetMCPServer(c *gin.Context) {
 	id := c.Param("id")
 	server, err := h.Store.GetMCPServer(id)
@@ -75,7 +75,7 @@ func (h *RegistryHandler) GetMCPServer(c *gin.Context) {
 // @Success 200 {object} models.MCPServer
 // @Failure 400 {string} string "Bad Request"
 // @Failure 404 {string} string "Not Found"
-// @Router /registry/{id} [put]
+// @Router /api/v1/registry/{id} [put]
 func (h *RegistryHandler) UpdateMCPServer(c *gin.Context) {
 	id := c.Param("id")
 	var updated models.MCPServer
@@ -100,7 +100,7 @@ func (h *RegistryHandler) UpdateMCPServer(c *gin.Context) {
 // @Param id path string true "MCP Server ID"
 // @Success 204 "No Content"
 // @Failure 404 {string} string "Not Found"
-// @Router /registry/{id} [delete]
+// @Router /api/v1/registry/{id} [delete]
 func (h *RegistryHandler) DeleteMCPServer(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.Store.DeleteMCPServer(id); err != nil {
@@ -145,7 +145,7 @@ func (h *RegistryHandler) enumerateTools(url string) ([]models.MCPTool, error) {
 // @Param provider query string false "Filter by provider (works for both official and docker sources)"
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {string} string "Internal Server Error"
-// @Router /public/registry [get]
+// @Router /api/v1/registry/public [get]
 func (h *RegistryHandler) PublicList(c *gin.Context) {
 	source := c.Query("source")
 	if source == "" {
@@ -628,7 +628,7 @@ func (h *RegistryHandler) inferProvider(repo struct {
 // @Param server body models.MCPServer true "MCP server data"
 // @Success 201 {object} models.MCPServer
 // @Failure 400 {string} string "Bad Request"
-// @Router /registry/upload [post]
+// @Router /api/v1/registry/upload [post]
 func (h *RegistryHandler) UploadRegistryEntry(c *gin.Context) {
 	var server models.MCPServer
 	if err := c.ShouldBindJSON(&server); err != nil {
@@ -668,7 +668,7 @@ func (h *RegistryHandler) UploadRegistryEntry(c *gin.Context) {
 // @Param servers body []models.MCPServer true "Array of MCP server data"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {string} string "Bad Request"
-// @Router /registry/upload/bulk [post]
+// @Router /api/v1/registry/upload/bulk [post]
 func (h *RegistryHandler) UploadBulkRegistryEntries(c *gin.Context) {
 	var servers []*models.MCPServer
 	if err := c.ShouldBindJSON(&servers); err != nil {
@@ -710,7 +710,7 @@ func (h *RegistryHandler) UploadBulkRegistryEntries(c *gin.Context) {
 // @Param registryType query string false "Filter by registry type (oci, npm)"
 // @Param validationStatus query string false "Filter by validation status"
 // @Success 200 {array} models.MCPServer
-// @Router /registry/browse [get]
+// @Router /api/v1/registry/browse [get]
 func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
 	query := c.Query("q")
 
@@ -741,7 +741,7 @@ func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
 // @Tags registry
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /registry/sync/official [post]
+// @Router /api/v1/registry/sync/official [post]
 func (h *RegistryHandler) SyncOfficialRegistry(c *gin.Context) {
 	// For now, return a placeholder response
 	// In full implementation, this would trigger the RegistryManager.SyncOfficialRegistry()
@@ -765,7 +765,7 @@ func (h *RegistryHandler) SyncOfficialRegistry(c *gin.Context) {
 // @Param files formData []file true "Python script files and requirements.txt"
 // @Success 201 {object} models.MCPServer
 // @Failure 400 {string} string "Bad Request"
-// @Router /registry/upload/local-mcp [post]
+// @Router /api/v1/registry/upload/local-mcp [post]
 func (h *RegistryHandler) UploadLocalMCP(c *gin.Context) {
 	// Parse form data
 	name := c.PostForm("name")

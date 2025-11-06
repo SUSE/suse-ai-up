@@ -59,7 +59,7 @@ type RegisterResponse struct {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /register [post]
+// @Router /api/v1/discovery/register [post]
 func (h *RegistrationHandler) RegisterDiscoveredServer(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

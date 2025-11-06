@@ -33,7 +33,7 @@ func NewMCPAuthHandler(store clients.AdapterResourceStore, authIntegration *serv
 // @Success 200 {object} service.ClientTokenResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/client-token [get]
+// @Router /api/v1/adapters/{name}/client-token [get]
 func (h *MCPAuthHandler) GetClientToken(c *gin.Context) {
 	name := c.Param("name")
 
@@ -64,7 +64,7 @@ func (h *MCPAuthHandler) GetClientToken(c *gin.Context) {
 // @Param authConfig body models.AdapterAuthConfig true "Authentication configuration to validate"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
-// @Router /adapters/{name}/validate-auth [post]
+// @Router /api/v1/adapters/{name}/validate-auth [post]
 func (h *MCPAuthHandler) ValidateAuthConfig(c *gin.Context) {
 	name := c.Param("name")
 
@@ -153,7 +153,7 @@ func (h *MCPAuthHandler) ValidateAuthConfig(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/test-auth [post]
+// @Router /api/v1/adapters/{name}/test-auth [post]
 func (h *MCPAuthHandler) TestAuthConnection(c *gin.Context) {
 	name := c.Param("name")
 

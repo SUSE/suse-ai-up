@@ -39,7 +39,7 @@ func NewDeploymentHandler(registryHandler *RegistryHandler, kubeClient *clients.
 // @Param serverId path string true "MCP Server ID"
 // @Success 200 {object} models.MCPConfigTemplate
 // @Failure 404 {string} string "Server not found"
-// @Router /deployment/config/{serverId} [get]
+// @Router /api/v1/deployment/config/{serverId} [get]
 func (h *DeploymentHandler) GetMCPConfig(c *gin.Context) {
 	serverID := c.Param("serverId")
 	// Remove leading slash if present
@@ -70,7 +70,7 @@ func (h *DeploymentHandler) GetMCPConfig(c *gin.Context) {
 // @Param deployment body DeployRequest true "Deployment configuration"
 // @Success 200 {object} DeployResponse
 // @Failure 400 {string} string "Bad Request"
-// @Router /deployment/deploy [post]
+// @Router /api/v1/deployment/deploy [post]
 func (h *DeploymentHandler) DeployMCP(c *gin.Context) {
 	var req DeployRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
