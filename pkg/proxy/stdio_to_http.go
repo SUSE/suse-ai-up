@@ -193,7 +193,7 @@ func (a *StdioToHTTPAdapter) forwardInitializeToStdio(c *gin.Context, session *S
 		ID:         a.getRequestID(message),
 		Message:    message,
 		ResponseCh: make(chan *mcp.JSONRPCMessage, 1),
-		Timeout:    30 * time.Second,
+		Timeout:    60 * time.Second, // Increased timeout for slow-initializing MCP servers
 		CreatedAt:  time.Now(),
 	}
 
@@ -303,7 +303,7 @@ func (a *StdioToHTTPAdapter) handleRegularRequest(c *gin.Context, message *mcp.J
 		ID:         a.getRequestID(message),
 		Message:    message,
 		ResponseCh: make(chan *mcp.JSONRPCMessage, 1),
-		Timeout:    30 * time.Second,
+		Timeout:    60 * time.Second, // Increased timeout for slow MCP servers
 		CreatedAt:  time.Now(),
 	}
 

@@ -1,4 +1,4 @@
-basePath: /
+basePath: /api/v1
 definitions:
   auth.TokenInfo:
     properties:
@@ -642,6 +642,45 @@ definitions:
     x-enum-varnames:
     - ServiceTypeSmartAgents
     - ServiceTypeRegistry
+  scanner.ScanJob:
+    properties:
+      config:
+        $ref: '#/definitions/models.ScanConfig'
+      endTime:
+        type: string
+      errors:
+        items: {}
+        type: array
+      id:
+        type: string
+      message:
+        type: string
+      progress:
+        description: 0.0 to 1.0
+        type: number
+      results:
+        items:
+          $ref: '#/definitions/models.DiscoveredServer'
+        type: array
+      startTime:
+        type: string
+      status:
+        $ref: '#/definitions/scanner.ScanStatus'
+    type: object
+  scanner.ScanStatus:
+    enum:
+    - pending
+    - running
+    - completed
+    - failed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - ScanStatusPending
+    - ScanStatusRunning
+    - ScanStatusCompleted
+    - ScanStatusFailed
+    - ScanStatusCancelled
   service.BulkSessionDeleteResponse:
     properties:
       adapterName:
@@ -705,22 +744,40 @@ definitions:
     type: object
   session.AuthorizationInfo:
     properties:
-      authorizationServer:
+      accessToken:
         type: string
       authorizationUrl:
         type: string
       authorizedAt:
         type: string
-      clientId:
-        type: string
       errorMessage:
         type: string
-      lastTokenRefresh:
+      expiresAt:
         type: string
-      resourceServer:
+      refreshToken:
+        type: string
+      scope:
         type: string
       status:
         description: '"unauthorized", "authorizing", "authorized", "expired", "failed"'
+        type: string
+      tokenType:
+        type: string
+    type: object
+  session.MCPClientInfo:
+    properties:
+      name:
+        type: string
+      version:
+        type: string
+    type: object
+  session.MCPServerInfo:
+    properties:
+      name:
+        type: string
+      protocol:
+        type: string
+      version:
         type: string
     type: object
   session.SessionDetails:
@@ -735,10 +792,19 @@ definitions:
         type: string
       lastActivity:
         type: string
+      mcpCapabilities:
+        additionalProperties: true
+        type: object
+      mcpClientInfo:
+        $ref: '#/definitions/session.MCPClientInfo'
+      mcpServerInfo:
+        $ref: '#/definitions/session.MCPServerInfo'
+      mcpSessionId:
+        description: MCP-specific fields
+        type: string
       sessionId:
         type: string
       status:
-        description: '"active", "expired", "invalidated"'
         type: string
       targetAddress:
         type: string
@@ -762,17 +828,10 @@ definitions:
     type: object
 host: localhost:8911
 info:
-  contact:
-    name: SUSE AI Universal Proxy Team
-    url: https://github.com/SUSE/suse-ai-up
-  description: SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model
-    Context Protocol) server deployments and proxying requests to MCP servers running
-    in Kubernetes.
-  license:
-    name: MIT
-    url: https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
-  title: SUSE AI Universal Proxy - Control Plane
-  version: 1.0.0
+  contact: {}
+  description: Comprehensive MCP proxy with discovery, registry, and deployment capabilities
+  title: SUSE AI Universal Proxy API
+  version: "1.0"
 paths:
   /api/v1/adapters:
     get:
@@ -1438,6 +1497,55 @@ paths:
       summary: Start network scan for MCP servers
       tags:
       - discovery
+  /api/v1/discovery/scan/{jobId}:
+    delete:
+      description: Cancels a running scan job
+      parameters:
+      - description: Scan Job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cancel scan job
+      tags:
+      - discovery
+    get:
+      description: Retrieve the status and results of a network scan
+      parameters:
+      - description: Scan Job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scanner.ScanJob'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get scan job status
+      tags:
+      - discovery
   /api/v1/discovery/scan/{scanId}:
     get:
       description: Retrieve the status and results of a network scan
@@ -1879,10 +1987,4 @@ paths:
       summary: List services by type
       tags:
       - plugins
-securityDefinitions:
-  BearerAuth:
-    description: Bearer token for authentication
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

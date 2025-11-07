@@ -25,6 +25,56 @@ type NetworkScanner struct {
 	cancel            context.CancelFunc
 	discoveredServers []models.DiscoveredServer // Store discovered servers for retrieval
 	mu                sync.RWMutex              // Protect discoveredServers slice
+	scanCache         *ScanCache                // Cache for incremental scanning
+}
+
+// ScanCache tracks recently scanned addresses to enable incremental scanning
+type ScanCache struct {
+	scannedAddresses map[string]time.Time
+	mutex            sync.RWMutex
+	maxAge           time.Duration
+}
+
+// NewScanCache creates a new scan cache
+func NewScanCache(maxAge time.Duration) *ScanCache {
+	return &ScanCache{
+		scannedAddresses: make(map[string]time.Time),
+		maxAge:           maxAge,
+	}
+}
+
+// IsRecentlyScanned checks if an address was scanned recently
+func (sc *ScanCache) IsRecentlyScanned(address string) bool {
+	sc.mutex.RLock()
+	defer sc.mutex.RUnlock()
+
+	lastScanned, exists := sc.scannedAddresses[address]
+	if !exists {
+		return false
+	}
+
+	return time.Since(lastScanned) < sc.maxAge
+}
+
+// MarkScanned marks an address as scanned
+func (sc *ScanCache) MarkScanned(address string) {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+
+	sc.scannedAddresses[address] = time.Now()
+}
+
+// Cleanup removes old entries from the cache
+func (sc *ScanCache) Cleanup() {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+
+	cutoff := time.Now().Add(-sc.maxAge)
+	for address, timestamp := range sc.scannedAddresses {
+		if timestamp.Before(cutoff) {
+			delete(sc.scannedAddresses, address)
+		}
+	}
 }
 
 // MCPDetectionConfig holds configuration for MCP server detection
@@ -46,6 +96,7 @@ func NewNetworkScanner(config *models.ScanConfig) *NetworkScanner {
 		ctx:               ctx,
 		cancel:            cancel,
 		discoveredServers: make([]models.DiscoveredServer, 0),
+		scanCache:         NewScanCache(5 * time.Minute), // Cache for 5 minutes
 	}
 }
 
@@ -53,6 +104,11 @@ func NewNetworkScanner(config *models.ScanConfig) *NetworkScanner {
 func (ns *NetworkScanner) Scan() ([]models.DiscoveredServer, []error) {
 	var discovered []models.DiscoveredServer
 	var scanErrors []error
+
+	// Recreate channels in case Scan is called multiple times
+	ns.results = make(chan models.DiscoveredServer, 100)
+	ns.errors = make(chan error, 100)
+	ns.ctx, ns.cancel = context.WithCancel(context.Background())
 
 	// Parse ports from config
 	ports, err := ns.expandPorts(ns.config.Ports)
@@ -81,9 +137,19 @@ func (ns *NetworkScanner) Scan() ([]models.DiscoveredServer, []error) {
 					continue
 				}
 
+				// Check incremental scanning cache
+				address := fmt.Sprintf("%s:%d", ip, port)
+				if ns.scanCache.IsRecentlyScanned(address) {
+					// Skip recently scanned addresses for incremental scanning
+					continue
+				}
+
 				ns.wg.Add(1)
-				go func(ip string, port int) {
+				go func(ip string, port int, address string) {
 					defer ns.wg.Done()
+
+					// Mark as scanned immediately to prevent duplicate scanning
+					ns.scanCache.MarkScanned(address)
 
 					// Acquire semaphore
 					semaphore <- struct{}{}
@@ -103,7 +169,7 @@ func (ns *NetworkScanner) Scan() ([]models.DiscoveredServer, []error) {
 						case <-ns.ctx.Done():
 						}
 					}
-				}(ip, port)
+				}(ip, port, address)
 			}
 		}
 	}
@@ -278,6 +344,14 @@ func (ns *NetworkScanner) shouldExcludeAddress(address string) bool {
 func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.DiscoveredServer, error) {
 	address := fmt.Sprintf("%s:%d", ip, port)
 
+	// Parse timeout from config
+	timeout := 5 * time.Second
+	if ns.config.Timeout != "" {
+		if parsedTimeout, err := time.ParseDuration(ns.config.Timeout); err == nil {
+			timeout = parsedTimeout
+		}
+	}
+
 	// MCP detection config with proper JSON-RPC requests
 	detectionConfig := &MCPDetectionConfig{
 		Endpoints: []string{"/mcp", "/"},
@@ -287,7 +361,7 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 			"Content-Type": "application/json",
 			"Accept":       "application/json, text/event-stream",
 		},
-		Timeout: 5 * time.Second,
+		Timeout: timeout,
 	}
 
 	client := &http.Client{

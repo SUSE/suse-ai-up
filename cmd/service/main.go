@@ -80,7 +80,7 @@ func main() {
 	remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
 	log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
 
-	// Initialize handlers
+	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
 		ScanRanges:    []string{"192.168.1.0/24"},
 		Ports:         []string{"8000", "8001", "9000"},
@@ -89,7 +89,9 @@ func main() {
 		ExcludeProxy:  func() *bool { b := true; return &b }(),
 	}
 	networkScanner := scanner.NewNetworkScanner(scanConfig)
-	discoveryHandler := handlers.NewDiscoveryHandler(networkScanner)
+	discoveryStore := scanner.NewInMemoryDiscoveryStore()
+	scanManager := scanner.NewScanManager(networkScanner, discoveryStore)
+	discoveryHandler := handlers.NewDiscoveryHandler(scanManager, discoveryStore)
 	tokenHandler := handlers.NewTokenHandler(adapterStore, tokenManager)
 	mcpAuthHandler := handlers.NewMCPAuthHandler(adapterStore, nil) // TODO: Add auth integration
 
@@ -196,6 +198,9 @@ func main() {
 		discovery := v1.Group("/discovery")
 		{
 			discovery.POST("/scan", discoveryHandler.ScanForMCPServers)
+			discovery.GET("/scan", discoveryHandler.ListScanJobs)
+			discovery.GET("/scan/:jobId", discoveryHandler.GetScanJob)
+			discovery.DELETE("/scan/:jobId", discoveryHandler.CancelScanJob)
 			discovery.GET("/servers", discoveryHandler.ListDiscoveredServers)
 			discovery.GET("/servers/:id", discoveryHandler.GetDiscoveredServer)
 			discovery.POST("/register", registrationHandler.RegisterDiscoveredServer)

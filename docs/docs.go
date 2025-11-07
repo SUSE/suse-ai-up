@@ -9,14 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {
-            "name": "SUSE AI Universal Proxy Team",
-            "url": "https://github.com/SUSE/suse-ai-up"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://github.com/SUSE/suse-ai-up/blob/main/LICENSE"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -1009,6 +1002,79 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan/{jobId}": {
+            "get": {
+                "description": "Retrieve the status and results of a network scan",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get scan job status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scanner.ScanJob"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Cancels a running scan job",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Cancel scan job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2651,6 +2717,60 @@ const docTemplate = `{
                 "ServiceTypeRegistry"
             ]
         },
+        "scanner.ScanJob": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/models.ScanConfig"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "progress": {
+                    "description": "0.0 to 1.0",
+                    "type": "number"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DiscoveredServer"
+                    }
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/scanner.ScanStatus"
+                }
+            }
+        },
+        "scanner.ScanStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "ScanStatusPending",
+                "ScanStatusRunning",
+                "ScanStatusCompleted",
+                "ScanStatusFailed",
+                "ScanStatusCancelled"
+            ]
+        },
         "service.BulkSessionDeleteResponse": {
             "type": "object",
             "properties": {
@@ -2749,7 +2869,7 @@ const docTemplate = `{
         "session.AuthorizationInfo": {
             "type": "object",
             "properties": {
-                "authorizationServer": {
+                "accessToken": {
                     "type": "string"
                 },
                 "authorizationUrl": {
@@ -2758,20 +2878,48 @@ const docTemplate = `{
                 "authorizedAt": {
                     "type": "string"
                 },
-                "clientId": {
-                    "type": "string"
-                },
                 "errorMessage": {
                     "type": "string"
                 },
-                "lastTokenRefresh": {
+                "expiresAt": {
                     "type": "string"
                 },
-                "resourceServer": {
+                "refreshToken": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 },
                 "status": {
                     "description": "\"unauthorized\", \"authorizing\", \"authorized\", \"expired\", \"failed\"",
+                    "type": "string"
+                },
+                "tokenType": {
+                    "type": "string"
+                }
+            }
+        },
+        "session.MCPClientInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "session.MCPServerInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -2794,11 +2942,24 @@ const docTemplate = `{
                 "lastActivity": {
                     "type": "string"
                 },
+                "mcpCapabilities": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "mcpClientInfo": {
+                    "$ref": "#/definitions/session.MCPClientInfo"
+                },
+                "mcpServerInfo": {
+                    "$ref": "#/definitions/session.MCPServerInfo"
+                },
+                "mcpSessionId": {
+                    "description": "MCP-specific fields",
+                    "type": "string"
+                },
                 "sessionId": {
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"active\", \"expired\", \"invalidated\"",
                     "type": "string"
                 },
                 "targetAddress": {
@@ -2832,25 +2993,17 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "description": "Bearer token for authentication",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
-        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0.0",
+	Version:          "1.0",
 	Host:             "localhost:8911",
-	BasePath:         "/",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "SUSE AI Universal Proxy - Control Plane",
-	Description:      "SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model Context Protocol) server deployments and proxying requests to MCP servers running in Kubernetes.",
+	Title:            "SUSE AI Universal Proxy API",
+	Description:      "Comprehensive MCP proxy with discovery, registry, and deployment capabilities",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

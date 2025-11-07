@@ -2,8 +2,9 @@
  - using env:	export GIN_MODE=release
  - using code:	gin.SetMode(gin.ReleaseMode)
 
-2025/11/07 13:38:08 stdioProxy initialized: true
-2025/11/07 13:38:08 stdioToHTTPAdapter initialized: true
+2025/11/07 16:22:01 stdioProxy initialized: true
+2025/11/07 16:22:01 stdioToHTTPAdapter initialized: true
+2025/11/07 16:22:01 remoteHTTPAdapter initialized: true
 [GIN-debug] GET    /health                   --> main.main.func3 (4 handlers)
 [GIN-debug] GET    /docs/*any                --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
 [GIN-debug] GET    /swagger/doc.json         --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
@@ -53,160 +54,62 @@
 [GIN-debug] DELETE /api/v1/registry/:id      --> suse-ai-up/internal/handlers.(*RegistryHandler).DeleteMCPServer-fm (4 handlers)
 [GIN-debug] GET    /api/v1/deployment/config/:serverId --> suse-ai-up/internal/handlers.(*DeploymentHandler).GetMCPConfig-fm (4 handlers)
 [GIN-debug] POST   /api/v1/deployment/deploy --> suse-ai-up/internal/handlers.(*DeploymentHandler).DeployMCP-fm (4 handlers)
-2025/11/07 13:38:08 Server starting on port 8911
-2025/11/07 13:39:32 Creating adapter: example-mcp-stdio, connectionType: LocalStdio
-2025/11/07 13:39:32 Adapter resource created, storing in adapter store
-2025/11/07 13:39:32 Adapter successfully created and stored
-2025/11/07 13:39:32 About to send JSON response
-2025/11/07 13:39:32 JSON response sent
-[GIN] 2025/11/07 - 13:39:32 | 201 |     388.459µs |             ::1 | POST     "/api/v1/adapters"
-2025/11/07 13:39:35 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:39:35 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:39:35 StdioToHTTP: Initializing session for adapter example-mcp-stdio
-DEBUG: Starting new process for adapter example-mcp-stdio
-DEBUG: Spawning subprocess: command=python3, args=[/Users/alessandrofesta/Documents/innovation/suse-ai-up/examples/proxy/src/main.py], dir=
-2025/11/07 13:39:35 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"test-client","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:39:35 StdioToHTTP: Starting message listener for session stdio-http-1762519175943014000
-2025/11/07 13:39:36 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:39:36 StdioToHTTP: Delivered response for request 1
-2025/11/07 13:39:36 StdioToHTTP: Initialize completed for session stdio-http-1762519175943014000
-[GIN] 2025/11/07 - 13:39:36 | 200 |  543.412208ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:39:50 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:39:50 StdioToHTTP: Handling notifications/message request for session stdio-http-1762519175943014000
-2025/11/07 13:39:50 StdioToHTTP: Handling notification notifications/message for session stdio-http-1762519175943014000
-2025/11/07 13:39:50 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","method":"notifications/message","params":{"data":"Test SSE message from stdio adapter","level":"info"}}
-[GIN] 2025/11/07 - 13:39:50 | 200 |      81.709µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:40:03 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:40:03 StdioToHTTP: Opening SSE stream for session stdio-http-1762519175943014000
-2025/11/07 13:40:04 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:40:04 StdioToHTTP: Handling notifications/message request for session stdio-http-1762519175943014000
-2025/11/07 13:40:04 StdioToHTTP: Handling notification notifications/message for session stdio-http-1762519175943014000
-2025/11/07 13:40:04 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","method":"notifications/message","params":{"data":"Test SSE message","level":"info"}}
-[GIN] 2025/11/07 - 13:40:04 | 200 |      79.416µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:40:06 StdioToHTTP: SSE client disconnected for session stdio-http-1762519175943014000
-[GIN] 2025/11/07 - 13:40:06 | 200 |  3.033644167s |             ::1 | GET      "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:40:44 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:40:44 StdioToHTTP: Opening SSE stream for session stdio-http-1762519175943014000
-2025/11/07 13:40:45 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:40:45 StdioToHTTP: Handling tools/call request for session stdio-http-1762519175943014000
-2025/11/07 13:40:45 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"arguments":{"a":10,"b":5},"name":"add"}}
-2025/11/07 13:40:45 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"15"}],"structuredContent":{"result":15},"isError":false}}
-2025/11/07 13:40:45 StdioToHTTP: Delivered response for request 2
-[GIN] 2025/11/07 - 13:40:45 | 200 |    2.710708ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:40:47 StdioToHTTP: SSE client disconnected for session stdio-http-1762519175943014000
-[GIN] 2025/11/07 - 13:40:47 | 200 |  3.040666458s |             ::1 | GET      "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:41:19 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:41:19 StdioToHTTP: Opening SSE stream for session stdio-http-1762519175943014000
-2025/11/07 13:42:19 StdioToHTTP: SSE client disconnected for session stdio-http-1762519175943014000
-[GIN] 2025/11/07 - 13:42:19 | 200 |          1m0s |             ::1 | GET      "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:42:31 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:42:31 StdioToHTTP: Handling tools/list request for session invalid-session-id
-[GIN] 2025/11/07 - 13:42:31 | 500 |      84.459µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:42:31 StdioToHTTP: Received request for adapter example-mcp-stdio
-[GIN] 2025/11/07 - 13:42:31 | 500 |      48.625µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:42:31 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:42:31 StdioToHTTP: Handling invalid/method request for session stdio-http-1762519175943014000
-2025/11/07 13:42:31 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":3,"method":"invalid/method"}
-2025/11/07 13:42:31 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":3,"error":{"code":-32602,"message":"Invalid request parameters","data":""}}
-2025/11/07 13:42:31 StdioToHTTP: Delivered response for request 3
-[GIN] 2025/11/07 - 13:42:31 | 200 |    1.161792ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:42:38 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:42:38 StdioToHTTP: Handling tools/list request for session invalid-session-id
-[GIN] 2025/11/07 - 13:42:38 | 500 |      61.125µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:42:38 StdioToHTTP: Received request for adapter example-mcp-stdio
-[GIN] 2025/11/07 - 13:42:38 | 500 |      50.125µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-[GIN] 2025/11/07 - 13:42:38 | 404 |      15.542µs |             ::1 | POST     "/api/v1/adapters/non-existent-adapter/mcp"
-2025/11/07 13:42:45 Creating adapter: test-cleanup-adapter, connectionType: LocalStdio
-2025/11/07 13:42:45 Adapter resource created, storing in adapter store
-2025/11/07 13:42:45 Adapter successfully created and stored
-2025/11/07 13:42:45 About to send JSON response
-2025/11/07 13:42:45 JSON response sent
-[GIN] 2025/11/07 - 13:42:45 | 201 |      107.75µs |             ::1 | POST     "/api/v1/adapters"
-2025/11/07 13:42:45 StdioToHTTP: Received request for adapter test-cleanup-adapter
-2025/11/07 13:42:45 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:42:45 StdioToHTTP: Initializing session for adapter test-cleanup-adapter
-DEBUG: Starting new process for adapter test-cleanup-adapter
-DEBUG: Spawning subprocess: command=python3, args=[/Users/alessandrofesta/Documents/innovation/suse-ai-up/examples/proxy/src/main.py], dir=
-2025/11/07 13:42:45 StdioToHTTP: Starting message listener for session stdio-http-1762519365854522000
-2025/11/07 13:42:45 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"test-client","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:42:46 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:42:46 StdioToHTTP: Delivered response for request 1
-2025/11/07 13:42:46 StdioToHTTP: Initialize completed for session stdio-http-1762519365854522000
-[GIN] 2025/11/07 - 13:42:46 | 200 |  532.640125ms |             ::1 | POST     "/api/v1/adapters/test-cleanup-adapter/mcp"
-[GIN] 2025/11/07 - 13:42:46 | 204 |       39.25µs |             ::1 | DELETE   "/api/v1/adapters/test-cleanup-adapter"
-[GIN] 2025/11/07 - 13:42:46 | 404 |      14.583µs |             ::1 | POST     "/api/v1/adapters/test-cleanup-adapter/mcp"
-2025/11/07 13:43:01 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:43:01 StdioToHTTP: Initializing session for adapter example-mcp-stdio
-DEBUG: Reusing existing process for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Starting message listener for session stdio-http-1762519381102548000
-2025/11/07 13:43:01 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"test-client-1","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:43:01 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:43:01 StdioToHTTP: Delivered response for request 1
-2025/11/07 13:43:01 StdioToHTTP: Initialize completed for session stdio-http-1762519381102548000
-[GIN] 2025/11/07 - 13:43:01 | 200 |    1.046584ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:01 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:43:01 StdioToHTTP: Initializing session for adapter example-mcp-stdio
-DEBUG: Reusing existing process for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Starting message listener for session stdio-http-1762519381106377000
-2025/11/07 13:43:01 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":2,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"test-client-2","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:43:01 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":2,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:43:01 StdioToHTTP: Delivered response for request 2
-2025/11/07 13:43:01 StdioToHTTP: Initialize completed for session stdio-http-1762519381106377000
-[GIN] 2025/11/07 - 13:43:01 | 200 |     626.833µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:01 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:43:01 StdioToHTTP: Initializing session for adapter example-mcp-stdio
-DEBUG: Reusing existing process for adapter example-mcp-stdio
-2025/11/07 13:43:01 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":3,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"test-client-3","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:43:01 StdioToHTTP: Starting message listener for session stdio-http-1762519381109968000
-2025/11/07 13:43:01 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":3,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:43:01 StdioToHTTP: Delivered response for request 3
-2025/11/07 13:43:01 StdioToHTTP: Initialize completed for session stdio-http-1762519381109968000
-[GIN] 2025/11/07 - 13:43:01 | 200 |     644.583µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:17 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:17 StdioToHTTP: Handling tools/call request for session stdio-http-1762519381102548000
-2025/11/07 13:43:17 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":101,"method":"tools/call","params":{"arguments":{"a":1,"b":2},"name":"add"}}
-2025/11/07 13:43:17 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":101,"result":{"content":[{"type":"text","text":"3"}],"structuredContent":{"result":3},"isError":false}}
-2025/11/07 13:43:17 StdioToHTTP: Delivered response for request 101
-[GIN] 2025/11/07 - 13:43:17 | 200 |    1.892042ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:17 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:17 StdioToHTTP: Handling tools/call request for session stdio-http-1762519381106377000
-2025/11/07 13:43:17 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":102,"method":"tools/call","params":{"arguments":{"a":3,"b":4},"name":"multiply"}}
-2025/11/07 13:43:17 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":102,"result":{"content":[{"type":"text","text":"12"}],"structuredContent":{"result":12},"isError":false}}
-2025/11/07 13:43:17 StdioToHTTP: Delivered response for request 102
-[GIN] 2025/11/07 - 13:43:17 | 200 |    1.551167ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:17 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:17 StdioToHTTP: Handling tools/call request for session stdio-http-1762519381109968000
-2025/11/07 13:43:17 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":103,"method":"tools/call","params":{"arguments":{"a":5,"b":6},"name":"add"}}
-2025/11/07 13:43:17 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":103,"result":{"content":[{"type":"text","text":"11"}],"structuredContent":{"result":11},"isError":false}}
-2025/11/07 13:43:17 StdioToHTTP: Delivered response for request 103
-[GIN] 2025/11/07 - 13:43:17 | 200 |    1.199916ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:40 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:40 StdioToHTTP: Handling initialize request for session 
-2025/11/07 13:43:40 StdioToHTTP: Initializing session for adapter example-mcp-stdio
-DEBUG: Reusing existing process for adapter example-mcp-stdio
-2025/11/07 13:43:40 StdioToHTTP: Starting message listener for session stdio-http-1762519420436205000
-2025/11/07 13:43:40 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"tools":{}},"clientInfo":{"name":"perf-test","version":"1.0.0"},"protocolVersion":"2024-11-05"}}
-2025/11/07 13:43:40 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":true}},"serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}
-2025/11/07 13:43:40 StdioToHTTP: Delivered response for request 1
-2025/11/07 13:43:40 StdioToHTTP: Initialize completed for session stdio-http-1762519420436205000
-[GIN] 2025/11/07 - 13:43:40 | 200 |       934.5µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:40 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:40 StdioToHTTP: Handling tools/list request for session stdio-http-1762519420436205000
-2025/11/07 13:43:40 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":2,"method":"tools/list"}
-2025/11/07 13:43:40 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"add","description":"Add two numbers","inputSchema":{"properties":{"a":{"title":"A","type":"integer"},"b":{"title":"B","type":"integer"}},"required":["a","b"],"type":"object"},"outputSchema":{"properties":{"result":{"title":"Result","type":"integer"}},"required":["result"],"title":"_WrappedResult","type":"object","x-fastmcp-wrap-result":true},"_meta":{"_fastmcp":{"tags":[]}}},{"name":"multiply","description":"Multiply two numbers","inputSchema":{"properties":{"a":{"title":"A","type":"integer"},"b":{"title":"B","type":"integer"}},"required":["a","b"],"type":"object"},"outputSchema":{"properties":{"result":{"title":"Result","type":"integer"}},"required":["result"],"title":"_WrappedResult","type":"object","x-fastmcp-wrap-result":true},"_meta":{"_fastmcp":{"tags":[]}}},{"name":"get_server_info","description":"Get server information","inputSchema":{"properties":{},"type":"object"},"outputSchema":{"additionalProperties":true,"type":"object"},"_meta":{"_fastmcp":{"tags":[]}}}]}}
-2025/11/07 13:43:40 StdioToHTTP: Delivered response for request 2
-[GIN] 2025/11/07 - 13:43:40 | 200 |    1.333459ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:40 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:40 StdioToHTTP: Handling tools/call request for session stdio-http-1762519420436205000
-2025/11/07 13:43:40 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"arguments":{"a":100,"b":200},"name":"add"}}
-2025/11/07 13:43:40 StdioToHTTP: Received from stdio: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"300"}],"structuredContent":{"result":300},"isError":false}}
-2025/11/07 13:43:40 StdioToHTTP: Delivered response for request 3
-[GIN] 2025/11/07 - 13:43:40 | 200 |    2.047542ms |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
-2025/11/07 13:43:40 StdioToHTTP: Received request for adapter example-mcp-stdio
-2025/11/07 13:43:40 StdioToHTTP: Handling notifications/initialized request for session stdio-http-1762519420436205000
-2025/11/07 13:43:40 StdioToHTTP: Handling notification notifications/initialized for session stdio-http-1762519420436205000
-2025/11/07 13:43:40 StdioToHTTP: Sending to stdio: {"jsonrpc":"2.0","method":"notifications/initialized"}
-[GIN] 2025/11/07 - 13:43:40 | 200 |       58.75µs |             ::1 | POST     "/api/v1/adapters/example-mcp-stdio/mcp"
+2025/11/07 16:22:01 Server starting on port 8911
+[GIN] 2025/11/07 - 16:22:07 | 200 |      25.291µs |             ::1 | GET      "/health"
+DEBUG: Received scan config: {ScanRanges:[127.0.0.1/32] Ports:[8001 8002 8003 8004] Timeout:5s MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 0, Errors: 0
+[GIN] 2025/11/07 - 16:22:11 | 200 |     535.917µs |             ::1 | POST     "/api/v1/discovery/scan"
+[GIN] 2025/11/07 - 16:22:18 | 200 |      20.625µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:22:18 | 200 |      92.334µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:22:18 | 200 |       2.625µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:22:18 | 200 |       1.791µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:23:18 | 200 |      33.875µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:23:18 | 200 |       8.833µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:23:18 | 200 |       6.083µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:23:18 | 200 |       1.959µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:24:18 | 200 |      13.833µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:24:18 | 200 |       4.209µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:24:18 | 200 |       5.333µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:24:18 | 200 |       2.375µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:25:18 | 200 |      11.708µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:25:18 | 200 |       4.875µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:25:18 | 200 |       2.917µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:25:18 | 200 |       1.875µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:26:18 | 200 |      12.667µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:26:18 | 200 |      23.458µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:26:18 | 200 |       12.25µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:26:18 | 200 |       4.333µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:27:18 | 200 |      15.667µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:27:18 | 200 |       7.625µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:27:18 | 200 |        7.25µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:27:18 | 200 |       2.125µs |             ::1 | GET      "/api/v1/adapters"
+DEBUG: Received scan config: {ScanRanges:[192.168.1.74/32] Ports:[8001 8002 8004] Timeout: MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 1, Errors: 0
+[GIN] 2025/11/07 - 16:27:55 | 200 |   67.917333ms |             ::1 | POST     "/api/v1/discovery/scan"
+DEBUG: Received scan config: {ScanRanges:[127.0.0.1/32] Ports:[8001 8002 8004] Timeout: MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 0, Errors: 0
+[GIN] 2025/11/07 - 16:27:57 | 200 |     316.166µs |             ::1 | POST     "/api/v1/discovery/scan"
+DEBUG: Received scan config: {ScanRanges:[] Ports:[] Timeout: MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 0, Errors: 0
+[GIN] 2025/11/07 - 16:28:14 | 200 |      73.334µs |             ::1 | POST     "/api/v1/discovery/scan"
+[GIN] 2025/11/07 - 16:28:18 | 200 |      65.583µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:28:18 | 200 |       5.417µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:28:18 | 200 |       6.917µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:28:18 | 200 |       3.125µs |             ::1 | GET      "/api/v1/adapters"
+DEBUG: Received scan config: {ScanRanges:[] Ports:[] Timeout: MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 0, Errors: 0
+[GIN] 2025/11/07 - 16:28:32 | 200 |      76.625µs |             ::1 | POST     "/api/v1/discovery/scan"
+DEBUG: Received scan config: {ScanRanges:[] Ports:[] Timeout: MaxConcurrent:0 ExcludeProxy:<nil> ExcludeAddresses:[]}
+DEBUG: Starting scan with config...
+DEBUG: Scan completed. Results: 0, Errors: 0
+[GIN] 2025/11/07 - 16:28:38 | 200 |      81.083µs |             ::1 | POST     "/api/v1/discovery/scan"
+[GIN] 2025/11/07 - 16:28:39 | 200 |      13.166µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:28:39 | 200 |       3.708µs |             ::1 | GET      "/api/v1/adapters"
+[GIN] 2025/11/07 - 16:28:39 | 200 |      12.625µs |             ::1 | GET      "/api/v1/discovery/servers"
+[GIN] 2025/11/07 - 16:28:39 | 200 |      16.458µs |             ::1 | GET      "/api/v1/adapters"
+signal: killed

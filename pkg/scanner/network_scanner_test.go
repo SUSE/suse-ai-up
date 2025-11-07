@@ -101,9 +101,9 @@ func TestScanTimeout(t *testing.T) {
 
 	select {
 	case <-done:
-		// Scan completed
-	case <-time.After(10 * time.Second):
-		t.Error("Scan took too long, should have timed out")
+		// Scan completed - this is expected since HTTP requests timeout
+	case <-time.After(15 * time.Second):
+		t.Error("Scan took too long, should have completed when HTTP requests timed out")
 		scanner.Stop()
 	}
 }

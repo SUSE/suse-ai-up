@@ -1,20 +1,13 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model Context Protocol) server deployments and proxying requests to MCP servers running in Kubernetes.",
-        "title": "SUSE AI Universal Proxy - Control Plane",
-        "contact": {
-            "name": "SUSE AI Universal Proxy Team",
-            "url": "https://github.com/SUSE/suse-ai-up"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://github.com/SUSE/suse-ai-up/blob/main/LICENSE"
-        },
-        "version": "1.0.0"
+        "description": "Comprehensive MCP proxy with discovery, registry, and deployment capabilities",
+        "title": "SUSE AI Universal Proxy API",
+        "contact": {},
+        "version": "1.0"
     },
     "host": "localhost:8911",
-    "basePath": "/",
+    "basePath": "/api/v1",
     "paths": {
         "/api/v1/adapters": {
             "get": {
@@ -1003,6 +996,79 @@
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan/{jobId}": {
+            "get": {
+                "description": "Retrieve the status and results of a network scan",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get scan job status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scanner.ScanJob"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Cancels a running scan job",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Cancel scan job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2645,6 +2711,60 @@
                 "ServiceTypeRegistry"
             ]
         },
+        "scanner.ScanJob": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/models.ScanConfig"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "progress": {
+                    "description": "0.0 to 1.0",
+                    "type": "number"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DiscoveredServer"
+                    }
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/scanner.ScanStatus"
+                }
+            }
+        },
+        "scanner.ScanStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "ScanStatusPending",
+                "ScanStatusRunning",
+                "ScanStatusCompleted",
+                "ScanStatusFailed",
+                "ScanStatusCancelled"
+            ]
+        },
         "service.BulkSessionDeleteResponse": {
             "type": "object",
             "properties": {
@@ -2743,7 +2863,7 @@
         "session.AuthorizationInfo": {
             "type": "object",
             "properties": {
-                "authorizationServer": {
+                "accessToken": {
                     "type": "string"
                 },
                 "authorizationUrl": {
@@ -2752,20 +2872,48 @@
                 "authorizedAt": {
                     "type": "string"
                 },
-                "clientId": {
-                    "type": "string"
-                },
                 "errorMessage": {
                     "type": "string"
                 },
-                "lastTokenRefresh": {
+                "expiresAt": {
                     "type": "string"
                 },
-                "resourceServer": {
+                "refreshToken": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 },
                 "status": {
                     "description": "\"unauthorized\", \"authorizing\", \"authorized\", \"expired\", \"failed\"",
+                    "type": "string"
+                },
+                "tokenType": {
+                    "type": "string"
+                }
+            }
+        },
+        "session.MCPClientInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "session.MCPServerInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -2788,11 +2936,24 @@
                 "lastActivity": {
                     "type": "string"
                 },
+                "mcpCapabilities": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "mcpClientInfo": {
+                    "$ref": "#/definitions/session.MCPClientInfo"
+                },
+                "mcpServerInfo": {
+                    "$ref": "#/definitions/session.MCPServerInfo"
+                },
+                "mcpSessionId": {
+                    "description": "MCP-specific fields",
+                    "type": "string"
+                },
                 "sessionId": {
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"active\", \"expired\", \"invalidated\"",
                     "type": "string"
                 },
                 "targetAddress": {
@@ -2825,14 +2986,6 @@
                     "type": "string"
                 }
             }
-        }
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "description": "Bearer token for authentication",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
         }
     }
 }

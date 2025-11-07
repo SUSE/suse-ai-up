@@ -63,7 +63,7 @@ check_dependencies() {
     fi
     
     # Check required Python packages
-    local packages=("fastmcp" "flask" "flask-cors")
+    local packages=("fastmcp" "flask" "flask_cors")
     for package in "${packages[@]}"; do
         if ! python3 -c "import $package" 2>/dev/null; then
             echo -e "${RED}✗ Python package '$package' is not installed${NC}"
