@@ -51,6 +51,42 @@ func (s *InMemoryAdapterStore) DeleteAsync(name string, ctx context.Context) err
 	return nil
 }
 
+// List returns all adapters
+func (s *InMemoryAdapterStore) List() []models.AdapterResource {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	adapters := make([]models.AdapterResource, 0, len(s.store))
+	for _, adapter := range s.store {
+		adapters = append(adapters, adapter)
+	}
+	return adapters
+}
+
+// Create creates a new adapter
+func (s *InMemoryAdapterStore) Create(adapter *models.AdapterResource) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.store[adapter.Name] = *adapter
+	return nil
+}
+
+// Update updates an existing adapter
+func (s *InMemoryAdapterStore) Update(adapter *models.AdapterResource) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.store[adapter.Name] = *adapter
+	return nil
+}
+
+// Delete deletes an adapter by name
+func (s *InMemoryAdapterStore) Delete(name string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	delete(s.store, name)
+	return nil
+}
+
 // ListAsync lists all adapters
 func (s *InMemoryAdapterStore) ListAsync(ctx context.Context) ([]models.AdapterResource, error) {
 	s.mutex.RLock()

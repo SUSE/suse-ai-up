@@ -125,6 +125,7 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 	}
 
 	// Spawn the subprocess
+	fmt.Printf("DEBUG: Spawning subprocess: command=%s, args=%v, dir=%s\n", command, args, tempDir)
 	cmd := exec.Command(command, args...)
 	if tempDir != "" {
 		cmd.Dir = tempDir
