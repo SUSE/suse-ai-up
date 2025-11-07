@@ -34,9 +34,9 @@ This implementation addresses the "INVALID_TOKEN" errors when using MCP Inspecto
 - **Audit logging** for security monitoring
 
 #### 3. Token Handler (`internal/handlers/token_handler.go`)
-- **Token retrieval API**: `GET /adapters/{name}/token`
-- **Token validation API**: `GET /adapters/{name}/token/validate`
-- **Token refresh API**: `POST /adapters/{name}/token/refresh`
+- **Token retrieval API**: `GET /api/v1/adapters/{name}/token`
+- **Token validation API**: `GET /api/v1/adapters/{name}/token/validate`
+- **Token refresh API**: `POST /api/v1/adapters/{name}/token/refresh`
 
 #### 4. Enhanced Discovery Service (`internal/service/discovery.go`)
 - **Automatic security enhancement** for high-risk servers
@@ -47,7 +47,7 @@ This implementation addresses the "INVALID_TOKEN" errors when using MCP Inspecto
 
 #### Get Adapter Token
 ```http
-GET /adapters/{name}/token?generate=true&expiresIn=24
+GET /api/v1/adapters/{name}/token?generate=true&expiresIn=24
 ```
 
 **Response (JWT format):**
@@ -72,7 +72,7 @@ GET /adapters/{name}/token?generate=true&expiresIn=24
 
 #### Validate Token
 ```http
-GET /adapters/{name}/token/validate?token=eyJhbGciOiJSUzI1NiIs...
+GET /api/v1/adapters/{name}/token/validate?token=eyJhbGciOiJSUzI1NiIs...
 ```
 
 **Response:**
@@ -92,7 +92,7 @@ GET /adapters/{name}/token/validate?token=eyJhbGciOiJSUzI1NiIs...
 
 #### Refresh Token
 ```http
-POST /adapters/{name}/token/refresh?expiresIn=24
+POST /api/v1/adapters/{name}/token/refresh?expiresIn=24
 ```
 
 ### Enhanced Discovery Registration
@@ -131,7 +131,7 @@ After adapter registration or token retrieval:
 // Using the token from API response
 const adapterConfig = {
   name: "my-mcp-adapter",
-  baseUrl: "http://localhost:8911/adapters/my-mcp-adapter",
+  baseUrl: "http://localhost:8911/api/v1/adapters/my-mcp-adapter",
   authentication: {
     type: "bearer",
     token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." // JWT token from API
@@ -139,7 +139,7 @@ const adapterConfig = {
 };
 
 // MCP Inspector can now authenticate successfully
-const response = await fetch('/adapters/my-mcp-adapter/mcp', {
+const response = await fetch('/api/v1/adapters/my-mcp-adapter/mcp', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${adapterConfig.authentication.token}`,
@@ -154,12 +154,12 @@ const response = await fetch('/adapters/my-mcp-adapter/mcp', {
 ```javascript
 // Check if token needs refresh
 async function ensureValidToken(adapterName) {
-  const validateResponse = await fetch(`/adapters/${adapterName}/token/validate?token=${currentToken}`);
+  const validateResponse = await fetch(`/api/v1/adapters/${adapterName}/token/validate?token=${currentToken}`);
   const validationResult = await validateResponse.json();
   
   if (!validationResult.valid) {
     // Refresh the token
-    const refreshResponse = await fetch(`/adapters/${adapterName}/token/refresh`, {
+    const refreshResponse = await fetch(`/api/v1/adapters/${adapterName}/token/refresh`, {
       method: 'POST'
     });
     const refreshResult = await refreshResponse.json();
@@ -174,7 +174,7 @@ async function ensureValidToken(adapterName) {
 
 ```bash
 # Register a discovered server (high-risk servers get auto-secured)
-curl -X POST http://localhost:8911/register \
+curl -X POST http://localhost:8911/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "risky-mcp-server",
@@ -227,12 +227,12 @@ curl -X POST http://localhost:8911/register \
 
 1. **Retrieve current token**:
    ```http
-   GET /adapters/{name}/token
+   GET /api/v1/adapters/{name}/token
    ```
 
 2. **Generate new JWT token**:
    ```http
-   GET /adapters/{name}/token?generate=true
+   GET /api/v1/adapters/{name}/token?generate=true
    ```
 
 3. **Update client configuration** with new JWT token
@@ -257,10 +257,10 @@ go build -o service ./cmd/service
 ./service
 
 # Test token generation
-curl "http://localhost:8911/adapters/test-adapter/token?generate=true"
+  curl "http://localhost:8911/api/v1/adapters/test-adapter/token?generate=true"
 
 # Test token validation
-curl "http://localhost:8911/adapters/test-adapter/token/validate?token=YOUR_JWT_TOKEN"
+  curl "http://localhost:8911/api/v1/adapters/test-adapter/token/validate?token=YOUR_JWT_TOKEN"
 ```
 
 ## Benefits

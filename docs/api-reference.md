@@ -576,7 +576,7 @@ Content-Type: application/json
     "tokenType": "Bearer",
     "expiresAt": "2025-01-07T12:00:00Z",
     "issuedAt": "2025-01-06T12:00:00Z",
-    "audience": "http://localhost:8911/adapters/discovered-127-0-0-1-8000",
+    "audience": "http://localhost:8911/api/v1/adapters/discovered-127-0-0-1-8000",
     "issuer": "suse-ai-up",
     "subject": "adapter-discovered-127-0-0-1-8000",
     "scope": "mcp:read mcp:write server:mcp-127-0-0-1-8000-1234567890 risk:high"

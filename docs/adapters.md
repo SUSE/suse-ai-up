@@ -34,7 +34,7 @@ The system supports multiple adapter deployment types:
 After discovering MCP servers, register them as adapters:
 
 ```bash
-POST /register
+POST /api/v1/register
 Content-Type: application/json
 
 {
@@ -92,7 +92,7 @@ Content-Type: application/json
 ### List All Adapters
 
 ```bash
-GET /adapters
+GET /api/v1/adapters
 ```
 
 **Response**:
@@ -114,13 +114,13 @@ GET /adapters
 ### Get Adapter Details
 
 ```bash
-GET /adapters/{name}
+GET /api/v1/adapters/{name}
 ```
 
 ### Update Adapter Configuration
 
 ```bash
-PUT /adapters/{name}
+PUT /api/v1/adapters/{name}
 Content-Type: application/json
 
 {
@@ -134,13 +134,13 @@ Content-Type: application/json
 ### Delete Adapter
 
 ```bash
-DELETE /adapters/{name}
+DELETE /api/v1/adapters/{name}
 ```
 
 ### Check Adapter Status
 
 ```bash
-GET /adapters/{name}/status
+GET /api/v1/adapters/{name}/status
 ```
 
 **Response**:
@@ -157,7 +157,7 @@ GET /adapters/{name}/status
 ### Get Adapter Logs
 
 ```bash
-GET /adapters/{name}/logs?instance=0
+GET /api/v1/adapters/{name}/logs?instance=0
 ```
 
 ## Automatic Security Enhancement
@@ -192,14 +192,14 @@ Client → Adapter (Bearer auth required) → MCP Server (no auth)
 
 **Without Token** (401 Unauthorized):
 ```bash
-curl http://localhost:8911/adapters/discovered-secure-mcp/mcp
+curl http://localhost:8911/api/v1/adapters/discovered-secure-mcp/mcp
 # Returns: {"code":"MISSING_AUTH_HEADER","message":"Authentication required"}
 ```
 
 **With Token** (200 OK):
 ```bash
 curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  http://localhost:8911/adapters/discovered-secure-mcp/mcp
+  http://localhost:8911/api/v1/adapters/discovered-secure-mcp/mcp
 ```
 
 ### Token Management
@@ -274,13 +274,13 @@ Adapters support session-based authentication:
 
 ```bash
 # Create session
-POST /adapters/{name}/sessions
+POST /api/v1/adapters/{name}/sessions
 
 # List active sessions
-GET /adapters/{name}/sessions
+GET /api/v1/adapters/{name}/sessions
 
 # Delete all sessions
-DELETE /adapters/{name}/sessions
+DELETE /api/v1/adapters/{name}/sessions
 ```
 
 ## Health Monitoring
@@ -312,7 +312,7 @@ Health status is reported through the adapter status endpoint:
 StreamableHttp adapters support horizontal scaling:
 
 ```bash
-PUT /adapters/{name}
+PUT /api/v1/adapters/{name}
 {
   "replicaCount": 5
 }
@@ -372,11 +372,11 @@ For bulk operations, discovered servers can be registered programmatically:
 ```bash
 #!/bin/bash
 # Get discovered servers
-SERVERS=$(curl -s http://localhost:8911/servers)
+SERVERS=$(curl -s http://localhost:8911/api/v1/servers)
 
 # Register each server as adapter
 echo "$SERVERS" | jq -r '.[].id' | while read serverId; do
-  curl -X POST http://localhost:8911/register \
+  curl -X POST http://localhost:8911/api/v1/register \
     -H "Content-Type: application/json" \
     -d "{\"discoveredServerId\": \"$serverId\"}"
 done
@@ -422,10 +422,10 @@ Adapters expose Prometheus metrics:
 **Adapter not responding**:
 ```bash
 # Check adapter status
-curl http://localhost:8911/adapters/{name}/status
+curl http://localhost:8911/api/v1/adapters/{name}/status
 
 # Check adapter logs
-curl http://localhost:8911/adapters/{name}/logs
+curl http://localhost:8911/api/v1/adapters/{name}/logs
 
 # Verify discovered server is still available
 curl -I {original-server-address}/mcp
@@ -437,17 +437,17 @@ curl -I {original-server-address}/mcp
 tail -f proxy.log | grep RegisterServer
 
 # Verify discovered server exists
-curl http://localhost:8911/servers | jq '.[] | select(.id == "server-id")'
+curl http://localhost:8911/api/v1/servers | jq '.[] | select(.id == "server-id")'
 ```
 
 **Authentication issues**:
 ```bash
 # Check authentication configuration
-curl http://localhost:8911/adapters/{name}
+curl http://localhost:8911/api/v1/adapters/{name}
 
 # Test with authentication
 curl -H "Authorization: Bearer {token}" \
-  http://localhost:8911/adapters/{name}/mcp
+  http://localhost:8911/api/v1/adapters/{name}/mcp
 ```
 
 ### Debug Mode
@@ -468,30 +468,30 @@ kill %1 && go run cmd/service/main.go
 
 ```bash
 # 1. Start network scan
-SCAN_ID=$(curl -X POST http://localhost:8911/scan \
+SCAN_ID=$(curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{"scanRanges": ["192.168.1.0/24"], "ports": [8000]}' \
   | jq -r '.scanId')
 
 # 2. Wait for scan completion
-while [ "$(curl -s http://localhost:8911/scan/$SCAN_ID | jq -r '.status')" != "completed" ]; do
+while [ "$(curl -s http://localhost:8911/api/v1/scan/$SCAN_ID | jq -r '.status')" != "completed" ]; do
   sleep 2
 done
 
 # 3. Get discovered servers
-SERVERS=$(curl -s http://localhost:8911/servers)
+SERVERS=$(curl -s http://localhost:8911/api/v1/servers)
 
 # 4. Register first server as adapter
 SERVER_ID=$(echo "$SERVERS" | jq -r '.[0].id')
-curl -X POST http://localhost:8911/register \
+curl -X POST http://localhost:8911/api/v1/register \
   -H "Content-Type: application/json" \
   -d "{\"discoveredServerId\": \"$SERVER_ID\"}"
 
 # 5. Verify adapter creation
-curl http://localhost:8911/adapters
+curl http://localhost:8911/api/v1/adapters
 
 # 6. Test adapter functionality
-curl -X POST http://localhost:8911/adapters/discovered-192-168-1-100-*/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/discovered-192-168-1-100-*/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
@@ -500,7 +500,7 @@ curl -X POST http://localhost:8911/adapters/discovered-192-168-1-100-*/mcp \
 
 ```bash
 # Register with custom configuration
-curl -X POST http://localhost:8911/register \
+curl -X POST http://localhost:8911/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{
     "discoveredServerId": "mcp-server-123",
@@ -540,45 +540,14 @@ For bulk operations, combine discovery and adapter registration:
 
 ```bash
 # Discover servers
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{"scanRanges": ["10.0.0.0/8"], "ports": [8000, 8001]}'
 
 # Register all discovered servers as adapters
-curl -s http://localhost:8911/servers | \
+curl -s http://localhost:8911/api/v1/servers | \
   jq -r '.[].id' | \
-  xargs -I {} curl -X POST http://localhost:8911/register \
-    -H "Content-Type: application/json" \
-    -d "{\"discoveredServerId\": \"{}\"}"
-```
-
-See the [Discovery Documentation](discovery.md) for detailed scanning and server detection procedures.</content>
-</xai:function_call">## Integration with Discovery
-
-The adapter system is tightly integrated with the [MCP Server Discovery](discovery.md) system. Discovered servers can be seamlessly registered as production-ready adapters with full lifecycle management.
-
-### Discovery-to-Adapter Workflow
-
-1. **Network Discovery**: Use the discovery system to find MCP servers
-2. **Server Assessment**: Evaluate security posture and capabilities  
-3. **Adapter Registration**: Register discovered servers as adapters
-4. **Production Deployment**: Launch managed Kubernetes deployments
-5. **Monitoring & Scaling**: Full operational management
-
-### Automated Registration
-
-For bulk operations, combine discovery and adapter registration:
-
-```bash
-# Discover servers
-curl -X POST http://localhost:8911/scan \
-  -H "Content-Type: application/json" \
-  -d '{"scanRanges": ["10.0.0.0/8"], "ports": [8000, 8001]}'
-
-# Register all discovered servers as adapters
-curl -s http://localhost:8911/servers | \
-  jq -r '.[].id' | \
-  xargs -I {} curl -X POST http://localhost:8911/register \
+  xargs -I {} curl -X POST http://localhost:8911/api/v1/register \
     -H "Content-Type: application/json" \
     -d "{\"discoveredServerId\": \"{}\"}"
 ```

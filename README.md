@@ -128,8 +128,8 @@ cd suse-ai-up-proxy && go run cmd/service/main.go
 # 2. Start SmartAgents with proxy registration (now in separate repository)
 
 # 3. Test the setup
-curl http://localhost:8911/plugins/services
-curl http://localhost:8911/v1/models
+curl http://localhost:8911/api/v1/plugins/services
+curl http://localhost:8911/api/v1/models
 ```
 
 ## 🤝 Contributing

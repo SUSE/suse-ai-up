@@ -42,7 +42,7 @@ cd suse-ai-up-proxy && go run cmd/service/main.go
 cd suse-ai-up-proxy && go run cmd/service/main.go
 
 # 2. Create authenticated sequential thinking adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sequential-thinking",
@@ -65,27 +65,27 @@ curl -X POST http://localhost:8911/adapters \
   | jq
 
 # 3. Test without authentication (should fail with 401)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 4. Test with authentication (should succeed)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 5. List available tools (with authentication)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' \
   | jq
 
 # 6. Call sequential thinking tool (with authentication)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{
@@ -102,7 +102,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
   | jq
 
 # 7. Clean up
-curl -X DELETE http://localhost:8911/adapters/sequential-thinking
+curl -X DELETE http://localhost:8911/api/v1/adapters/sequential-thinking
 ```
 
 ## Scenario 1b: Authenticated Filesystem MCP Server
@@ -122,7 +122,7 @@ curl -X DELETE http://localhost:8911/adapters/sequential-thinking
 cd suse-ai-up-proxy && go run cmd/service/main.go
 
 # 2. Create authenticated filesystem adapter (restrict to current directory)
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "filesystem",
@@ -145,20 +145,20 @@ curl -X POST http://localhost:8911/adapters \
   | jq
 
 # 3. Test without authentication (should fail)
-curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/filesystem/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 4. Initialize with authentication
-curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/filesystem/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer filesystem-token-456" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 5. List available tools
-curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/filesystem/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer filesystem-token-456" \
   -H "mcp-session-id: fs-session-123" \
@@ -166,7 +166,7 @@ curl -X POST http://localhost:8911/adapters/filesystem/mcp \
   | jq
 
 # 6. List directory contents
-curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/filesystem/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer filesystem-token-456" \
   -H "mcp-session-id: fs-session-123" \
@@ -184,7 +184,7 @@ curl -X POST http://localhost:8911/adapters/filesystem/mcp \
   | jq
 
 # 7. Clean up
-curl -X DELETE http://localhost:8911/adapters/filesystem
+curl -X DELETE http://localhost:8911/api/v1/adapters/filesystem
 ```
 
 ## Scenario 1c: Authenticated SQLite Database MCP Server
@@ -204,7 +204,7 @@ curl -X DELETE http://localhost:8911/adapters/filesystem
 cd suse-ai-up-proxy && go run cmd/service/main.go
 
 # 2. Create authenticated SQLite database adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sqlite-db",
@@ -227,19 +227,19 @@ curl -X POST http://localhost:8911/adapters \
   | jq
 
 # 3. Test without authentication (should fail)
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
 
 # 4. Initialize with authentication
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 5. List available tools
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -H "mcp-session-id: db-session-123" \
@@ -247,7 +247,7 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   | jq
 
 # 6. Create a test table
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -H "mcp-session-id: db-session-123" \
@@ -265,7 +265,7 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   | jq
 
 # 7. Insert data
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -H "mcp-session-id: db-session-123" \
@@ -284,7 +284,7 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   | jq
 
 # 8. Query data
-curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sqlite-db/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sqlite-token-101" \
   -H "mcp-session-id: db-session-123" \
@@ -302,7 +302,7 @@ curl -X POST http://localhost:8911/adapters/sqlite-db/mcp \
   | jq
 
 # 9. Clean up
-curl -X DELETE http://localhost:8911/adapters/sqlite-db
+curl -X DELETE http://localhost:8911/api/v1/adapters/sqlite-db
 ```
 
 ## Scenario 1e: Authenticated GitHub API MCP Server
@@ -329,7 +329,7 @@ curl -X DELETE http://localhost:8911/adapters/sqlite-db
 cd suse-ai-up-proxy && go run cmd/service/main.go
 
 # 2. Create authenticated GitHub API adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "github-api",
@@ -358,20 +358,20 @@ curl -X POST http://localhost:8911/adapters \
   | jq
 
 # 3. Test without authentication (should fail)
-curl -X POST http://localhost:8911/adapters/github-api/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 4. Initialize with authentication
-curl -X POST http://localhost:8911/adapters/github-api/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}' \
   | jq
 
 # 5. List available tools
-curl -X POST http://localhost:8911/adapters/github-api/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
   -H "mcp-session-id: github-session-123" \
@@ -379,7 +379,7 @@ curl -X POST http://localhost:8911/adapters/github-api/mcp \
   | jq
 
 # 6. Search repositories
-curl -X POST http://localhost:8911/adapters/github-api/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
   -H "mcp-session-id: github-session-123" \
@@ -399,7 +399,7 @@ curl -X POST http://localhost:8911/adapters/github-api/mcp \
   | jq
 
 # 7. Get repository information
-curl -X POST http://localhost:8911/adapters/github-api/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/github-api/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer github-token-202" \
   -H "mcp-session-id: github-session-123" \
@@ -418,7 +418,7 @@ curl -X POST http://localhost:8911/adapters/github-api/mcp \
   | jq
 
 # 8. Clean up
-curl -X DELETE http://localhost:8911/adapters/github-api
+curl -X DELETE http://localhost:8911/api/v1/adapters/github-api
 ```
 
 **Goal**: Demonstrate running custom Python MCP servers with authentication through the proxy.
@@ -473,7 +473,7 @@ Then run the authenticated adapter:
 cd suse-ai-up-proxy && go run cmd/service/main.go
 
 # 2. Create authenticated custom Python adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "custom-python",
@@ -499,25 +499,25 @@ curl -X POST http://localhost:8911/adapters \
   }'
 
 # 3. Test without authentication (should fail)
-curl -X POST http://localhost:8911/adapters/custom-python/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/custom-python/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
 
 # 4. Initialize with authentication
-curl -X POST http://localhost:8911/adapters/custom-python/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/custom-python/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer custom-python-token-789" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}}'
 
 # 5. List available tools
-curl -X POST http://localhost:8911/adapters/custom-python/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/custom-python/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer custom-python-token-789" \
   -H "mcp-session-id: custom-session-123" \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
 
 # 6. Call custom greeting tool
-curl -X POST http://localhost:8911/adapters/custom-python/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/custom-python/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer custom-python-token-789" \
   -H "mcp-session-id: custom-session-123" \
@@ -534,7 +534,7 @@ curl -X POST http://localhost:8911/adapters/custom-python/mcp \
   }'
 
 # 7. Clean up
-curl -X DELETE http://localhost:8911/adapters/custom-python
+curl -X DELETE http://localhost:8911/api/v1/adapters/custom-python
 ```
 
 ## Scenario 2: HTTP MCP with Vulnerability Scoring
@@ -553,7 +553,7 @@ curl -X DELETE http://localhost:8911/adapters/custom-python
 MCP_TRANSPORT=http python src/main_no_auth.py
 
 # Scan for MCP servers
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{
     "scanRanges": ["127.0.0.1/32"],
@@ -562,7 +562,7 @@ curl -X POST http://localhost:8911/scan \
   | jq
 
 # Check discovered servers with vulnerability scores
-curl http://localhost:8911/servers
+curl http://localhost:8911/api/v1/servers
 
 # Expected response includes vulnerability_score field
 {
@@ -579,7 +579,7 @@ curl http://localhost:8911/servers
 }
 
 # Create adapter for discovered server
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "no-auth-mcp",
@@ -593,14 +593,14 @@ curl -X POST http://localhost:8911/adapters \
   | jq
 
 # Initialize and test tools (no auth required)
-curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}' \
   | jq
 
 # List tools
-curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -608,7 +608,7 @@ curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
   | jq
 
 # Call multiply tool
-curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/no-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -627,7 +627,7 @@ curl -X POST http://localhost:8911/adapters/no-auth-mcp/mcp \
 MCP_TRANSPORT=http python src/main.py
 
 # Create adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "token-auth-mcp",
@@ -640,14 +640,14 @@ curl -X POST http://localhost:8911/adapters \
   }'
 
 # Initialize with auth token
-curl -X POST http://localhost:8911/adapters/token-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/token-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer mcp-example-token-12345" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
 
 # List available tools (with auth)
-curl -X POST http://localhost:8911/adapters/token-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/token-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer mcp-example-token-12345" \
   -H "Accept: application/json, text/event-stream" \
@@ -655,7 +655,7 @@ curl -X POST http://localhost:8911/adapters/token-auth-mcp/mcp \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
 
 # Call get_server_info tool (with auth)
-curl -X POST http://localhost:8911/adapters/token-auth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/token-auth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer mcp-example-token-12345" \
   -H "Accept: application/json, text/event-stream" \
@@ -674,7 +674,7 @@ curl -X POST http://localhost:8911/adapters/token-auth-mcp/mcp \
 MCP_TRANSPORT=http python src/oauth_server.py
 
 # Create adapter
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "oauth-mcp",
@@ -687,7 +687,7 @@ curl -X POST http://localhost:8911/adapters \
   }'
 
 # Initiate OAuth authorization
-curl -X POST http://localhost:8911/adapters/oauth-mcp/auth/authorize \
+curl -X POST http://localhost:8911/api/v1/adapters/oauth-mcp/auth/authorize \
   -H "Content-Type: application/json" \
   -d '{
     "clientInfo": {"name": "mcp-client", "version": "1.0"},
@@ -697,23 +697,23 @@ curl -X POST http://localhost:8911/adapters/oauth-mcp/auth/authorize \
 
 
 # Check authorization status
-curl http://localhost:8911/adapters/oauth-mcp/auth/status
+curl http://localhost:8911/api/v1/adapters/oauth-mcp/auth/status
 
 # Once authorized, make MCP requests (tokens handled automatically)
-curl -X POST http://localhost:8911/adapters/oauth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/oauth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
 
 # List tools (OAuth tokens handled automatically)
-curl -X POST http://localhost:8911/adapters/oauth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/oauth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
 
 # Call add tool (OAuth tokens handled automatically)
-curl -X POST http://localhost:8911/adapters/oauth-mcp/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/oauth-mcp/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \

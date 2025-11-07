@@ -45,7 +45,7 @@ The system intelligently detects and categorizes different authentication types:
 ### Start Network Scan
 
 ```bash
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{
     "scanRanges": ["192.168.1.0/24", "10.0.0.1-10.0.0.10"],
@@ -64,7 +64,7 @@ curl -X POST http://localhost:8911/scan \
 ### Check Scan Status
 
 ```bash
-curl http://localhost:8911/scan/{scanId}
+curl http://localhost:8911/api/v1/scan/{scanId}
 ```
 
 **Response**:
@@ -96,7 +96,7 @@ curl http://localhost:8911/scan/{scanId}
 ### List All Discovered Servers
 
 ```bash
-curl http://localhost:8911/servers
+curl http://localhost:8911/api/v1/servers
 ```
 
 ## Security Assessment
@@ -119,14 +119,14 @@ This ensures development and testing environments are always discoverable.
 
 ### Basic Network Scan
 ```bash
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{"scanRanges": ["192.168.1.0/24"], "ports": [8000]}'
 ```
 
 ### Enterprise Multi-Range Scan
 ```bash
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{
     "scanRanges": [
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8911/scan \
 
 ### Development Scan
 ```bash
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{"scanRanges": ["127.0.0.1/32"], "ports": [8001, 8002, 8003]}'
 ```
@@ -334,7 +334,7 @@ Test the discovery system against running servers:
 
 ```bash
 # Scan localhost for test servers
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{
     "scanRanges": ["127.0.0.1/32"],
@@ -343,7 +343,7 @@ curl -X POST http://localhost:8911/scan \
   }'
 
 # Check scan status (replace SCAN_ID with actual ID from response)
-curl http://localhost:8911/scan/SCAN_ID
+curl http://localhost:8911/api/v1/scan/SCAN_ID
 ```
 
 ### Expected Results

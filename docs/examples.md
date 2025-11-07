@@ -22,13 +22,13 @@ Before running these examples, ensure you have:
 ### 1. Check Gateway Status
 ```bash
 # Verify gateway is running
-curl -s http://localhost:8911/adapters | jq '.'
+curl -s http://localhost:8911/api/v1/adapters | jq '.'
 ```
 
 ### 2. Create MCP Adapter
 ```bash
 # Create adapter pointing to local MCP server
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "mcp-demo",
@@ -41,7 +41,7 @@ curl -X POST http://localhost:8911/adapters \
 ### 3. Initialize MCP Session
 ```bash
 # Initialize MCP connection - this establishes the session
-curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/mcp-demo/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{
@@ -62,7 +62,7 @@ curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
 ### 4. List Available Tools
 ```bash
 # List tools - use the session ID from the initialize response
-curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/mcp-demo/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -76,7 +76,7 @@ curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
 ### 5. Call the Add Tool
 ```bash
 # Call the add tool
-curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/mcp-demo/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -97,13 +97,13 @@ curl -X POST http://localhost:8911/adapters/mcp-demo/mcp \
 ### 6. Check Adapter Status
 ```bash
 # Check adapter deployment status
-curl -s http://localhost:8911/adapters/mcp-demo/status | jq '.'
+curl -s http://localhost:8911/api/v1/adapters/mcp-demo/status | jq '.'
 ```
 
 ### 7. Clean Up
 ```bash
 # Delete the adapter
-curl -X DELETE http://localhost:8911/adapters/mcp-demo
+curl -X DELETE http://localhost:8911/api/v1/adapters/mcp-demo
 ```
 
 ## LocalStdio Adapters
@@ -119,7 +119,7 @@ The proxy supports spawning local MCP servers using the `LocalStdio` connection 
 ### 1. Create LocalStdio Adapter
 ```bash
 # Create adapter for sequential thinking MCP server
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sequential-thinking",
@@ -135,7 +135,7 @@ curl -X POST http://localhost:8911/adapters \
 ### 2. Test the LocalStdio Adapter
 ```bash
 # Initialize MCP connection - this spawns the local process
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{
@@ -156,7 +156,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 3. List Available Tools
 ```bash
 # List tools - use the session ID from the initialize response
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -170,7 +170,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 4. Call Tools
 ```bash
 # Call a tool using the session ID
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: YOUR_SESSION_ID_HERE" \
@@ -190,13 +190,13 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 5. Check Adapter Status
 ```bash
 # Check local adapter status
-curl -s http://localhost:8911/adapters/sequential-thinking/status | jq '.'
+curl -s http://localhost:8911/api/v1/adapters/sequential-thinking/status | jq '.'
 ```
 
 ### 6. Clean Up
 ```bash
 # Delete the local adapter
-curl -X DELETE http://localhost:8911/adapters/sequential-thinking
+curl -X DELETE http://localhost:8911/api/v1/adapters/sequential-thinking
 ```
 
 ### Additional LocalStdio Examples
@@ -204,7 +204,7 @@ curl -X DELETE http://localhost:8911/adapters/sequential-thinking
 #### Python-based MCP Server
 ```bash
 # Create adapter for a Python MCP server
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "python-mcp-server",
@@ -222,7 +222,7 @@ curl -X POST http://localhost:8911/adapters \
 #### Node.js MCP Server with Environment Variables
 ```bash
 # Create adapter for Node.js MCP server with custom env vars
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "nodejs-mcp-server",
@@ -248,10 +248,10 @@ For VS Code integration with the SUSE AI Universal Proxy, configure your MCP set
 {
   "servers": {
     "sequential-thinking": {
-      "url": "http://localhost:8911/adapters/sequential-thinking/mcp"
+      "url": "http://localhost:8911/api/v1/adapters/sequential-thinking/mcp"
     },
     "filesystem": {
-      "url": "http://localhost:8911/adapters/filesystem/mcp"
+      "url": "http://localhost:8911/api/v1/adapters/filesystem/mcp"
     }
   }
 }
@@ -263,13 +263,13 @@ For VS Code integration with the SUSE AI Universal Proxy, configure your MCP set
 {
   "servers": {
     "authenticated-sequential-thinking": {
-      "url": "http://localhost:8911/adapters/sequential-thinking/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/sequential-thinking/mcp",
       "headers": {
         "Authorization": "Bearer my-secure-token-123"
       }
     },
     "authenticated-filesystem": {
-      "url": "http://localhost:8911/adapters/filesystem/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/filesystem/mcp",
       "headers": {
         "Authorization": "Bearer filesystem-token-456"
       }
@@ -286,10 +286,10 @@ For OAuth-protected adapters, VS Code will need to handle the OAuth flow. Config
 {
   "servers": {
     "oauth-mcp": {
-      "url": "http://localhost:8911/adapters/oauth-mcp/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/oauth-mcp/mcp",
       "oauth": {
-        "authorizationEndpoint": "http://localhost:8911/adapters/oauth-mcp/auth/authorize",
-        "tokenEndpoint": "http://localhost:8911/adapters/oauth-mcp/auth/token",
+        "authorizationEndpoint": "http://localhost:8911/api/v1/adapters/oauth-mcp/auth/authorize",
+        "tokenEndpoint": "http://localhost:8911/api/v1/adapters/oauth-mcp/auth/token",
         "clientId": "vscode-client",
         "scopes": ["read", "write"]
       }
@@ -304,32 +304,32 @@ For OAuth-protected adapters, VS Code will need to handle the OAuth flow. Config
 {
   "servers": {
     "local-tools": {
-      "url": "http://localhost:8911/adapters/sequential-thinking/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/sequential-thinking/mcp",
       "description": "Local sequential thinking tools (Bearer auth)"
     },
     "file-operations": {
-      "url": "http://localhost:8911/adapters/filesystem/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/filesystem/mcp",
       "headers": {
         "Authorization": "Bearer filesystem-token-456"
       },
       "description": "File system operations with directory restrictions"
     },
     "database-access": {
-      "url": "http://localhost:8911/adapters/sqlite-db/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/sqlite-db/mcp",
       "headers": {
         "Authorization": "Bearer sqlite-token-101"
       },
       "description": "SQLite database operations"
     },
     "github-integration": {
-      "url": "http://localhost:8911/adapters/github-api/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/github-api/mcp",
       "headers": {
         "Authorization": "Bearer github-token-202"
       },
       "description": "GitHub API integration"
     },
     "discovered-server": {
-      "url": "http://localhost:8911/adapters/discovered-mcp-server/mcp",
+      "url": "http://localhost:8911/api/v1/adapters/discovered-mcp-server/mcp",
       "description": "Auto-discovered MCP server"
     }
   },
@@ -364,8 +364,8 @@ Add these settings to your VS Code `settings.json` for optimal MCP proxy integra
 
 2. **Create authenticated adapters:**
    ```bash
-   # Create sequential thinking adapter
-   curl -X POST http://localhost:8911/adapters \
+    # Create sequential thinking adapter
+    curl -X POST http://localhost:8911/api/v1/adapters \
      -H "Content-Type: application/json" \
      -d '{
        "name": "sequential-thinking",
@@ -446,7 +446,7 @@ The proxy includes comprehensive session management capabilities for MCP protoco
 ### 1. List Active Sessions
 ```bash
 # List all sessions for an adapter
-curl -s http://localhost:8911/adapters/sequential-thinking/sessions | jq '.'
+curl -s http://localhost:8911/api/v1/adapters/sequential-thinking/sessions | jq '.'
 ```
 
 **Response:**
@@ -470,13 +470,13 @@ curl -s http://localhost:8911/adapters/sequential-thinking/sessions | jq '.'
 ### 2. Get Session Details
 ```bash
 # Get detailed information about a specific session
-curl -s http://localhost:8911/adapters/sequential-thinking/sessions/session-123 | jq '.'
+curl -s http://localhost:8911/api/v1/adapters/sequential-thinking/sessions/session-123 | jq '.'
 ```
 
 ### 3. Reinitialize Session
 ```bash
 # Create a new session (reinitialize)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/sessions \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/sessions \
   -H "Content-Type: application/json" \
   -d '{
     "forceReinitialize": true,
@@ -499,7 +499,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/sessions \
 ### 4. Delete a Specific Session
 ```bash
 # Invalidate a specific session
-curl -X DELETE http://localhost:8911/adapters/sequential-thinking/sessions/session-123
+curl -X DELETE http://localhost:8911/api/v1/adapters/sequential-thinking/sessions/session-123
 ```
 
 **Response:**
@@ -513,7 +513,7 @@ curl -X DELETE http://localhost:8911/adapters/sequential-thinking/sessions/sessi
 ### 5. Delete All Sessions for an Adapter
 ```bash
 # Remove all sessions for an adapter
-curl -X DELETE http://localhost:8911/adapters/sequential-thinking/sessions
+curl -X DELETE http://localhost:8911/api/v1/adapters/sequential-thinking/sessions
 ```
 
 **Response:**
@@ -542,7 +542,7 @@ This section provides examples of using the MCP server discovery functionality t
 ### 1. Scan for MCP Servers
 ```bash
 # Scan localhost for MCP servers on port 8000
-curl -X POST http://localhost:8911/scan \
+curl -X POST http://localhost:8911/api/v1/scan \
   -H "Content-Type: application/json" \
   -d '{
     "scanRanges": ["127.0.0.1/32"],
@@ -575,13 +575,13 @@ curl -X POST http://localhost:8911/scan \
 ### 2. List Discovered Servers
 ```bash
 # List all discovered MCP servers
-curl http://localhost:8911/servers
+curl http://localhost:8911/api/v1/servers
 ```
 
 ### 3. Register Discovered Server
 ```bash
 # Register a discovered server as an adapter
-curl -X POST http://localhost:8911/register \
+curl -X POST http://localhost:8911/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{
     "discoveredServerId": "mcp-1761654988623408000"
@@ -612,7 +612,7 @@ curl -X POST http://localhost:8911/register \
 ### 4. Create Adapter from Registration Data
 ```bash
 # Create the adapter using the data from registration
-curl -X POST http://localhost:8911/adapters \
+curl -X POST http://localhost:8911/api/v1/adapters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "discovered-mcp-server",
@@ -630,10 +630,10 @@ curl -X POST http://localhost:8911/adapters \
 ### 5. Test the Registered Adapter
 ```bash
 # Test SSE connection
-curl -N -H "Accept: text/event-stream" http://localhost:8911/adapters/discovered-mcp-server/sse
+curl -N -H "Accept: text/event-stream" http://localhost:8911/api/v1/adapters/discovered-mcp-server/sse
 
 # Test streamable HTTP connection
-curl -X POST http://localhost:8911/adapters/discovered-mcp-server/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/discovered-mcp-server/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{
@@ -941,13 +941,13 @@ The proxy implements intelligent caching to improve performance and reduce redun
 ### 1. MCP Response Caching
 ```bash
 # First request - cache miss (slower)
-time curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+time curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
 
 # Second request - cache hit (faster)
-time curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+time curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
@@ -959,7 +959,7 @@ curl -s http://localhost:8911/api/v1/monitoring/cache | jq '.cacheStats.mcpCache
 ### 2. Capability Caching
 ```bash
 # Cache tool capabilities to avoid repeated discovery
-curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/filesystem/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer filesystem-token-456" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
@@ -976,7 +976,7 @@ curl -X DELETE http://localhost:8911/api/v1/monitoring/cache/clear
 # Measure performance with cold cache
 echo "Testing cold cache performance..."
 time (for i in {1..10}; do
-  curl -s -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  curl -s -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer my-secure-token-123" \
     -d '{"jsonrpc": "2.0", "id": '$i', "method": "tools/list"}' > /dev/null
@@ -985,7 +985,7 @@ done)
 # Measure performance with warm cache
 echo "Testing warm cache performance..."
 time (for i in {11..20}; do
-  curl -s -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  curl -s -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer my-secure-token-123" \
     -d '{"jsonrpc": "2.0", "id": '$i', "method": "tools/list"}' > /dev/null
@@ -999,7 +999,7 @@ The proxy provides comprehensive error handling with detailed categorization and
 ### 1. Authentication Errors
 ```bash
 # Missing authentication (401)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}}'
 
@@ -1018,7 +1018,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 }
 
 # Invalid token (403)
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer invalid-token" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}}'
@@ -1041,7 +1041,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 2. Connection and Network Errors
 ```bash
 # Adapter not found (404)
-curl -X POST http://localhost:8911/adapters/nonexistent/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/nonexistent/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}'
 
@@ -1060,7 +1060,7 @@ curl -X POST http://localhost:8911/adapters/nonexistent/mcp \
 }
 
 # MCP server connection failure
-curl -X POST http://localhost:8911/adapters/offline-server/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/offline-server/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}'
 
@@ -1083,7 +1083,7 @@ curl -X POST http://localhost:8911/adapters/offline-server/mcp \
 ### 3. Protocol and Validation Errors
 ```bash
 # Invalid JSON-RPC request
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"invalid": "request"}'
@@ -1103,7 +1103,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 }
 
 # Invalid method name
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "invalid_method"}'
@@ -1126,7 +1126,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 4. Session Management Errors
 ```bash
 # Invalid session ID
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -H "mcp-session-id: invalid-session" \
@@ -1147,7 +1147,7 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 }
 
 # Session expired
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -H "mcp-session-id: expired-session-123" \
@@ -1171,13 +1171,13 @@ curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
 ### 5. Error Recovery Examples
 ```bash
 # Recover from authentication error by providing proper token
-curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "recovery-test", "version": "1.0"}}}'
 
 # Recover from session error by reinitializing
-curl -X POST http://localhost:8911/adapters/sequential-thinking/sessions \
+curl -X POST http://localhost:8911/api/v1/adapters/sequential-thinking/sessions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer my-secure-token-123" \
   -d '{"forceReinitialize": true, "clientInfo": {"name": "recovery-client", "version": "1.0"}}'
