@@ -239,16 +239,197 @@ curl -X POST http://localhost:8911/adapters \
 ```
 
 ### VS Code Configuration
-For VS Code integration with LocalStdio adapters:
+
+For VS Code integration with the SUSE AI Universal Proxy, configure your MCP settings to use the proxy endpoints.
+
+#### Basic VS Code Configuration (No Authentication)
 
 ```json
 {
   "servers": {
     "sequential-thinking": {
       "url": "http://localhost:8911/adapters/sequential-thinking/mcp"
+    },
+    "filesystem": {
+      "url": "http://localhost:8911/adapters/filesystem/mcp"
     }
   }
 }
+```
+
+#### VS Code Configuration with Bearer Token Authentication
+
+```json
+{
+  "servers": {
+    "authenticated-sequential-thinking": {
+      "url": "http://localhost:8911/adapters/sequential-thinking/mcp",
+      "headers": {
+        "Authorization": "Bearer my-secure-token-123"
+      }
+    },
+    "authenticated-filesystem": {
+      "url": "http://localhost:8911/adapters/filesystem/mcp",
+      "headers": {
+        "Authorization": "Bearer filesystem-token-456"
+      }
+    }
+  }
+}
+```
+
+#### VS Code Configuration with OAuth 2.1
+
+For OAuth-protected adapters, VS Code will need to handle the OAuth flow. Configure with the OAuth endpoints:
+
+```json
+{
+  "servers": {
+    "oauth-mcp": {
+      "url": "http://localhost:8911/adapters/oauth-mcp/mcp",
+      "oauth": {
+        "authorizationEndpoint": "http://localhost:8911/adapters/oauth-mcp/auth/authorize",
+        "tokenEndpoint": "http://localhost:8911/adapters/oauth-mcp/auth/token",
+        "clientId": "vscode-client",
+        "scopes": ["read", "write"]
+      }
+    }
+  }
+}
+```
+
+#### Advanced VS Code Configuration with Multiple Authentication Types
+
+```json
+{
+  "servers": {
+    "local-tools": {
+      "url": "http://localhost:8911/adapters/sequential-thinking/mcp",
+      "description": "Local sequential thinking tools (Bearer auth)"
+    },
+    "file-operations": {
+      "url": "http://localhost:8911/adapters/filesystem/mcp",
+      "headers": {
+        "Authorization": "Bearer filesystem-token-456"
+      },
+      "description": "File system operations with directory restrictions"
+    },
+    "database-access": {
+      "url": "http://localhost:8911/adapters/sqlite-db/mcp",
+      "headers": {
+        "Authorization": "Bearer sqlite-token-101"
+      },
+      "description": "SQLite database operations"
+    },
+    "github-integration": {
+      "url": "http://localhost:8911/adapters/github-api/mcp",
+      "headers": {
+        "Authorization": "Bearer github-token-202"
+      },
+      "description": "GitHub API integration"
+    },
+    "discovered-server": {
+      "url": "http://localhost:8911/adapters/discovered-mcp-server/mcp",
+      "description": "Auto-discovered MCP server"
+    }
+  },
+  "globalSettings": {
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "enableCaching": true
+  }
+}
+```
+
+#### VS Code Extension Settings
+
+Add these settings to your VS Code `settings.json` for optimal MCP proxy integration:
+
+```json
+{
+  "mcp.serverTimeout": 30000,
+  "mcp.enableAutoReconnect": true,
+  "mcp.logLevel": "info",
+  "mcp.cacheEnabled": true,
+  "mcp.sessionPersistence": true
+}
+```
+
+#### Testing VS Code Integration
+
+1. **Start the SUSE AI Universal Proxy:**
+   ```bash
+   go build ./cmd/service && ./service
+   ```
+
+2. **Create authenticated adapters:**
+   ```bash
+   # Create sequential thinking adapter
+   curl -X POST http://localhost:8911/adapters \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "sequential-thinking",
+       "connectionType": "LocalStdio",
+       "mcpClientConfig": {
+         "mcpServers": {
+           "sequential-thinking": {
+             "command": "npx",
+             "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+           }
+         }
+       },
+       "authentication": {
+         "required": true,
+         "type": "bearer",
+         "token": "my-secure-token-123"
+       }
+     }'
+   ```
+
+3. **Configure VS Code with the JSON above**
+
+4. **Test the connection in VS Code:**
+   - Open Command Palette (Ctrl+Shift+P)
+   - Search for "MCP: Test Connection"
+   - Select your configured server
+   - Verify the connection status
+
+#### Troubleshooting VS Code Integration
+
+**Common Issues:**
+
+1. **Connection Refused:**
+   - Ensure the proxy is running on port 8911
+   - Check firewall settings
+
+2. **Authentication Errors:**
+   - Verify tokens match exactly
+   - Check token expiration
+   - Ensure proper header formatting
+
+3. **Session Issues:**
+   - Enable session persistence in VS Code settings
+   - Check proxy logs for session errors
+
+4. **Performance Issues:**
+   - Enable caching in VS Code settings
+   - Monitor proxy performance with `/api/v1/monitoring/metrics`
+
+**Debug Mode:**
+
+Enable debug logging in VS Code:
+
+```json
+{
+  "mcp.logLevel": "debug",
+  "mcp.enableTracing": true
+}
+```
+
+And check proxy logs:
+
+```bash
+curl -s "http://localhost:8911/api/v1/monitoring/logs?level=debug&limit=50" | jq '.'
 ```
 
 ## Session Management Examples
@@ -607,3 +788,400 @@ For authenticated MCP servers, configure VS Code with authentication headers:
 - **Discovery**: Works in both local development and Kubernetes environments
 - **Scanned servers**: Cached and can be listed without re-scanning
 - **Registration**: Creates adapter configuration but requires manual adapter creation
+
+## Monitoring and Observability Examples
+
+The SUSE AI Universal Proxy provides comprehensive monitoring endpoints to track performance, health, and system metrics.
+
+### Prerequisites
+- Start the SUSE AI Universal Proxy:
+  ```bash
+  go build ./cmd/service && ./service
+  ```
+
+### 1. System Performance Metrics
+```bash
+# Get comprehensive performance metrics
+curl -s http://localhost:8911/api/v1/monitoring/metrics | jq '.'
+
+# Response includes:
+{
+  "uptime": "2h15m30s",
+  "totalRequests": 1247,
+  "activeConnections": 8,
+  "memoryUsage": {
+    "allocated": "45.2MB",
+    "system": "128.5MB",
+    "gcCycles": 23
+  },
+  "requestMetrics": {
+    "averageLatency": "23ms",
+    "p95Latency": "145ms",
+    "p99Latency": "289ms",
+    "errorRate": 0.012
+  },
+  "adapterMetrics": {
+    "totalAdapters": 5,
+    "activeAdapters": 3,
+    "failedAdapters": 0
+  }
+}
+```
+
+### 2. Recent Log Entries
+```bash
+# Get recent log entries with filtering
+curl -s "http://localhost:8911/api/v1/monitoring/logs?level=error&limit=10" | jq '.'
+
+# Response includes:
+{
+  "logs": [
+    {
+      "timestamp": "2025-11-07T14:23:15Z",
+      "level": "error",
+      "message": "Failed to connect to MCP server",
+      "adapter": "problematic-adapter",
+      "details": {
+        "error": "connection timeout",
+        "target": "http://localhost:8005"
+      }
+    }
+  ],
+  "total": 1,
+  "hasMore": false
+}
+
+# Get all logs with pagination
+curl -s "http://localhost:8911/api/v1/monitoring/logs?limit=50&offset=0" | jq '.'
+```
+
+### 3. Cache Statistics and Performance
+```bash
+# Get detailed cache statistics
+curl -s http://localhost:8911/api/v1/monitoring/cache | jq '.'
+
+# Response includes:
+{
+  "cacheStats": {
+    "mcpCache": {
+      "hitRate": 0.78,
+      "totalHits": 892,
+      "totalMisses": 251,
+      "evictions": 12,
+      "currentSize": 156,
+      "maxSize": 1000
+    },
+    "capabilityCache": {
+      "hitRate": 0.92,
+      "totalHits": 1456,
+      "totalMisses": 127,
+      "evictions": 3,
+      "currentSize": 89,
+      "maxSize": 500
+    }
+  },
+  "performanceImpact": {
+    "averageResponseTimeReduction": "45%",
+    "cacheEfficiency": "high"
+  }
+}
+```
+
+### 4. Real-time Monitoring Dashboard
+```bash
+# Create a simple monitoring dashboard
+watch -n 5 'curl -s http://localhost:8911/api/v1/monitoring/metrics | jq ".uptime, .totalRequests, .activeConnections, .requestMetrics.averageLatency"'
+
+# Monitor cache performance in real-time
+watch -n 10 'curl -s http://localhost:8911/api/v1/monitoring/cache | jq ".cacheStats.mcpCache.hitRate, .cacheStats.capabilityCache.hitRate"'
+```
+
+### 5. Health Check and Status
+```bash
+# Comprehensive health check
+curl -s http://localhost:8911/api/v1/monitoring/health | jq '.'
+
+# Response includes:
+{
+  "status": "healthy",
+  "timestamp": "2025-11-07T14:25:00Z",
+  "checks": {
+    "database": "healthy",
+    "memory": "healthy",
+    "disk": "healthy",
+    "network": "healthy"
+  },
+  "version": "1.0.0",
+  "build": "2025-11-07T12:00:00Z"
+}
+```
+
+### 6. Adapter-Specific Monitoring
+```bash
+# Monitor specific adapter performance
+curl -s http://localhost:8911/api/v1/monitoring/adapters/sequential-thinking | jq '.'
+
+# Response includes:
+{
+  "adapterName": "sequential-thinking",
+  "status": "active",
+  "sessionCount": 3,
+  "totalRequests": 234,
+  "averageLatency": "18ms",
+  "errorRate": 0.008,
+  "lastActivity": "2025-11-07T14:24:45Z",
+  "uptime": "1h45m20s"
+}
+```
+
+## Enhanced Caching Examples
+
+The proxy implements intelligent caching to improve performance and reduce redundant operations.
+
+### 1. MCP Response Caching
+```bash
+# First request - cache miss (slower)
+time curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+
+# Second request - cache hit (faster)
+time curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+
+# Check cache impact
+curl -s http://localhost:8911/api/v1/monitoring/cache | jq '.cacheStats.mcpCache'
+```
+
+### 2. Capability Caching
+```bash
+# Cache tool capabilities to avoid repeated discovery
+curl -X POST http://localhost:8911/adapters/filesystem/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer filesystem-token-456" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+
+# Subsequent capability requests use cache
+curl -s http://localhost:8911/api/v1/monitoring/cache | jq '.cacheStats.capabilityCache'
+```
+
+### 3. Cache Performance Comparison
+```bash
+# Clear cache (if needed)
+curl -X DELETE http://localhost:8911/api/v1/monitoring/cache/clear
+
+# Measure performance with cold cache
+echo "Testing cold cache performance..."
+time (for i in {1..10}; do
+  curl -s -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer my-secure-token-123" \
+    -d '{"jsonrpc": "2.0", "id": '$i', "method": "tools/list"}' > /dev/null
+done)
+
+# Measure performance with warm cache
+echo "Testing warm cache performance..."
+time (for i in {11..20}; do
+  curl -s -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer my-secure-token-123" \
+    -d '{"jsonrpc": "2.0", "id": '$i', "method": "tools/list"}' > /dev/null
+done)
+```
+
+## Error Handling and Troubleshooting Examples
+
+The proxy provides comprehensive error handling with detailed categorization and recovery suggestions.
+
+### 1. Authentication Errors
+```bash
+# Missing authentication (401)
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}}'
+
+# Response:
+{
+  "error": {
+    "code": 401,
+    "message": "Authentication required",
+    "category": "authentication",
+    "details": {
+      "adapter": "sequential-thinking",
+      "authType": "bearer",
+      "suggestion": "Provide valid Authorization header with Bearer token"
+    }
+  }
+}
+
+# Invalid token (403)
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid-token" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}}'
+
+# Response:
+{
+  "error": {
+    "code": 403,
+    "message": "Invalid authentication token",
+    "category": "authorization",
+    "details": {
+      "adapter": "sequential-thinking",
+      "reason": "token_validation_failed",
+      "suggestion": "Check token validity and expiration"
+    }
+  }
+}
+```
+
+### 2. Connection and Network Errors
+```bash
+# Adapter not found (404)
+curl -X POST http://localhost:8911/adapters/nonexistent/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}'
+
+# Response:
+{
+  "error": {
+    "code": 404,
+    "message": "Adapter not found",
+    "category": "resource",
+    "details": {
+      "adapter": "nonexistent",
+      "availableAdapters": ["sequential-thinking", "filesystem", "sqlite-db"],
+      "suggestion": "Check adapter name or create new adapter"
+    }
+  }
+}
+
+# MCP server connection failure
+curl -X POST http://localhost:8911/adapters/offline-server/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}'
+
+# Response:
+{
+  "error": {
+    "code": 503,
+    "message": "MCP server unavailable",
+    "category": "connection",
+    "details": {
+      "adapter": "offline-server",
+      "target": "http://localhost:9999",
+      "error": "connection refused",
+      "suggestion": "Verify MCP server is running and accessible"
+    }
+  }
+}
+```
+
+### 3. Protocol and Validation Errors
+```bash
+# Invalid JSON-RPC request
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"invalid": "request"}'
+
+# Response:
+{
+  "error": {
+    "code": 400,
+    "message": "Invalid JSON-RPC request",
+    "category": "protocol",
+    "details": {
+      "reason": "missing_required_fields",
+      "required": ["jsonrpc", "id", "method"],
+      "suggestion": "Ensure request follows JSON-RPC 2.0 specification"
+    }
+  }
+}
+
+# Invalid method name
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "invalid_method"}'
+
+# Response:
+{
+  "error": {
+    "code": -32601,
+    "message": "Method not found",
+    "category": "protocol",
+    "details": {
+      "method": "invalid_method",
+      "availableMethods": ["initialize", "tools/list", "tools/call"],
+      "suggestion": "Use valid MCP method name"
+    }
+  }
+}
+```
+
+### 4. Session Management Errors
+```bash
+# Invalid session ID
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -H "mcp-session-id: invalid-session" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+
+# Response:
+{
+  "error": {
+    "code": 401,
+    "message": "Invalid session",
+    "category": "session",
+    "details": {
+      "sessionId": "invalid-session",
+      "adapter": "sequential-thinking",
+      "suggestion": "Initialize session first or use valid session ID"
+    }
+  }
+}
+
+# Session expired
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -H "mcp-session-id: expired-session-123" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+
+# Response:
+{
+  "error": {
+    "code": 401,
+    "message": "Session expired",
+    "category": "session",
+    "details": {
+      "sessionId": "expired-session-123",
+      "expiredAt": "2025-11-07T13:30:00Z",
+      "suggestion": "Reinitialize session to continue"
+    }
+  }
+}
+```
+
+### 5. Error Recovery Examples
+```bash
+# Recover from authentication error by providing proper token
+curl -X POST http://localhost:8911/adapters/sequential-thinking/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "recovery-test", "version": "1.0"}}}'
+
+# Recover from session error by reinitializing
+curl -X POST http://localhost:8911/adapters/sequential-thinking/sessions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secure-token-123" \
+  -d '{"forceReinitialize": true, "clientInfo": {"name": "recovery-client", "version": "1.0"}}'
+
+# Check system health after errors
+curl -s http://localhost:8911/api/v1/monitoring/health | jq '.'
+```
