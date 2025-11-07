@@ -312,8 +312,15 @@ curl -X DELETE http://localhost:8911/adapters/sqlite-db
 **Key Features**:
 - GitHub API integration (repositories, issues, pull requests)
 - Bearer token authentication
+- GitHub Personal Access Token for API access
 - Rate limiting and error handling
 - Read and write operations
+
+**Important Notes**:
+- Replace `github-token-202` with your actual GitHub Personal Access Token
+- Ensure the token has appropriate scopes for the operations you need
+- Store tokens securely and avoid hardcoding in production
+- GitHub tokens should have `repo`, `issues`, and `pull_requests` scopes for full functionality
 
 ### Setup
 
@@ -331,7 +338,13 @@ curl -X POST http://localhost:8911/adapters \
       "mcpServers": {
         "github-api": {
           "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-github"]
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-github"
+          ],
+          "env": {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": "github-token-202"
+          }
         }
       }
     },
@@ -469,7 +482,11 @@ curl -X POST http://localhost:8911/adapters \
       "mcpServers": {
         "custom-python": {
           "command": "python3",
-          "args": ["/path/to/custom_mcp_server.py"]
+          "args": ["/path/to/custom_mcp_server.py"],
+          "env": {
+            "PYTHONPATH": "/path/to/server",
+            "CUSTOM_API_KEY": "custom-python-token-789"
+          }
         }
       }
     },
@@ -724,6 +741,7 @@ curl -X POST http://localhost:8911/adapters/oauth-mcp/mcp \
 - **Authentication**: Bearer token (configurable per adapter)
 - **Tools**: Custom tools defined in Python script
 - **Command**: `python3 /path/to/custom/mcp_script.py`
+- **Environment Variables**: Customizable (e.g., `PYTHONPATH`, `CUSTOM_API_KEY`)
 - **Security**: Execute custom MCP servers with authentication
 
 ### SQLite Database MCP Server
@@ -735,10 +753,11 @@ curl -X POST http://localhost:8911/adapters/oauth-mcp/mcp \
 
 ### GitHub API MCP Server
 - **Transport**: stdio via proxy
-- **Authentication**: Bearer token (configurable per adapter)
+- **Authentication**: Bearer token (configurable per adapter) + GitHub Personal Access Token
 - **Tools**: Repository search, issue management, pull request operations
 - **Command**: `npx -y @modelcontextprotocol/server-github`
-- **Security**: GitHub API access with authentication
+- **Environment Variables**: `GITHUB_PERSONAL_ACCESS_TOKEN` (required for GitHub API access)
+- **Security**: GitHub API access with authentication and token management
 
 ### main.py
 - **Transport**: stdio (default) or HTTP
