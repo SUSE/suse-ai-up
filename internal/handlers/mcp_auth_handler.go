@@ -44,6 +44,12 @@ func (h *MCPAuthHandler) GetClientToken(c *gin.Context) {
 		return
 	}
 
+	// Check if auth integration is available
+	if h.authIntegration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Authentication integration not available"})
+		return
+	}
+
 	// Get client token
 	tokenResponse, err := h.authIntegration.GetClientToken(*adapter)
 	if err != nil {
@@ -123,6 +129,12 @@ func (h *MCPAuthHandler) ValidateAuthConfig(c *gin.Context) {
 			Location: authConfig.APIKey.Location,
 			Name:     authConfig.APIKey.Name,
 		}
+	}
+
+	// Check if auth integration is available
+	if h.authIntegration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Authentication integration not available"})
+		return
 	}
 
 	// Validate configuration

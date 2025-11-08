@@ -97,8 +97,48 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 	}
 	c.Status(resp.StatusCode)
 
-	// Copy response body
-	io.Copy(c.Writer, resp.Body)
+	// Handle response body - parse SSE if needed
+	contentType := resp.Header.Get("Content-Type")
+	if strings.Contains(contentType, "text/event-stream") {
+		if err := p.handleSSEResponse(c, resp.Body); err != nil {
+			return fmt.Errorf("failed to parse SSE response: %w", err)
+		}
+	} else {
+		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+			return fmt.Errorf("failed to copy response body: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// handleSSEResponse parses Server-Sent Events and extracts JSON data
+func (p *RemoteHttpProxyPlugin) handleSSEResponse(c *gin.Context, body io.Reader) error {
+	// Read the entire response body
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	bodyStr := string(bodyBytes)
+	lines := strings.Split(bodyStr, "\n")
+
+	c.Header("Content-Type", "application/json")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "data: ") {
+			jsonData := strings.TrimPrefix(line, "data: ")
+			if jsonData != "" && jsonData != "[DONE]" {
+				_, err := c.Writer.Write([]byte(jsonData))
+				if err != nil {
+					return err
+				}
+				// For MCP responses, we typically only have one data line
+				break
+			}
+		}
+	}
 
 	return nil
 }
@@ -161,9 +201,22 @@ func (p *RemoteHttpProxyPlugin) applyBearerAuth(req *http.Request, auth *models.
 
 // applyOAuthAuth applies OAuth authentication to request
 func (p *RemoteHttpProxyPlugin) applyOAuthAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
-	// For now, this is a placeholder
-	// In a full implementation, this would handle OAuth token management
-	return fmt.Errorf("OAuth authentication not yet implemented for request signing")
+	if auth.OAuth == nil {
+		return fmt.Errorf("OAuth configuration not found")
+	}
+
+	// Check if we have the required OAuth configuration
+	if auth.OAuth.ClientID == "" || auth.OAuth.ClientSecret == "" || auth.OAuth.TokenURL == "" {
+		return fmt.Errorf("OAuth configuration incomplete: missing client credentials or token URL")
+	}
+
+	// For now, OAuth token acquisition is not implemented
+	// In a full implementation, this would:
+	// 1. Check for cached access token
+	// 2. If expired, request new token from TokenURL using client credentials
+	// 3. Cache the new token
+	// 4. Set Authorization header with Bearer token
+	return fmt.Errorf("OAuth token acquisition not yet implemented - configure with pre-acquired access token using bearer auth type")
 }
 
 // applyBasicAuth applies basic authentication to request

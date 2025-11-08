@@ -65,11 +65,8 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 	defer p.mutex.Unlock()
 
 	if proc, exists := p.processes[adapter.Name]; exists {
-		fmt.Printf("DEBUG: Reusing existing process for adapter %s\n", adapter.Name)
 		return proc, nil
 	}
-
-	fmt.Printf("DEBUG: Starting new process for adapter %s\n", adapter.Name)
 
 	// Determine command and args
 	var command string
@@ -125,7 +122,6 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 	}
 
 	// Spawn the subprocess
-	fmt.Printf("DEBUG: Spawning subprocess: command=%s, args=%v, dir=%s\n", command, args, tempDir)
 	cmd := exec.Command(command, args...)
 	if tempDir != "" {
 		cmd.Dir = tempDir
@@ -199,8 +195,6 @@ func (p *LocalStdioProxyPlugin) sendMessage(proc *runningProcess, message string
 	proc.mutex.Lock()
 	defer proc.mutex.Unlock()
 
-	fmt.Printf("DEBUG: Sending message to subprocess: %s\n", message)
-
 	// Send the message
 	if _, err := fmt.Fprintln(proc.stdin, message); err != nil {
 		return "", fmt.Errorf("failed to send message to subprocess: %w", err)
@@ -210,7 +204,6 @@ func (p *LocalStdioProxyPlugin) sendMessage(proc *runningProcess, message string
 	scanner := bufio.NewScanner(proc.stdout)
 	if scanner.Scan() {
 		response := scanner.Text()
-		fmt.Printf("DEBUG: Received response from subprocess: %s\n", response)
 		return response, nil
 	}
 
@@ -310,8 +303,6 @@ func (p *LocalStdioProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		// Note: We allow calls without session IDs for backward compatibility
 	}
 
-	fmt.Printf("DEBUG: ProxyRequest for adapter %s, body: %s\n", adapter.Name, string(body))
-
 	// Get or start the persistent process
 	proc, err := p.getOrStartProcess(adapter)
 	if err != nil {
@@ -325,9 +316,6 @@ func (p *LocalStdioProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		fmt.Printf("ERROR: failed to send message: %v\n", err)
 		return err
 	}
-
-	// Debug logging
-	fmt.Printf("DEBUG: response: %q\n", response)
 
 	// Return the response
 	c.Header("Content-Type", "application/json")

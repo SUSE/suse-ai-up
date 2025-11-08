@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -55,35 +54,35 @@ func main() {
 
 	// Initialize stores
 	adapterStore := clients.NewInMemoryAdapterStore()
-	sessionStore := session.NewInMemorySessionStore()
+	// sessionStore := session.NewInMemorySessionStore()
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
 	}
 
 	// Initialize MCP components
-	capabilityCache := mcp.NewCapabilityCache()
-	cache := mcp.NewMCPCache(nil)     // Use default config
-	monitor := mcp.NewMCPMonitor(nil) // Use default config
-	protocolHandler := mcp.NewProtocolHandler(sessionStore, capabilityCache)
-	messageRouter := mcp.NewMessageRouter(protocolHandler, sessionStore, capabilityCache, cache, monitor)
-	streamableTransport := mcp.NewStreamableHTTPTransport(sessionStore, protocolHandler, messageRouter)
+	// capabilityCache := mcp.NewCapabilityCache()
+	// cache := mcp.NewMCPCache(nil)     // Use default config
+	// monitor := mcp.NewMCPMonitor(nil) // Use default config
+	// protocolHandler := mcp.NewProtocolHandler(sessionStore, capabilityCache)
+	// messageRouter := mcp.NewMessageRouter(protocolHandler, sessionStore, capabilityCache, cache, monitor)
+	// streamableTransport := mcp.NewStreamableHTTPTransport(sessionStore, protocolHandler, messageRouter)
 
 	// Initialize stdio proxy plugin for local stdio adapters
-	stdioProxy := proxy.NewLocalStdioProxyPlugin()
-	log.Printf("stdioProxy initialized: %v", stdioProxy != nil)
+	// stdioProxy := proxy.NewLocalStdioProxyPlugin()
+	// log.Printf("stdioProxy initialized: %v", stdioProxy != nil)
 
 	// Initialize stdio-to-HTTP adapter
-	stdioToHTTPAdapter := proxy.NewStdioToHTTPAdapter(stdioProxy, messageRouter, sessionStore, protocolHandler, capabilityCache)
-	log.Printf("stdioToHTTPAdapter initialized: %v", stdioToHTTPAdapter != nil)
+	// stdioToHTTPAdapter := proxy.NewStdioToHTTPAdapter(stdioProxy, messageRouter, sessionStore, protocolHandler, capabilityCache)
+	// log.Printf("stdioToHTTPAdapter initialized: %v", stdioToHTTPAdapter != nil)
 
 	// Initialize remote HTTP proxy adapter
-	remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
-	log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
+	// remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
+	// log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
 
 	// Initialize remote HTTP proxy plugin
-	remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
-	log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
+	// remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
+	// log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
 
 	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
@@ -98,7 +97,8 @@ func main() {
 	scanManager := scanner.NewScanManager(networkScanner, discoveryStore)
 	discoveryHandler := handlers.NewDiscoveryHandler(scanManager, discoveryStore)
 	tokenHandler := handlers.NewTokenHandler(adapterStore, tokenManager)
-	mcpAuthHandler := handlers.NewMCPAuthHandler(adapterStore, nil) // TODO: Add auth integration
+	// mcpAuthIntegration := service.NewMCPAuthIntegrationService(tokenManager)
+	mcpAuthHandler := handlers.NewMCPAuthHandler(adapterStore, nil)
 
 	// Initialize missing handlers
 	registryStore := clients.NewInMemoryMCPServerStore()
@@ -113,7 +113,7 @@ func main() {
 	kubeWrapper := clients.NewKubeClientWrapper(kubeClient, "default")
 	deploymentHandler := handlers.NewDeploymentHandler(registryHandler, kubeWrapper)
 
-	registrationHandler := handlers.NewRegistrationHandler(networkScanner, adapterStore, tokenManager, cfg)
+	// registrationHandler := handlers.NewRegistrationHandler(networkScanner, adapterStore, tokenManager, cfg)
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -149,56 +149,24 @@ func main() {
 
 	// Monitoring endpoints
 	r.GET("/api/v1/monitoring/metrics", func(c *gin.Context) {
-		if monitor != nil {
-			metrics := monitor.GetMetrics()
-			c.JSON(http.StatusOK, gin.H{
-				"status":  "success",
-				"metrics": metrics,
-			})
-		} else {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":  "error",
-				"message": "Monitoring not enabled",
-			})
-		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "error",
+			"message": "Monitoring not enabled",
+		})
 	})
 
 	r.GET("/api/v1/monitoring/logs", func(c *gin.Context) {
-		if monitor != nil {
-			limit := 100 // default limit
-			if l := c.Query("limit"); l != "" {
-				if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-					limit = parsed
-				}
-			}
-
-			logs := monitor.GetRecentLogs(limit)
-			c.JSON(http.StatusOK, gin.H{
-				"status": "success",
-				"logs":   logs,
-				"count":  len(logs),
-			})
-		} else {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":  "error",
-				"message": "Monitoring not enabled",
-			})
-		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "error",
+			"message": "Monitoring not enabled",
+		})
 	})
 
 	r.GET("/api/v1/monitoring/cache", func(c *gin.Context) {
-		if messageRouter != nil {
-			cacheMetrics := messageRouter.GetCacheMetrics()
-			c.JSON(http.StatusOK, gin.H{
-				"status": "success",
-				"cache":  cacheMetrics,
-			})
-		} else {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":  "error",
-				"message": "Cache not available",
-			})
-		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "error",
+			"message": "Cache not available",
+		})
 	})
 
 	// API v1 routes
@@ -213,7 +181,7 @@ func main() {
 			discovery.DELETE("/scan/:jobId", discoveryHandler.CancelScanJob)
 			discovery.GET("/servers", discoveryHandler.ListDiscoveredServers)
 			discovery.GET("/servers/:id", discoveryHandler.GetDiscoveredServer)
-			discovery.POST("/register", registrationHandler.RegisterDiscoveredServer)
+			// discovery.POST("/register", registrationHandler.RegisterDiscoveredServer)
 		}
 
 		// Adapter routes
@@ -232,19 +200,13 @@ func main() {
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
-				log.Printf("Creating adapter: %s, connectionType: %s", data.Name, data.ConnectionType)
 				adapter := &models.AdapterResource{}
 				adapter.Create(data, "system", time.Now())
-				log.Printf("Adapter resource created, storing in adapter store")
 				if err := adapterStore.Create(adapter); err != nil {
-					log.Printf("Error storing adapter: %v", err)
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
-				log.Printf("Adapter successfully created and stored")
-				log.Printf("About to send JSON response")
 				c.JSON(http.StatusCreated, gin.H{"status": "ok", "id": adapter.ID})
-				log.Printf("JSON response sent")
 			})
 			adapters.GET("/:name", func(c *gin.Context) {
 				// Get adapter
@@ -352,9 +314,9 @@ func main() {
 			})
 
 			// MCP proxy endpoint - this is the main integration point
-			adapters.Any("/:name/mcp", func(c *gin.Context) {
-				handleMCPProxy(c, adapterStore, streamableTransport, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
-			})
+			// adapters.Any("/:name/mcp", func(c *gin.Context) {
+			// 	handleMCPProxy(c, adapterStore, streamableTransport, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			// })
 		}
 
 		// Registry routes
@@ -462,14 +424,61 @@ func validateBearerAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
 
 // validateBasicAuth validates Basic authentication
 func validateBasicAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
-	// Implementation for basic auth validation
-	return fmt.Errorf("basic authentication validation not implemented")
+	if auth.Basic == nil {
+		return fmt.Errorf("basic authentication configuration not found")
+	}
+
+	username, password, ok := c.Request.BasicAuth()
+	if !ok {
+		return fmt.Errorf("missing or invalid Basic authentication header")
+	}
+
+	if username != auth.Basic.Username || password != auth.Basic.Password {
+		return fmt.Errorf("invalid username or password")
+	}
+
+	return nil
 }
 
 // validateAPIKeyAuth validates API key authentication
 func validateAPIKeyAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
-	// Implementation for API key validation
-	return fmt.Errorf("API key authentication validation not implemented")
+	if auth.APIKey == nil {
+		return fmt.Errorf("API key configuration not found")
+	}
+
+	location := strings.ToLower(auth.APIKey.Location)
+	name := auth.APIKey.Name
+	expectedKey := auth.APIKey.Key
+
+	var providedKey string
+	var found bool
+
+	switch location {
+	case "header":
+		providedKey = c.GetHeader(name)
+		found = providedKey != ""
+	case "query":
+		providedKey = c.Query(name)
+		found = providedKey != ""
+	case "cookie":
+		cookie, err := c.Cookie(name)
+		if err == nil {
+			providedKey = cookie
+			found = true
+		}
+	default:
+		return fmt.Errorf("unsupported API key location: %s", location)
+	}
+
+	if !found {
+		return fmt.Errorf("API key not found in %s '%s'", location, name)
+	}
+
+	if providedKey != expectedKey {
+		return fmt.Errorf("invalid API key")
+	}
+
+	return nil
 }
 
 // handleMCPProxy handles MCP proxy requests using the new MCP infrastructure
@@ -491,20 +500,20 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, t
 		}
 	}
 
-	// Route based on connection type
+	// Route MCP requests based on connection type
 	switch adapter.ConnectionType {
 	case models.ConnectionTypeLocalStdio:
-		// Use stdio-to-HTTP adapter for local stdio connections
+		// Handle LocalStdio connections
 		if stdioToHTTPAdapter == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio adapter not initialized"})
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
 			return
 		}
 		if err := stdioToHTTPAdapter.HandleRequest(c, *adapter); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
 			return
 		}
-	case models.ConnectionTypeRemoteHttp:
-		// Use remote HTTP proxy plugin for remote HTTP connections
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		// Handle remote HTTP connections
 		if remoteHTTPPlugin == nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
 			return
@@ -514,7 +523,7 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, t
 			return
 		}
 	default:
-		// Use regular streamable HTTP transport for other connections
-		transport.HandleRequest(c.Writer, c.Request, *adapter)
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
 	}
 }
