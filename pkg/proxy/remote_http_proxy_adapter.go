@@ -232,7 +232,14 @@ func (a *RemoteHTTPProxyAdapter) handleSSEStream(c *gin.Context, adapter models.
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
+
+	// Set CORS headers
+	origin := c.GetHeader("Origin")
+	if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+		c.Header("Access-Control-Allow-Origin", origin)
+	} else {
+		c.Header("Access-Control-Allow-Origin", "*")
+	}
 
 	// Flush headers immediately
 	c.Writer.WriteHeader(http.StatusOK)

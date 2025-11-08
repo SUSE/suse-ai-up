@@ -429,108 +429,138 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 	bodyStr := string(bodyBytes)
 
 	// Check if response looks like JSON-RPC (either direct or in SSE format)
-	if !strings.Contains(bodyStr, `"jsonrpc"`) {
-		return nil
-	}
-
-	// Handle Server-Sent Events (SSE) format
-	var jsonResponse map[string]interface{}
-	if strings.Contains(bodyStr, "event: message") && strings.Contains(bodyStr, "data: ") {
-		// Extract JSON from SSE format
-		lines := strings.Split(bodyStr, "\n")
-		for _, line := range lines {
-			if strings.HasPrefix(line, "data: ") {
-				jsonData := strings.TrimPrefix(line, "data: ")
-				if err := json.Unmarshal([]byte(jsonData), &jsonResponse); err != nil {
-					continue
+	if strings.Contains(bodyStr, `"jsonrpc"`) {
+		// Handle JSON-RPC responses (existing logic)
+		// Handle Server-Sent Events (SSE) format
+		var jsonResponse map[string]interface{}
+		if strings.Contains(bodyStr, "event: message") && strings.Contains(bodyStr, "data: ") {
+			// Extract JSON from SSE format
+			lines := strings.Split(bodyStr, "\n")
+			for _, line := range lines {
+				if strings.HasPrefix(line, "data: ") {
+					jsonData := strings.TrimPrefix(line, "data: ")
+					if err := json.Unmarshal([]byte(jsonData), &jsonResponse); err != nil {
+						continue
+					}
+					break
 				}
-				break
+			}
+		} else {
+			// Direct JSON response
+			if err := json.Unmarshal(bodyBytes, &jsonResponse); err != nil {
+				return nil
 			}
 		}
-	} else {
-		// Direct JSON response
-		if err := json.Unmarshal(bodyBytes, &jsonResponse); err != nil {
+
+		// Check for valid MCP response structure
+		if jsonrpc, ok := jsonResponse["jsonrpc"].(string); !ok || jsonrpc != "2.0" {
 			return nil
 		}
-	}
 
-	// Check for valid MCP response structure
-	if jsonrpc, ok := jsonResponse["jsonrpc"].(string); !ok || jsonrpc != "2.0" {
-		return nil
-	}
+		// Check if it's a result (successful response) or error
+		var serverInfo map[string]interface{}
+		var authType string
+		var vulnerabilityScore string
 
-	// Check if it's a result (successful response) or error
-	var serverInfo map[string]interface{}
-	var authType string
-	var vulnerabilityScore string
-
-	if result, ok := jsonResponse["result"].(map[string]interface{}); ok {
-		// Successful initialize response
-		if server, ok := result["serverInfo"].(map[string]interface{}); ok {
-			serverInfo = server
-			authType = "none"
-			vulnerabilityScore = "high" // No auth = high vulnerability
-		}
-	} else if error, ok := jsonResponse["error"].(map[string]interface{}); ok {
-		// Error response - might indicate auth required
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			authType = "required"
-			vulnerabilityScore = "low" // Auth required = low vulnerability
-		} else {
-			// Other error - might still be MCP server
-			authType = "unknown"
-			vulnerabilityScore = "medium"
-		}
-
-		// Try to extract server info from error response
-		if data, ok := error["data"].(map[string]interface{}); ok {
-			if server, ok := data["serverInfo"].(map[string]interface{}); ok {
+		if result, ok := jsonResponse["result"].(map[string]interface{}); ok {
+			// Successful initialize response
+			if server, ok := result["serverInfo"].(map[string]interface{}); ok {
 				serverInfo = server
+				authType = "none"
+				vulnerabilityScore = "high" // No auth = high vulnerability
+			}
+		} else if error, ok := jsonResponse["error"].(map[string]interface{}); ok {
+			// Error response - might indicate auth required
+			if resp.StatusCode == 401 || resp.StatusCode == 403 {
+				authType = "required"
+				vulnerabilityScore = "low" // Auth required = low vulnerability
+			} else {
+				// Other error - might still be MCP server
+				authType = "unknown"
+				vulnerabilityScore = "medium"
+			}
+
+			// Try to extract server info from error response
+			if data, ok := error["data"].(map[string]interface{}); ok {
+				if server, ok := data["serverInfo"].(map[string]interface{}); ok {
+					serverInfo = server
+				}
 			}
 		}
+
+		// If we have server info or a valid MCP response structure, consider it an MCP server
+		if serverInfo != nil || (jsonResponse["result"] != nil || jsonResponse["error"] != nil) {
+			connectionType := models.ConnectionTypeStreamableHttp
+			if resp.Header.Get("Content-Type") == "text/event-stream" {
+				connectionType = models.ConnectionTypeSSE
+			}
+
+			serverName := "Unknown MCP Server"
+			if name, ok := serverInfo["name"].(string); ok {
+				serverName = name
+			}
+
+			// Generate unique ID for the discovered server
+			serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
+
+			server := &models.DiscoveredServer{
+				ID:         serverID,
+				Address:    fmt.Sprintf("http://%s", address),
+				Protocol:   models.ServerProtocolMCP,
+				Connection: connectionType,
+				Status:     "discovered",
+				LastSeen:   time.Now(),
+				Metadata: map[string]string{
+					"port":                portStr,
+					"endpoint":            endpoint,
+					"server_name":         serverName,
+					"auth_type":           authType,
+					"vulnerability_score": vulnerabilityScore,
+				},
+				VulnerabilityScore: vulnerabilityScore,
+			}
+
+			// Set name if available
+			if serverName != "Unknown MCP Server" {
+				server.Name = serverName
+			}
+
+			return server
+		}
+
+		return nil
+	} else {
+		// Check for authentication errors that indicate MCP servers
+		if (resp.StatusCode == 401 || resp.StatusCode == 403) && endpoint == "/mcp" {
+			var errorResponse map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &errorResponse); err == nil {
+				if _, hasError := errorResponse["error"]; hasError {
+					// Looks like an auth error for an MCP server
+					serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
+
+					server := &models.DiscoveredServer{
+						ID:         serverID,
+						Address:    fmt.Sprintf("http://%s", address),
+						Protocol:   models.ServerProtocolMCP,
+						Connection: models.ConnectionTypeStreamableHttp,
+						Status:     "discovered",
+						LastSeen:   time.Now(),
+						Name:       "Unknown MCP Server (Auth Required)",
+						Metadata: map[string]string{
+							"port":                portStr,
+							"endpoint":            endpoint,
+							"server_name":         "Unknown MCP Server (Auth Required)",
+							"auth_type":           "required",
+							"vulnerability_score": "low",
+						},
+						VulnerabilityScore: "low",
+					}
+					return server
+				}
+			}
+		}
+		return nil
 	}
-
-	// If we have server info or a valid MCP response structure, consider it an MCP server
-	if serverInfo != nil || (jsonResponse["result"] != nil || jsonResponse["error"] != nil) {
-		connectionType := models.ConnectionTypeStreamableHttp
-		if resp.Header.Get("Content-Type") == "text/event-stream" {
-			connectionType = models.ConnectionTypeSSE
-		}
-
-		serverName := "Unknown MCP Server"
-		if name, ok := serverInfo["name"].(string); ok {
-			serverName = name
-		}
-
-		// Generate unique ID for the discovered server
-		serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
-
-		server := &models.DiscoveredServer{
-			ID:         serverID,
-			Address:    fmt.Sprintf("http://%s", address),
-			Protocol:   models.ServerProtocolMCP,
-			Connection: connectionType,
-			Status:     "discovered",
-			LastSeen:   time.Now(),
-			Metadata: map[string]string{
-				"port":                portStr,
-				"endpoint":            endpoint,
-				"server_name":         serverName,
-				"auth_type":           authType,
-				"vulnerability_score": vulnerabilityScore,
-			},
-			VulnerabilityScore: vulnerabilityScore,
-		}
-
-		// Set name if available
-		if serverName != "Unknown MCP Server" {
-			server.Name = serverName
-		}
-
-		return server
-	}
-
-	return nil
 }
 
 // isMCPServerResponse checks if the HTTP response indicates an MCP server

@@ -3000,7 +3000,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8911",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "SUSE AI Universal Proxy API",
 	Description:      "Comprehensive MCP proxy with discovery, registry, and deployment capabilities",

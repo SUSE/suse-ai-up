@@ -239,7 +239,7 @@ func uploadServers(servers []*MCPServer) error {
 	// Default to localhost:8911, but allow override via env var
 	baseURL := os.Getenv("REGISTRY_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8911"
+		baseURL = "http://localhost:8911/api/v1"
 	}
 
 	url := baseURL + "/registry/upload/bulk"

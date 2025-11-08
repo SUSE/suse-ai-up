@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   auth.TokenInfo:
     properties:

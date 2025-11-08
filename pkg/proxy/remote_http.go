@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,8 +43,25 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		targetURL.RawQuery = c.Request.URL.RawQuery
 	}
 
+	// Read and validate request body if it's JSON
+	var bodyReader io.Reader = c.Request.Body
+	if c.Request.Header.Get("Content-Type") == "application/json" {
+		bodyBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read request body: %w", err)
+		}
+
+		// Validate MCP protocol
+		if err := p.validateMCPMessage(bytes.NewReader(bodyBytes)); err != nil {
+			return fmt.Errorf("invalid MCP protocol message: %w", err)
+		}
+
+		// Create a new reader for the request body
+		bodyReader = bytes.NewReader(bodyBytes)
+	}
+
 	// Create proxied request
-	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, targetURL.String(), c.Request.Body)
+	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, targetURL.String(), bodyReader)
 	if err != nil {
 		return err
 	}
@@ -55,22 +73,16 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		}
 	}
 
-	// Apply authentication if configured
-	if adapter.Authentication != nil && adapter.Authentication.Required {
-		if err := p.applyAuthentication(req, adapter.Authentication); err != nil {
-			return fmt.Errorf("failed to apply authentication: %w", err)
+	// Apply backend authentication if required by backend server
+	backendAuthRequired := adapter.EnvironmentVariables["MCP_BACKEND_AUTH_REQUIRED"] == "true"
+	if backendAuthRequired && adapter.Authentication != nil {
+		if err := p.applyBackendAuthentication(req, adapter.Authentication); err != nil {
+			return fmt.Errorf("failed to apply backend authentication: %w", err)
 		}
 	}
 
 	// Ensure Accept header includes text/event-stream for MCP compatibility
 	req.Header.Set("Accept", "application/json, text/event-stream")
-
-	// Validate MCP protocol if this is a JSON request
-	if req.Header.Get("Content-Type") == "application/json" {
-		if err := p.validateMCPMessage(c.Request.Body); err != nil {
-			return fmt.Errorf("invalid MCP protocol message: %w", err)
-		}
-	}
 
 	// Send request
 	resp, err := p.httpClient.Do(req)
@@ -107,8 +119,8 @@ func (p *RemoteHttpProxyPlugin) GetStatus(adapter models.AdapterResource) (model
 	return models.AdapterStatus{ReplicaStatus: status}, nil
 }
 
-// applyAuthentication applies authentication to HTTP request based on adapter config
-func (p *RemoteHttpProxyPlugin) applyAuthentication(req *http.Request, auth *models.AdapterAuthConfig) error {
+// applyBackendAuthentication applies authentication to HTTP request based on adapter config
+func (p *RemoteHttpProxyPlugin) applyBackendAuthentication(req *http.Request, auth *models.AdapterAuthConfig) error {
 	if auth == nil || !auth.Required {
 		return nil // No authentication required
 	}

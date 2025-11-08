@@ -7,7 +7,7 @@
         "version": "1.0"
     },
     "host": "localhost:8911",
-    "basePath": "/api/v1",
+    "basePath": "/",
     "paths": {
         "/api/v1/adapters": {
             "get": {

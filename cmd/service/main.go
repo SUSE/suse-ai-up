@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +33,7 @@ import (
 // @version 1.0
 // @description Comprehensive MCP proxy with discovery, registry, and deployment capabilities
 // @host localhost:8911
-// @BasePath /api/v1
+// @BasePath /
 
 // generateID generates a random hex ID
 func generateID() string {
@@ -80,6 +81,10 @@ func main() {
 	remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
 	log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
 
+	// Initialize remote HTTP proxy plugin
+	remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
+	log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
+
 	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
 		ScanRanges:    []string{"192.168.1.0/24"},
@@ -112,7 +117,12 @@ func main() {
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Session-Id")
 
@@ -343,7 +353,7 @@ func main() {
 
 			// MCP proxy endpoint - this is the main integration point
 			adapters.Any("/:name/mcp", func(c *gin.Context) {
-				handleMCPProxy(c, adapterStore, streamableTransport, stdioToHTTPAdapter, remoteHTTPAdapter)
+				handleMCPProxy(c, adapterStore, streamableTransport, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
 			})
 		}
 
@@ -405,8 +415,65 @@ func main() {
 	log.Println("Server exited")
 }
 
+// validateClientAuthentication validates client authentication for adapter access
+func validateClientAuthentication(c *gin.Context, auth *models.AdapterAuthConfig) error {
+	if auth == nil || !auth.Required {
+		return nil // No authentication required
+	}
+
+	switch auth.Type {
+	case "bearer":
+		return validateBearerAuth(c, auth)
+	case "basic":
+		return validateBasicAuth(c, auth)
+	case "apikey":
+		return validateAPIKeyAuth(c, auth)
+	default:
+		return fmt.Errorf("unsupported authentication type: %s", auth.Type)
+	}
+}
+
+// validateBearerAuth validates Bearer token authentication
+func validateBearerAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return fmt.Errorf("missing Authorization header")
+	}
+
+	const bearerPrefix = "Bearer "
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return fmt.Errorf("invalid Authorization header format")
+	}
+
+	token := strings.TrimPrefix(authHeader, bearerPrefix)
+	expectedToken := auth.Token
+
+	// Check new bearer token config
+	if auth.BearerToken != nil && auth.BearerToken.Token != "" {
+		expectedToken = auth.BearerToken.Token
+	}
+
+	if token != expectedToken {
+		return fmt.Errorf("invalid token")
+	}
+
+	return nil
+}
+
+// validateBasicAuth validates Basic authentication
+func validateBasicAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
+	// Implementation for basic auth validation
+	return fmt.Errorf("basic authentication validation not implemented")
+}
+
+// validateAPIKeyAuth validates API key authentication
+func validateAPIKeyAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
+	// Implementation for API key validation
+	return fmt.Errorf("API key authentication validation not implemented")
+}
+
 // handleMCPProxy handles MCP proxy requests using the new MCP infrastructure
-func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, transport *mcp.StreamableHTTPTransport, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPAdapter *proxy.RemoteHTTPProxyAdapter) {
+func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, transport *mcp.StreamableHTTPTransport, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
 	adapterName := c.Param("name")
 
 	// Get adapter
@@ -414,6 +481,14 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, t
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
+	}
+
+	// Validate client authentication before proxying
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
 	}
 
 	// Route based on connection type
@@ -429,13 +504,13 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, t
 			return
 		}
 	case models.ConnectionTypeRemoteHttp:
-		// Use remote HTTP proxy adapter for remote HTTP connections
-		if remoteHTTPAdapter == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP adapter not initialized"})
+		// Use remote HTTP proxy plugin for remote HTTP connections
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
 			return
 		}
-		if err := remoteHTTPAdapter.HandleRequest(c, *adapter); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP adapter error: %v", err)})
+		if err := remoteHTTPPlugin.ProxyRequest(c, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
 			return
 		}
 	default:

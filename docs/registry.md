@@ -58,13 +58,13 @@ GET /registry/browse?q=search_term&registryType=oci&transport=stdio
 **Example**:
 ```bash
 # Search for filesystem servers
-curl "http://localhost:8911/registry/browse?q=filesystem"
+curl "http://localhost:8911/api/v1/registry/browse?q=filesystem"
 
 # Filter by Docker registry type
-curl "http://localhost:8911/registry/browse?registryType=oci"
+curl "http://localhost:8911/api/v1/registry/browse?registryType=oci"
 
 # Search Docker MCP servers
-curl "http://localhost:8911/registry/browse?q=docker-mcp"
+curl "http://localhost:8911/api/v1/registry/browse?q=docker-mcp"
 ```
 
 ### Get Server Details
@@ -77,7 +77,7 @@ GET /registry/{id}
 
 **Example**:
 ```bash
-curl http://localhost:8911/registry/docker-1
+curl http://localhost:8911/api/v1/registry/docker-1
 ```
 
 ### Upload Single Server
@@ -198,7 +198,7 @@ GET /deployment/config/{serverId}
 
 **Example**:
 ```bash
-curl http://localhost:8911/deployment/config/docker-mcp-filesystem
+curl http://localhost:8911/api/v1/deployment/config/docker-mcp-filesystem
 ```
 
 ### Deploy MCP Server
@@ -241,10 +241,10 @@ Content-Type: application/json
 **Example Deployment**:
 ```bash
 # Get configuration template
-CONFIG=$(curl http://localhost:8911/deployment/config/docker-mcp-brave-search)
+CONFIG=$(curl http://localhost:8911/api/v1/deployment/config/docker-mcp-brave-search)
 
 # Deploy with environment variables
-curl -X POST http://localhost:8911/deployment/deploy \
+curl -X POST http://localhost:8911/api/v1/deployment/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "server_id": "docker-mcp-brave-search",
@@ -382,25 +382,25 @@ Docker-based MCP servers include a `config_template` field that provides deploym
 ### 1. Browse All Servers
 
 ```bash
-curl http://localhost:8911/registry/browse | jq '.[] | {name, description, _meta}'
+curl http://localhost:8911/api/v1/registry/browse | jq '.[] | {name, description, _meta}'
 ```
 
 ### 2. Find Docker Servers
 
 ```bash
-curl "http://localhost:8911/registry/browse" | jq '.[] | select(._meta.source == "docker-mcp") | {name, description}'
+curl "http://localhost:8911/api/v1/registry/browse" | jq '.[] | select(._meta.source == "docker-mcp") | {name, description}'
 ```
 
 ### 3. Search for File Operations
 
 ```bash
-curl "http://localhost:8911/registry/browse?q=file" | jq '.[] | {name, packages}'
+curl "http://localhost:8911/api/v1/registry/browse?q=file" | jq '.[] | {name, packages}'
 ```
 
 ### 4. Upload Custom Server
 
 ```bash
-curl -X POST http://localhost:8911/registry/upload \
+curl -X POST http://localhost:8911/api/v1/registry/upload \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-git-server",
@@ -420,13 +420,13 @@ curl -X POST http://localhost:8911/registry/upload \
 First, find the server ID:
 
 ```bash
-curl "http://localhost:8911/registry/browse?q=filesystem" | jq '.[0].id'
+curl "http://localhost:8911/api/v1/registry/browse?q=filesystem" | jq '.[0].id'
 ```
 
 Then register it as an adapter:
 
 ```bash
-curl -X POST http://localhost:8911/register \
+curl -X POST http://localhost:8911/api/v1/discovery/register \
   -H "Content-Type: application/json" \
   -d '{"discoveredServerId": "docker-2"}'
 ```
@@ -475,13 +475,13 @@ Servers can have different validation statuses:
 
 ```bash
 # Check total server count
-curl -s http://localhost:8911/registry/browse | jq 'length'
+curl -s http://localhost:8911/api/v1/registry/browse | jq 'length'
 
 # Check server sources
-curl -s http://localhost:8911/registry/browse | jq 'group_by(._meta.source) | map({(.[0]._meta.source): length}) | add'
+curl -s http://localhost:8911/api/v1/registry/browse | jq 'group_by(._meta.source) | map({(.[0]._meta.source): length}) | add'
 
 # Validate server configuration
-curl http://localhost:8911/registry/{id} | jq .
+curl http://localhost:8911/api/v1/registry/{id} | jq .
 ```
 
 ## Contributing

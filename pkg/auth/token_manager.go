@@ -125,7 +125,7 @@ func (tm *TokenManager) GenerateBearerToken(adapterName, audience string, expire
 
 // CreateTokenForAdapter creates a token specifically for an adapter created from a discovered server
 func (tm *TokenManager) CreateTokenForAdapter(adapterName string, server *models.DiscoveredServer) (*TokenInfo, error) {
-	audience := fmt.Sprintf("http://localhost:8911/adapters/%s", adapterName)
+	audience := fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s", adapterName)
 
 	// Adjust expiration based on vulnerability score
 	expiresInHours := 24 // default

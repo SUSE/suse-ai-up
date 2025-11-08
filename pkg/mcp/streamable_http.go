@@ -47,8 +47,13 @@ func (sht *StreamableHTTPTransport) HandleRequest(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Set required response headers
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// Set required response headers with CORS configuration
+	origin := r.Header.Get("Origin")
+	if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Session-Id")
 
@@ -134,7 +139,14 @@ func (sht *StreamableHTTPTransport) handleSSEStream(w http.ResponseWriter, r *ht
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Set CORS for SSE stream
+	origin := r.Header.Get("Origin")
+	if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
 
 	// Handle Last-Event-ID for resumable streams
 	lastEventID := r.Header.Get("Last-Event-ID")

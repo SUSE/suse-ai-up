@@ -163,75 +163,57 @@ func (h *RegistrationHandler) configureAuthentication(server *models.DiscoveredS
 	var tokenInfo *auth.TokenInfo
 	var err error
 
+	// ALWAYS require client authentication for security - proxy acts as gatekeeper
+	log.Printf("Registration: Configuring client authentication for server %s (vulnerability: %s)",
+		server.ID, server.VulnerabilityScore)
+
+	if h.tokenManager != nil {
+		// Generate secure token for adapter
+		audience := fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s", adapterData.Name)
+		tokenInfo, err = h.tokenManager.GenerateBearerToken(adapterData.Name, audience, 24)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate secure token: %w", err)
+		}
+	} else {
+		// Fallback to simple token generation
+		token := h.generateSecureToken()
+		tokenInfo = &auth.TokenInfo{
+			TokenID:     fmt.Sprintf("token-%d", time.Now().Unix()),
+			AccessToken: token,
+			TokenType:   "Bearer",
+			Subject:     "adapter-" + adapterData.Name,
+			IssuedAt:    time.Now(),
+			ExpiresAt:   time.Now().Add(24 * time.Hour),
+			Audience:    fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s", adapterData.Name),
+			Issuer:      "suse-ai-up",
+		}
+	}
+
+	// Always require authentication from clients
+	adapterData.Authentication = &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		BearerToken: &models.BearerTokenConfig{
+			Token:     tokenInfo.AccessToken,
+			Dynamic:   h.tokenManager != nil,
+			ExpiresAt: tokenInfo.ExpiresAt,
+		},
+	}
+
+	// Set backend authentication flag based on server vulnerability
 	switch server.VulnerabilityScore {
 	case "high":
-		// Auto-secure unauthenticated servers
-		log.Printf("Registration: Auto-securing high-risk server %s", server.ID)
-
-		if h.tokenManager != nil {
-			// Generate secure token for auto-secured adapter
-			audience := fmt.Sprintf("http://localhost:8911/adapters/%s", adapterData.Name)
-			tokenInfo, err = h.tokenManager.GenerateBearerToken(adapterData.Name, audience, 24)
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate secure token: %w", err)
-			}
-		} else {
-			// Fallback to simple token generation
-			token := h.generateSecureToken()
-			tokenInfo = &auth.TokenInfo{
-				TokenID:     fmt.Sprintf("token-%d", time.Now().Unix()),
-				AccessToken: token,
-				TokenType:   "Bearer",
-				Subject:     "adapter-" + adapterData.Name,
-				IssuedAt:    time.Now(),
-				ExpiresAt:   time.Now().Add(24 * time.Hour),
-				Audience:    fmt.Sprintf("http://localhost:8911/adapters/%s", adapterData.Name),
-				Issuer:      "suse-ai-up",
-			}
-		}
-
-		adapterData.Authentication = &models.AdapterAuthConfig{
-			Required: true,
-			Type:     "bearer",
-			BearerToken: &models.BearerTokenConfig{
-				Token:     tokenInfo.AccessToken,
-				Dynamic:   h.tokenManager != nil, // Use token manager if available
-				ExpiresAt: tokenInfo.ExpiresAt,
-			},
-		}
-		adapterData.Description += " [AUTO-SECURED]"
-
-	case "medium":
-		// Optional authentication with user choice
-		log.Printf("Registration: Configuring optional authentication for medium-risk server %s", server.ID)
-		adapterData.Authentication = &models.AdapterAuthConfig{
-			Required: false,
-			Type:     "none",
-		}
-		adapterData.Description += " [AUTH OPTIONAL]"
-
+		// Backend has no auth - proxy handles all auth
+		adapterData.EnvironmentVariables["MCP_BACKEND_AUTH_REQUIRED"] = "false"
+		adapterData.Description += " [PROXY AUTH - BACKEND NO AUTH]"
 	case "low":
-		// Server already has authentication
-		log.Printf("Registration: No additional authentication needed for low-risk server %s", server.ID)
-		adapterData.Authentication = &models.AdapterAuthConfig{
-			Required: false,
-			Type:     "none",
-		}
-		adapterData.Description += " [AUTHENTICATED]"
-
+		// Backend has auth - proxy may need to add backend auth
+		adapterData.EnvironmentVariables["MCP_BACKEND_AUTH_REQUIRED"] = "true"
+		adapterData.Description += " [PROXY AUTH - BACKEND HAS AUTH]"
 	default:
-		// Unknown vulnerability score - apply conservative security
-		log.Printf("Registration: Unknown vulnerability score '%s' for server %s, applying conservative security",
-			server.VulnerabilityScore, server.ID)
-		adapterData.Authentication = &models.AdapterAuthConfig{
-			Required: true,
-			Type:     "bearer",
-			BearerToken: &models.BearerTokenConfig{
-				Token:   h.generateSecureToken(),
-				Dynamic: false,
-			},
-		}
-		adapterData.Description += " [CONSERVATIVE SECURITY]"
+		// Conservative approach
+		adapterData.EnvironmentVariables["MCP_BACKEND_AUTH_REQUIRED"] = "true"
+		adapterData.Description += " [PROXY AUTH - BACKEND UNKNOWN]"
 	}
 
 	return tokenInfo, nil
@@ -271,13 +253,13 @@ func (h *RegistrationHandler) generateSecureToken() string {
 func (h *RegistrationHandler) getSecurityNote(server *models.DiscoveredServer) string {
 	switch server.VulnerabilityScore {
 	case "high":
-		return "High-risk server automatically secured with bearer token authentication. Original server had no authentication."
+		return "Adapter requires client authentication. Backend MCP server has no authentication - all security handled by proxy."
 	case "medium":
-		return "Medium-risk server. Authentication is optional but recommended for production use."
+		return "Adapter requires client authentication. Backend MCP server has optional authentication."
 	case "low":
-		return "Low-risk server. Original server already has authentication protection."
+		return "Adapter requires client authentication. Backend MCP server has authentication - proxy provides additional security layer."
 	default:
-		return "Unknown vulnerability score. Conservative security measures applied."
+		return "Adapter requires client authentication. Backend MCP server security status unknown - conservative security applied."
 	}
 }
 

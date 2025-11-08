@@ -29,7 +29,7 @@ Welcome to the comprehensive documentation for SUSE AI Universal Proxy.
 - **[License](../LICENSE.md)** - Apache 2.0 license information
 
 ### API Documentation
-- **Interactive API Docs** - Start the service and visit `http://localhost:8911/api/v1/docs`
+- **Interactive API Docs** - Start the service and visit `http://localhost:8911/docs`
 - **OpenAPI Specification** - [swagger.json](swagger.json)
 
 ## 🚀 Quick Start
@@ -40,7 +40,7 @@ Welcome to the comprehensive documentation for SUSE AI Universal Proxy.
    ```
 
 2. **Access API documentation**:
-   - Interactive docs: http://localhost:8911/api/v1/docs
+   - Interactive docs: http://localhost:8911/docs
    - API endpoints: http://localhost:8911/api/v1/
 
 3. **Common operations**:
