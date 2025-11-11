@@ -38,6 +38,11 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		return err
 	}
 
+	// For MCP protocol servers, ensure the path includes /mcp
+	if adapter.Protocol == models.ServerProtocolMCP && targetURL.Path == "" {
+		targetURL.Path = "/mcp"
+	}
+
 	// Build target URL
 	if c.Request.URL.RawQuery != "" {
 		targetURL.RawQuery = c.Request.URL.RawQuery

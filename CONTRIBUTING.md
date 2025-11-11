@@ -271,7 +271,7 @@ func (e PluginError) Error() string {
 }
 
 func (s *MyService) Register(ctx context.Context, proxyURL string) error {
-    req, err := http.NewRequestWithContext(ctx, "POST", proxyURL+"/plugins/register", bytes.NewReader(data))
+    req, err := http.NewRequestWithContext(ctx, "POST", proxyURL+"/api/v1/plugins/register", bytes.NewReader(data))
     if err != nil {
         return PluginError{
             ServiceID: s.serviceID,

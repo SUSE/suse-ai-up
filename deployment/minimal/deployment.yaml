@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suse-ai-up-minimal
+  labels:
+    app: suse-ai-up
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suse-ai-up
+  template:
+    metadata:
+      labels:
+        app: suse-ai-up
+    spec:
+      containers:
+      - name: suse-ai-up
+        image: ghcr.io/alessandro-festa/suse-ai-up:latest
+        ports:
+        - containerPort: 8911
+          name: http
+        env:
+        - name: PORT
+          value: "8911"
+        - name: HOST
+          value: "0.0.0.0"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

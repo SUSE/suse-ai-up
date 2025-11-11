@@ -23,9 +23,19 @@ import (
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/plugins"
 	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/scanner"
 	"suse-ai-up/pkg/session"
+
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 // @title SUSE AI Universal Proxy API
@@ -41,9 +51,59 @@ func generateID() string {
 	return hex.EncodeToString(bytes)
 }
 
+// initOTEL initializes OpenTelemetry tracing and metrics
+func initOTEL(ctx context.Context) error {
+	// Create OTLP trace exporter
+	traceExporter, err := otlptracegrpc.New(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	// Create OTLP metric exporter
+	metricExporter, err := otlpmetricgrpc.New(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create metric exporter: %w", err)
+	}
+
+	// Create resource
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("suse-ai-up"),
+			semconv.ServiceVersionKey.String("1.0.0"),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	// Create trace provider
+	tracerProvider := trace.NewTracerProvider(
+		trace.WithBatcher(traceExporter),
+		trace.WithResource(res),
+	)
+	otel.SetTracerProvider(tracerProvider)
+
+	// Create meter provider
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(metricExporter)),
+		metric.WithResource(res),
+	)
+	otel.SetMeterProvider(meterProvider)
+
+	log.Println("OpenTelemetry initialized successfully")
+	return nil
+}
+
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Initialize OpenTelemetry
+	ctx := context.Background()
+	if err := initOTEL(ctx); err != nil {
+		log.Printf("Failed to initialize OpenTelemetry: %v", err)
+		// Continue without OTEL rather than failing
+	}
 
 	// Initialize Gin
 	if cfg.AuthMode == "production" {
@@ -52,37 +112,39 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
+	// Add OTEL Gin middleware
+	r.Use(otelgin.Middleware("suse-ai-up"))
+
 	// Initialize stores
 	adapterStore := clients.NewInMemoryAdapterStore()
-	// sessionStore := session.NewInMemorySessionStore()
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
 	}
 
 	// Initialize MCP components
-	// capabilityCache := mcp.NewCapabilityCache()
-	// cache := mcp.NewMCPCache(nil)     // Use default config
-	// monitor := mcp.NewMCPMonitor(nil) // Use default config
-	// protocolHandler := mcp.NewProtocolHandler(sessionStore, capabilityCache)
-	// messageRouter := mcp.NewMessageRouter(protocolHandler, sessionStore, capabilityCache, cache, monitor)
-	// streamableTransport := mcp.NewStreamableHTTPTransport(sessionStore, protocolHandler, messageRouter)
+	capabilityCache := mcp.NewCapabilityCache()
+	cache := mcp.NewMCPCache(nil)     // Use default config
+	monitor := mcp.NewMCPMonitor(nil) // Use default config
+	sessionStore := session.NewInMemorySessionStore()
+	protocolHandler := mcp.NewProtocolHandler(sessionStore, capabilityCache)
+	messageRouter := mcp.NewMessageRouter(protocolHandler, sessionStore, capabilityCache, cache, monitor)
 
 	// Initialize stdio proxy plugin for local stdio adapters
-	// stdioProxy := proxy.NewLocalStdioProxyPlugin()
-	// log.Printf("stdioProxy initialized: %v", stdioProxy != nil)
+	stdioProxy := proxy.NewLocalStdioProxyPlugin()
+	log.Printf("stdioProxy initialized: %v", stdioProxy != nil)
 
 	// Initialize stdio-to-HTTP adapter
-	// stdioToHTTPAdapter := proxy.NewStdioToHTTPAdapter(stdioProxy, messageRouter, sessionStore, protocolHandler, capabilityCache)
-	// log.Printf("stdioToHTTPAdapter initialized: %v", stdioToHTTPAdapter != nil)
+	stdioToHTTPAdapter := proxy.NewStdioToHTTPAdapter(stdioProxy, messageRouter, sessionStore, protocolHandler, capabilityCache)
+	log.Printf("stdioToHTTPAdapter initialized: %v", stdioToHTTPAdapter != nil)
 
 	// Initialize remote HTTP proxy adapter
-	// remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
-	// log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
+	remoteHTTPAdapter := proxy.NewRemoteHTTPProxyAdapter(sessionStore, messageRouter, protocolHandler, capabilityCache)
+	log.Printf("remoteHTTPAdapter initialized: %v", remoteHTTPAdapter != nil)
 
 	// Initialize remote HTTP proxy plugin
-	// remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
-	// log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
+	remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
+	log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
 
 	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
@@ -104,6 +166,10 @@ func main() {
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager)
+
+	// Initialize plugin service manager
+	serviceManager := plugins.NewServiceManager(cfg)
+	pluginHandler := handlers.NewPluginHandler(serviceManager)
 
 	kubeClient, err := clients.NewKubernetesClient()
 	if err != nil {
@@ -314,9 +380,9 @@ func main() {
 			})
 
 			// MCP proxy endpoint - this is the main integration point
-			// adapters.Any("/:name/mcp", func(c *gin.Context) {
-			// 	handleMCPProxy(c, adapterStore, streamableTransport, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
-			// })
+			adapters.Any("/:name/mcp", func(c *gin.Context) {
+				handleMCPProxy(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
 		}
 
 		// Registry routes
@@ -338,6 +404,17 @@ func main() {
 			registry.DELETE("/:id", registryHandler.DeleteMCPServer)
 		}
 
+		// Plugin routes
+		plugins := v1.Group("/plugins")
+		{
+			plugins.POST("/register", pluginHandler.RegisterService)
+			plugins.DELETE("/register/:serviceId", pluginHandler.UnregisterService)
+			plugins.GET("/services", pluginHandler.ListServices)
+			plugins.GET("/services/:serviceId", pluginHandler.GetService)
+			plugins.GET("/services/type/:serviceType", pluginHandler.ListServicesByType)
+			plugins.GET("/services/:serviceId/health", pluginHandler.GetServiceHealth)
+		}
+
 		// Deployment routes
 		deployment := v1.Group("/deployment")
 		{
@@ -345,6 +422,11 @@ func main() {
 			deployment.POST("/deploy", deploymentHandler.DeployMCP)
 		}
 	}
+
+	// Start health checks for plugins
+	pluginCtx, pluginCancel := context.WithCancel(context.Background())
+	defer pluginCancel()
+	go serviceManager.StartHealthChecks(pluginCtx, 30*time.Second)
 
 	// Start server
 	srv := &http.Server{
@@ -482,7 +564,7 @@ func validateAPIKeyAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
 }
 
 // handleMCPProxy handles MCP proxy requests using the new MCP infrastructure
-func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, transport *mcp.StreamableHTTPTransport, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
 	adapterName := c.Param("name")
 
 	// Get adapter

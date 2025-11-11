@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort | default 30080 }}
+      {{- end }}
+  selector:
+    {{- include "suse-ai-up.selectorLabels" . | nindent 4 }}
+
+{{- if .Values.otel.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-otel
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4318
+      targetPort: otlp-grpc
+      protocol: TCP
+      name: otlp-grpc
+    - port: 4319
+      targetPort: otlp-http
+      protocol: TCP
+      name: otlp-http
+    {{- if .Values.otel.exporters.prometheus.enabled }}
+    - port: 8889
+      targetPort: prometheus
+      protocol: TCP
+      name: prometheus
+    {{- end }}
+  selector:
+    {{- include "suse-ai-up.selectorLabels" . | nindent 4 }}
+{{- end }}

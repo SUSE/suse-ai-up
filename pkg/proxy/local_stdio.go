@@ -72,11 +72,13 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 	var command string
 	var args []string
 	var tempDir string
+	var mcpEnvVars map[string]string
 
 	if len(adapter.MCPClientConfig.MCPServers) > 0 {
 		for _, serverConfig := range adapter.MCPClientConfig.MCPServers {
 			command = serverConfig.Command
 			args = serverConfig.Args
+			mcpEnvVars = serverConfig.Env
 			break
 		}
 		tempDir = ""
@@ -132,6 +134,10 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 		if k != "MCP_TRANSPORT" {
 			cmd.Env = append(cmd.Env, k+"="+v)
 		}
+	}
+	// Add environment variables from MCPClientConfig
+	for k, v := range mcpEnvVars {
+		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 
 	stdin, err := cmd.StdinPipe()

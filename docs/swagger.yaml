@@ -1856,7 +1856,7 @@ paths:
       summary: Upload a local MCP server implementation
       tags:
       - registry
-  /plugins/register:
+  /api/v1/plugins/register:
     post:
       consumes:
       - application/json
@@ -1886,7 +1886,7 @@ paths:
       summary: Register a plugin service
       tags:
       - plugins
-  /plugins/register/{serviceId}:
+  /api/v1/plugins/register/{serviceId}:
     delete:
       description: Remove a plugin service registration
       parameters:
@@ -1905,7 +1905,7 @@ paths:
       summary: Unregister a plugin service
       tags:
       - plugins
-  /plugins/services:
+  /api/v1/plugins/services:
     get:
       description: Get a list of all registered plugin services
       produces:
@@ -1920,7 +1920,7 @@ paths:
       summary: List registered plugin services
       tags:
       - plugins
-  /plugins/services/{serviceId}:
+  /api/v1/plugins/services/{serviceId}:
     get:
       description: Get details of a specific plugin service
       parameters:
@@ -1943,7 +1943,7 @@ paths:
       summary: Get service details
       tags:
       - plugins
-  /plugins/services/{serviceId}/health:
+  /api/v1/plugins/services/{serviceId}/health:
     get:
       description: Get health status of a specific plugin service
       parameters:
@@ -1966,7 +1966,7 @@ paths:
       summary: Get service health
       tags:
       - plugins
-  /plugins/services/type/{serviceType}:
+  /api/v1/plugins/services/type/{serviceType}:
     get:
       description: Get all services of a specific type
       parameters:

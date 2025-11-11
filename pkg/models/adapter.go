@@ -79,6 +79,19 @@ func (ar *AdapterResource) Create(data AdapterData, createdBy string, createdAt 
 	ar.CreatedBy = createdBy
 	ar.CreatedAt = createdAt
 	ar.LastUpdatedAt = time.Now().UTC()
+
+	// Merge environment variables from MCPClientConfig into EnvironmentVariables
+	if len(data.MCPClientConfig.MCPServers) > 0 {
+		if ar.EnvironmentVariables == nil {
+			ar.EnvironmentVariables = make(map[string]string)
+		}
+		for _, serverConfig := range data.MCPClientConfig.MCPServers {
+			for k, v := range serverConfig.Env {
+				ar.EnvironmentVariables[k] = v
+			}
+			break // Only use the first server config
+		}
+	}
 }
 
 // AdapterStatus represents the status of a deployed adapter
@@ -192,8 +205,9 @@ type MCPToolsConfig []MCPServerConfig
 
 // MCPServerConfig represents the configuration for an MCP server
 type MCPServerConfig struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args"`
+	Env     map[string]string `json:"env,omitempty"`
 }
 
 // MCPClientConfig represents the full MCP client configuration format

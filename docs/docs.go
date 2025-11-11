@@ -1548,7 +1548,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/register": {
+        "/api/v1/plugins/register": {
             "post": {
                 "description": "Register a plugin service with the proxy",
                 "consumes": [
@@ -1594,7 +1594,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/register/{serviceId}": {
+        "/api/v1/plugins/register/{serviceId}": {
             "delete": {
                 "description": "Remove a plugin service registration",
                 "tags": [
@@ -1623,7 +1623,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/services": {
+        "/api/v1/plugins/services": {
             "get": {
                 "description": "Get a list of all registered plugin services",
                 "produces": [
@@ -1646,7 +1646,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/services/type/{serviceType}": {
+        "/api/v1/plugins/services/type/{serviceType}": {
             "get": {
                 "description": "Get all services of a specific type",
                 "produces": [
@@ -1678,7 +1678,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/services/{serviceId}": {
+        "/api/v1/plugins/services/{serviceId}": {
             "get": {
                 "description": "Get details of a specific plugin service",
                 "produces": [
@@ -1713,7 +1713,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/plugins/services/{serviceId}/health": {
+        "/api/v1/plugins/services/{serviceId}/health": {
             "get": {
                 "description": "Get health status of a specific plugin service",
                 "produces": [

@@ -151,7 +151,7 @@ kubectl delete namespace adapter
 
 ```bash
 # Register a service manually
-curl -X POST http://localhost:8911/plugins/register \
+curl -X POST http://localhost:8911/api/v1/plugins/register \
   -H "Content-Type: application/json" \
   -d '{
     "service_id": "my-service",

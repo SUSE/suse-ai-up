@@ -1,0 +1,19 @@
+apiVersion: v2
+name: suse-ai-up
+description: SUSE AI Universal Proxy - A comprehensive platform for managing and proxying Model Context Protocol (MCP) servers
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - mcp
+  - proxy
+  - kubernetes
+  - opentelemetry
+home: https://github.com/suse/suse-ai-up
+sources:
+  - https://github.com/suse/suse-ai-up
+maintainers:
+  - name: SUSE AI Team
+    email: ai@suse.com
+dependencies: []
