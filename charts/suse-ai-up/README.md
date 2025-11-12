@@ -45,13 +45,13 @@ helm repo update
 
 ```bash
 # Install with default values
-helm install suse-ai-up ./deployment
+helm install suse-ai-up ./charts/suse-ai-up
 
 # Install with custom values
-helm install suse-ai-up ./deployment -f my-values.yaml
+helm install suse-ai-up ./charts/suse-ai-up -f my-values.yaml
 
 # Install in a specific namespace
-helm install suse-ai-up ./deployment -n ai-up --create-namespace
+helm install suse-ai-up ./charts/suse-ai-up -n ai-up --create-namespace
 ```
 
 ## Configuration
@@ -266,7 +266,7 @@ kubectl get endpoints suse-ai-up
 
 ```bash
 # Upgrade with new values
-helm upgrade suse-ai-up ./deployment -f new-values.yaml
+helm upgrade suse-ai-up ./charts/suse-ai-up -f new-values.yaml
 
 # Rollback if needed
 helm rollback suse-ai-up
@@ -288,13 +288,13 @@ kubectl delete pvc -l app.kubernetes.io/name=suse-ai-up
 
 ```bash
 # Lint the chart
-helm lint ./deployment
+helm lint ./charts/suse-ai-up
 
 # Template the chart
-helm template test-release ./deployment
+helm template test-release ./charts/suse-ai-up
 
 # Install with debug
-helm install test-release ./deployment --debug --dry-run
+helm install test-release ./charts/suse-ai-up --debug --dry-run
 ```
 
 ### Building Custom Images
