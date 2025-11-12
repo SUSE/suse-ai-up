@@ -1,6 +1,10 @@
 # SUSE AI Universal Proxy - Helm Chart
 
+![SUSE Logo](https://raw.githubusercontent.com/SUSE/suse-ai-up/main/docs/assets/suse-logo.png)
+
 This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities and support for spawning Python and Node.js MCP servers.
+
+**Certified for SUSE Rancher** | **OpenTelemetry Enabled** | **Multi-Architecture Support**
 
 ## Prerequisites
 
@@ -10,6 +14,24 @@ This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry o
 - (Optional) Prometheus for metrics collection
 
 ## Installation
+
+### SUSE Rancher Manager UI Installation (Recommended)
+
+1. **Add the SUSE AI Repository** (if not already available):
+   - Navigate to **Apps & Marketplace** → **Charts**
+   - Search for "SUSE AI Universal Proxy"
+   - Click **Install**
+
+2. **Configure via UI Form**:
+   - Use the intuitive form to configure your deployment
+   - All major settings are available through the categorized interface
+   - Advanced options are available in the "Advanced Configuration" section
+
+3. **Deploy**:
+   - Review your configuration
+   - Click **Install** to deploy to your cluster
+
+### Command Line Installation
 
 ### Add Helm Repository (if applicable)
 
@@ -34,30 +56,42 @@ helm install suse-ai-up ./deployment -n ai-up --create-namespace
 
 ## Configuration
 
+> 💡 **Tip**: When using SUSE Rancher Manager, most configuration options are available through the intuitive UI form. The table below shows all available parameters for advanced CLI usage.
+
 ### Core Service Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `image.repository` | Container image repository | `ghcr.io/alessandro-festa/suse-ai-up` |
-| `image.tag` | Container image tag | `latest` |
-| `service.port` | Service port | `8911` |
-| `replicaCount` | Number of replicas | `1` |
+| Parameter | Description | Default | Rancher UI Category |
+|-----------|-------------|---------|-------------------|
+| `image.repository` | Container image repository | `ghcr.io/alessandro-festa/suse-ai-up` | Basic Configuration |
+| `image.tag` | Container image tag | `latest` | Basic Configuration |
+| `service.port` | Service port | `8911` | Service Configuration |
+| `replicaCount` | Number of replicas | `1` | Basic Configuration |
 
 ### OpenTelemetry Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `otel.enabled` | Enable OpenTelemetry | `true` |
-| `otel.serviceName` | Service name for OTEL | `suse-ai-up` |
-| `otel.exporters.jaeger.enabled` | Enable Jaeger exporter | `true` |
-| `otel.exporters.prometheus.enabled` | Enable Prometheus exporter | `true` |
+| Parameter | Description | Default | Rancher UI Category |
+|-----------|-------------|---------|-------------------|
+| `otel.enabled` | Enable OpenTelemetry | `false` | OpenTelemetry (OTEL) |
+| `otel.serviceName` | Service name for OTEL | `suse-ai-up` | OpenTelemetry (OTEL) |
+| `otel.serviceLabels.genai.system.suseai-up` | System identifier label | `true` | OpenTelemetry (OTEL) |
+| `otel.exporters.jaeger.enabled` | Enable Jaeger exporter | `true` | OpenTelemetry (OTEL) |
+| `otel.exporters.prometheus.enabled` | Enable Prometheus exporter | `true` | OpenTelemetry (OTEL) |
 
 ### Runtime Support
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `env.python.enabled` | Enable Python runtime | `true` |
-| `env.nodejs.enabled` | Enable Node.js runtime | `true` |
+| Parameter | Description | Default | Rancher UI Category |
+|-----------|-------------|---------|-------------------|
+| `env.python.enabled` | Enable Python runtime | `true` | Runtime Support |
+| `env.nodejs.enabled` | Enable Node.js runtime | `true` | Runtime Support |
+
+### Multi-Architecture Support
+
+This chart supports deployment on both x86_64 (amd64) and ARM64 architectures.
+
+| Parameter | Description | Default | Rancher UI Category |
+|-----------|-------------|---------|-------------------|
+| `image.architectureTagSuffix` | Architecture-specific tag suffix (e.g., "-amd64", "-arm64") | `""` | Multi-Architecture |
+| `architecture` | Target architecture for node affinity ("amd64" or "arm64") | `""` | Multi-Architecture |
 
 ### Example Values Override
 
@@ -90,22 +124,65 @@ resources:
     memory: 512Mi
 ```
 
+### Multi-Architecture Deployment Examples
+
+```yaml
+# Deploy on x86_64 nodes only
+image:
+  architectureTagSuffix: "-amd64"
+architecture: "amd64"
+
+# Deploy on ARM64 nodes only
+image:
+  architectureTagSuffix: "-arm64"
+architecture: "arm64"
+
+# Deploy multi-arch image (no suffix, uses manifest)
+image:
+  architectureTagSuffix: ""  # Empty for multi-arch
+architecture: ""  # No affinity constraint
+```
+
+## Rancher UI Integration
+
+This Helm chart includes a comprehensive `questions.yaml` file that provides an intuitive form-based interface in SUSE Rancher Manager. The form is organized into logical categories:
+
+- **Basic Configuration**: Image settings, replicas, and core parameters
+- **Service Configuration**: Networking and service type options
+- **OpenTelemetry (OTEL)**: Observability and monitoring configuration
+- **Runtime Support**: Python and Node.js runtime toggles
+- **Authentication & Security**: Auth modes and service accounts
+- **Networking**: Ingress and external access configuration
+- **Resources**: CPU and memory allocation
+- **Health Checks**: Readiness and liveness probe configuration
+- **Multi-Architecture**: Architecture-specific deployment options
+- **Advanced Configuration**: Registry, smart agents, and custom settings
+
+The form includes validation, helpful descriptions, and conditional fields that appear based on your selections.
+
 ## Features
 
-### OpenTelemetry Integration
+### 🏢 SUSE Enterprise Ready
+
+- **Certified for SUSE Rancher**: Official SUSE partner certification
+- **Enterprise Support**: Backed by SUSE enterprise support
+- **Security Hardened**: SUSE security standards and best practices
+- **Multi-Architecture**: Support for x86_64 and ARM64 platforms
+
+### 📊 OpenTelemetry Integration
 
 - **Distributed Tracing**: Automatic trace collection with Jaeger export
 - **Metrics Collection**: Application and system metrics with Prometheus export
 - **Structured Logging**: OTEL-compatible log collection
 - **Resource Detection**: Automatic Kubernetes pod metadata detection
 
-### Runtime Support
+### 🐍 Runtime Support
 
 - **Python MCP Servers**: Full Python 3.11+ support with pip and common MCP libraries
 - **Node.js MCP Servers**: Node.js 18+ with npm for JavaScript/TypeScript MCP servers
 - **Container Security**: Non-root execution with minimal attack surface
 
-### Kubernetes Native
+### ☸️ Kubernetes Native
 
 - **Health Checks**: Readiness and liveness probes
 - **Resource Management**: Configurable CPU/memory limits and requests
@@ -169,6 +246,8 @@ kubectl logs <pod-name> --container=otel-collector
 1. **OTEL Collector Not Starting**: Check ConfigMap syntax and resource limits
 2. **MCP Server Spawn Failures**: Verify Python/Node.js installations and permissions
 3. **Network Issues**: Check service accounts and network policies
+4. **Architecture Mismatch**: Ensure image architecture matches node architecture
+5. **Multi-Arch Image Issues**: Verify Docker buildx setup and QEMU installation
 
 ### Debug Commands
 
@@ -220,12 +299,40 @@ helm install test-release ./deployment --debug --dry-run
 
 ### Building Custom Images
 
+#### Single Architecture Build
+
 ```bash
 # Build the application
 go build -o service ./cmd/service
 
 # Build the Docker image
 docker build -t ghcr.io/alessandro-festa/suse-ai-up:latest .
+```
+
+#### Multi-Architecture Build
+
+```bash
+# Build Go binaries for both architectures
+./scripts/build-multiarch.sh
+
+# Build and push multi-architecture Docker images
+./scripts/build-multiarch-docker.sh --push
+
+# Or build specific architecture
+./scripts/build-multiarch-docker.sh -t amd64 --push
+./scripts/build-multiarch-docker.sh -t arm64 --push
+```
+
+#### Manual Docker Buildx
+
+```bash
+# Set up buildx builder
+docker buildx create --name multiarch-builder --use
+
+# Build and push multi-arch image
+docker buildx build --platform linux/amd64,linux/arm64 \
+  --tag ghcr.io/alessandro-festa/suse-ai-up:latest \
+  --push .
 ```
 
 ## Security Considerations

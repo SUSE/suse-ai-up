@@ -139,7 +139,11 @@ Image pull policy
 Main container image
 */}}
 {{- define "suse-ai-up.image" -}}
-{{- printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) }}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
+{{- if .Values.image.architectureTagSuffix }}
+{{- $tag = printf "%s%s" $tag .Values.image.architectureTagSuffix }}
+{{- end }}
+{{- printf "%s:%s" .Values.image.repository $tag }}
 {{- end }}
 
 {{/*

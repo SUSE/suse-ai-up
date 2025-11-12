@@ -1,5 +1,7 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -10,8 +12,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o service ./cmd/service
+# Build the application for the target architecture
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -a -installsuffix cgo -o service ./cmd/service
 
 # Final stage
 FROM alpine:latest
@@ -26,9 +28,7 @@ RUN apk --no-cache add \
     curl \
     && ln -sf python3 /usr/bin/python
 
-# Download and install OTEL collector
-RUN curl -L https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.96.0/otelcol-contrib_0.96.0_linux_amd64.tar.gz \
-    | tar -xz -C /usr/local/bin --strip-components=1 otelcol-contrib
+
 
 # Create non-root user
 RUN adduser -D -s /bin/sh -u 1000 mcpuser
@@ -54,8 +54,8 @@ RUN chown -R mcpuser:mcpuser /home/mcpuser/
 # Switch to non-root user
 USER 1000
 
-# Expose ports (main service and OTEL collector)
-EXPOSE 8911 4318 4319 8889
+# Expose main service port
+EXPOSE 8911
 
 # Run the binary
 CMD ["./service"]

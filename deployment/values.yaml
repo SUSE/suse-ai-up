@@ -6,6 +6,9 @@
 image:
   repository: ghcr.io/alessandro-festa/suse-ai-up
   tag: "latest"
+  # Architecture-specific tag suffix (e.g., "-amd64", "-arm64", or "" for multi-arch)
+  # Leave empty for multi-architecture images, or set to "-amd64"/"-arm64" for architecture-specific
+  architectureTagSuffix: ""
   pullPolicy: IfNotPresent
 
 # Service configuration
@@ -35,6 +38,9 @@ podLabels: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+# Architecture-specific node affinity (optional)
+# Set architecture to "amd64" or "arm64" to ensure pods run on nodes with matching architecture
+architecture: ""
 
 # Environment variables
 env:
@@ -55,9 +61,13 @@ env:
 
 # OpenTelemetry Configuration
 otel:
-  enabled: true
+  enabled: false
   serviceName: "suse-ai-up"
   serviceVersion: "1.0.0"
+
+  # Additional labels for OTEL service
+  serviceLabels:
+    genai.system.suseai-up: "true"
 
   # OTEL Collector Configuration
   collector:
@@ -110,7 +120,7 @@ otel:
 
 # Health check configuration
 healthCheck:
-  enabled: true
+  enabled: false
   path: "/health"
   port: 8911
   initialDelaySeconds: 30

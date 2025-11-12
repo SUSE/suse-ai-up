@@ -52,6 +52,69 @@ The minimal deployment includes:
 - **Service Type**: ClusterIP
 - **Resources**: 256Mi memory request, 512Mi limit; 100m CPU request, 500m limit
 
+## Multi-Architecture Support
+
+This minimal deployment supports both x86_64 (amd64) and ARM64 architectures.
+
+### Architecture-Specific Deployment
+
+To deploy on specific architectures, modify the `deployment.yaml`:
+
+#### For x86_64 (amd64) nodes:
+```yaml
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+      containers:
+      - name: suse-ai-up
+        image: ghcr.io/alessandro-festa/suse-ai-up:latest-amd64
+```
+
+#### For ARM64 nodes:
+```yaml
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - arm64
+      containers:
+      - name: suse-ai-up
+        image: ghcr.io/alessandro-festa/suse-ai-up:latest-arm64
+```
+
+#### For multi-architecture deployment:
+```yaml
+containers:
+- name: suse-ai-up
+  image: ghcr.io/alessandro-festa/suse-ai-up:latest  # Multi-arch manifest
+```
+
+### Building Multi-Architecture Images
+
+```bash
+# Build Go binaries for both architectures
+./scripts/build-multiarch.sh
+
+# Build and push multi-architecture Docker images
+./scripts/build-multiarch-docker.sh --push
+```
+
 ## Prerequisites
 
 - Kubernetes cluster access

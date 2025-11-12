@@ -1,0 +1,211 @@
+categories:
+  - name: "Basic Configuration"
+    variables:
+      - variable: image.repository
+        label: "Container Image Repository"
+        description: "Docker image repository for the SUSE AI Universal Proxy"
+        type: string
+        default: "ghcr.io/alessandro-festa/suse-ai-up"
+        required: true
+      - variable: image.tag
+        label: "Container Image Tag"
+        description: "Docker image tag to use"
+        type: string
+        default: "latest"
+        required: true
+      - variable: image.pullPolicy
+        label: "Image Pull Policy"
+        description: "Kubernetes image pull policy"
+        type: enum
+        options:
+          - "IfNotPresent"
+          - "Always"
+          - "Never"
+        default: "IfNotPresent"
+      - variable: replicaCount
+        label: "Number of Replicas"
+        description: "Number of pod replicas to deploy"
+        type: int
+        min: 1
+        max: 10
+        default: 1
+
+  - name: "Service Configuration"
+    variables:
+      - variable: service.type
+        label: "Service Type"
+        description: "Kubernetes service type"
+        type: enum
+        options:
+          - "ClusterIP"
+          - "NodePort"
+          - "LoadBalancer"
+        default: "ClusterIP"
+      - variable: service.port
+        label: "Service Port"
+        description: "Port on which the service will be exposed"
+        type: int
+        min: 1
+        max: 65535
+        default: 8911
+
+  - name: "OpenTelemetry (OTEL)"
+    variables:
+      - variable: otel.enabled
+        label: "Enable OpenTelemetry"
+        description: "Enable OpenTelemetry observability features"
+        type: boolean
+        default: false
+        show_subquestion_if: true
+        subquestions:
+          - variable: otel.serviceName
+            label: "Service Name"
+            description: "OpenTelemetry service name"
+            type: string
+            default: "suse-ai-up"
+          - variable: otel.serviceLabels.genai\.system\.suseai-up
+            label: "System Label"
+            description: "GenAI system identifier label"
+            type: string
+            default: "true"
+          - variable: otel.exporters.jaeger.enabled
+            label: "Enable Jaeger Exporter"
+            description: "Export traces to Jaeger"
+            type: boolean
+            default: true
+            show_subquestion_if: true
+            subquestions:
+              - variable: otel.exporters.jaeger.endpoint
+                label: "Jaeger Endpoint"
+                description: "Jaeger collector endpoint URL"
+                type: string
+                default: "jaeger-collector:14268/api/traces"
+          - variable: otel.exporters.prometheus.enabled
+            label: "Enable Prometheus Exporter"
+            description: "Export metrics to Prometheus"
+            type: boolean
+            default: true
+
+  - name: "Runtime Support"
+    variables:
+      - variable: env.python.enabled
+        label: "Enable Python Runtime"
+        description: "Enable Python runtime for MCP servers"
+        type: boolean
+        default: true
+      - variable: env.nodejs.enabled
+        label: "Enable Node.js Runtime"
+        description: "Enable Node.js runtime for MCP servers"
+        type: boolean
+        default: true
+
+  - name: "Authentication & Security"
+    variables:
+      - variable: env.authMode
+        label: "Authentication Mode"
+        description: "Authentication mode for the service"
+        type: enum
+        options:
+          - "development"
+          - "oauth"
+        default: "development"
+      - variable: serviceAccount.create
+        label: "Create Service Account"
+        description: "Create a Kubernetes service account for the deployment"
+        type: boolean
+        default: true
+
+  - name: "Networking"
+    variables:
+      - variable: ingress.enabled
+        label: "Enable Ingress"
+        description: "Enable ingress for external access"
+        type: boolean
+        default: false
+        show_subquestion_if: true
+        subquestions:
+          - variable: ingress.className
+            label: "Ingress Class"
+            description: "Ingress class name"
+            type: string
+            default: ""
+          - variable: ingress.hosts[0].host
+            label: "Host"
+            description: "Hostname for ingress"
+            type: string
+            default: "suse-ai-up.local"
+
+  - name: "Resources"
+    variables:
+      - variable: resources.requests.memory
+        label: "Memory Request"
+        description: "Minimum memory required"
+        type: string
+        default: "256Mi"
+      - variable: resources.requests.cpu
+        label: "CPU Request"
+        description: "Minimum CPU required"
+        type: string
+        default: "100m"
+      - variable: resources.limits.memory
+        label: "Memory Limit"
+        description: "Maximum memory allowed"
+        type: string
+        default: "512Mi"
+      - variable: resources.limits.cpu
+        label: "CPU Limit"
+        description: "Maximum CPU allowed"
+        type: string
+        default: "500m"
+
+  - name: "Health Checks"
+    variables:
+      - variable: healthCheck.enabled
+        label: "Enable Health Checks"
+        description: "Enable readiness and liveness probes"
+        type: boolean
+        default: false
+
+  - name: "Multi-Architecture"
+    variables:
+      - variable: architecture
+        label: "Target Architecture"
+        description: "Target architecture for node affinity (leave empty for multi-arch)"
+        type: enum
+        options:
+          - ""
+          - "amd64"
+          - "arm64"
+        default: ""
+        show_subquestion_if: "amd64,arm64"
+        subquestions:
+          - variable: image.architectureTagSuffix
+            label: "Architecture Tag Suffix"
+            description: "Architecture-specific tag suffix (e.g., -amd64)"
+            type: string
+            default: ""
+
+  - name: "Advanced Configuration"
+    variables:
+      - variable: env.registryEnabled
+        label: "Enable Registry"
+        description: "Enable MCP server registry functionality"
+        type: boolean
+        default: true
+      - variable: env.smartAgentsEnabled
+        label: "Enable Smart Agents"
+        description: "Enable smart agent functionality"
+        type: boolean
+        default: true
+      - variable: env.port
+        label: "Container Port"
+        description: "Port the container listens on internally"
+        type: int
+        min: 1
+        max: 65535
+        default: 8911
+      - variable: env.host
+        label: "Bind Address"
+        description: "Address the service binds to"
+        type: string
+        default: "0.0.0.0"

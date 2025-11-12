@@ -30,6 +30,9 @@ metadata:
   labels:
     {{- include "suse-ai-up.labels" . | nindent 4 }}
     app.kubernetes.io/component: otel-collector
+    {{- with .Values.otel.serviceLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   type: ClusterIP
   ports:
