@@ -4,7 +4,7 @@ description: SUSE AI Universal Proxy - A comprehensive platform for managing and
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
-icon: https://raw.githubusercontent.com/SUSE/suse-ai-up/main/docs/assets/suse-ai-logo.png
+icon: https://apps.rancher.io/logos/suse-ai-deployer.png
 keywords:
   - ai
   - mcp
