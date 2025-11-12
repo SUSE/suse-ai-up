@@ -49,15 +49,15 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: "logging,jaeger"
+          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}{{- if and .Values.otel.exporters.logging.enabled .Values.otel.exporters.jaeger.enabled }}, {{ end }}{{- if .Values.otel.exporters.jaeger.enabled }}"jaeger"{{- end }}]
         metrics:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: "logging,prometheus"
+          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}{{- if and .Values.otel.exporters.logging.enabled .Values.otel.exporters.prometheus.enabled }}, {{ end }}{{- if .Values.otel.exporters.prometheus.enabled }}"prometheus"{{- end }}]
         logs:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: "logging"
+          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}]
 {{- end }}
 
 {{- range $name, $config := .Values.extraConfigMaps }}
