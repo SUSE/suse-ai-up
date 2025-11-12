@@ -19,7 +19,7 @@ maintainers:
   - name: SUSE AI Team
     email: ai@suse.com
 annotations:
-  catalog.cattle.io/certified: partner
+  catalog.cattle.io/certified: suse
   catalog.cattle.io/namespace: suse-ai-up
   catalog.cattle.io/release-name: suse-ai-up
   catalog.cattle.io/display-name: "SUSE AI Universal Proxy"

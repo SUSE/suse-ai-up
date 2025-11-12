@@ -1,6 +1,6 @@
 # SUSE AI Universal Proxy - Helm Chart
 
-![SUSE Logo](https://raw.githubusercontent.com/SUSE/suse-ai-up/main/docs/assets/suse-logo.png)
+![SUSE Logo](https://apps.rancher.io/logos/suse-ai-deployer.png)
 
 This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities and support for spawning Python and Node.js MCP servers.
 
