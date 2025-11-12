@@ -13,3 +13,6 @@ service.log
 SESSION_TERMINATION_FIX.md
 tests/
 service.log
+/build
+build/service-amd64
+build/service-arm64
