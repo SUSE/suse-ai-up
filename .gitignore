@@ -11,6 +11,5 @@ test.go
 *.log
 service.log
 SESSION_TERMINATION_FIX.md
-test_gin_server.go
-test_server.go
+tests/
 service.log

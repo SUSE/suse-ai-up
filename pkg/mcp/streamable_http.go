@@ -38,8 +38,15 @@ func NewStreamableHTTPTransport(sessionStore session.SessionStore, protocolHandl
 func (sht *StreamableHTTPTransport) HandleRequest(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
 	log.Printf("StreamableHTTP: Handling %s request for adapter %s", r.Method, adapter.Name)
 
-	// Extract session ID from headers
-	sessionID := sht.extractSessionID(r)
+	// Extract or create session ID
+	sessionID, err := sht.ensureSession(r, adapter)
+	if err != nil {
+		log.Printf("StreamableHTTP: Failed to ensure session: %v", err)
+		sht.writeErrorResponse(w, nil, -32603, fmt.Sprintf("Session management failed: %v", err))
+		return
+	}
+
+	log.Printf("StreamableHTTP: Using session ID: %s", sessionID)
 
 	// Validate MCP protocol version
 	if protocolVersion := r.Header.Get("MCP-Protocol-Version"); protocolVersion != "" && protocolVersion != ProtocolVersion {
@@ -133,7 +140,7 @@ func (sht *StreamableHTTPTransport) shouldOpenSSEStream(message *JSONRPCMessage)
 
 // handleSSEStream handles Server-Sent Events streaming
 func (sht *StreamableHTTPTransport) handleSSEStream(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource, sessionID string, initMessage *JSONRPCMessage) {
-	log.Printf("StreamableHTTP: Opening SSE stream for adapter %s", adapter.Name)
+	log.Printf("StreamableHTTP: Opening SSE stream for adapter %s, session %s", adapter.Name, sessionID)
 
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -192,6 +199,15 @@ func (sht *StreamableHTTPTransport) handleSSEStream(w http.ResponseWriter, r *ht
 		return
 	}
 
+	log.Printf("StreamableHTTP: Connecting to target URL: %s", targetURL)
+
+	// Validate target connection before streaming
+	if err := sht.validateTargetConnection(targetURL); err != nil {
+		log.Printf("StreamableHTTP: Target connection validation failed: %v", err)
+		sht.writeSSEError(w, nil, -32603, fmt.Sprintf("Target server unreachable: %v", err))
+		return
+	}
+
 	// Create streaming request to target
 	req, err := http.NewRequestWithContext(r.Context(), "GET", targetURL, nil)
 	if err != nil {
@@ -213,17 +229,23 @@ func (sht *StreamableHTTPTransport) handleSSEStream(w http.ResponseWriter, r *ht
 	}
 
 	// Send request to target
+	log.Printf("StreamableHTTP: Connecting to target server at %s", targetURL)
 	resp, err := sht.httpClient.Do(req)
 	if err != nil {
+		log.Printf("StreamableHTTP: Failed to connect to target server: %v", err)
 		sht.writeSSEError(w, nil, -32603, fmt.Sprintf("Failed to connect to target: %v", err))
 		return
 	}
 	defer resp.Body.Close()
 
+	log.Printf("StreamableHTTP: Target server responded with status %d", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("StreamableHTTP: Target server returned error status: %d", resp.StatusCode)
 		sht.writeSSEError(w, nil, -32603, fmt.Sprintf("Target server returned status %d", resp.StatusCode))
 		return
 	}
+
+	log.Printf("StreamableHTTP: Successfully established SSE stream to target server")
 
 	// Stream SSE from target to client
 	sht.proxySSEStream(w, resp.Body, sessionID)
@@ -285,6 +307,21 @@ func (sht *StreamableHTTPTransport) extractSessionID(r *http.Request) string {
 	return sessionID
 }
 
+// ensureSession extracts existing session ID or creates a new one
+func (sht *StreamableHTTPTransport) ensureSession(r *http.Request, adapter models.AdapterResource) (string, error) {
+	sessionID := sht.extractSessionID(r)
+
+	if sessionID == "" {
+		// Generate new session ID for new connections
+		sessionID = sht.generateSessionID()
+		log.Printf("StreamableHTTP: Generated new session ID: %s for adapter %s", sessionID, adapter.Name)
+	} else {
+		log.Printf("StreamableHTTP: Using existing session ID: %s for adapter %s", sessionID, adapter.Name)
+	}
+
+	return sessionID, nil
+}
+
 // generateSessionID generates a new session ID
 func (sht *StreamableHTTPTransport) generateSessionID() string {
 	return fmt.Sprintf("mcp-sess-%d", time.Now().UnixNano())
@@ -303,10 +340,50 @@ func (sht *StreamableHTTPTransport) buildTargetURL(adapter models.AdapterResourc
 		if adapter.RemoteUrl != "" {
 			return adapter.RemoteUrl, nil
 		}
-		return fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:8000/mcp", adapter.Name), nil
+
+		// Default port for MCP servers
+		port := 8000
+
+		// Try multiple URL patterns for better compatibility
+		serviceURL := fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:%d/mcp", adapter.Name, port)
+
+		// For local development, also try direct service name
+		if strings.Contains(adapter.Name, "local") || strings.Contains(adapter.Name, "dev") {
+			directURL := fmt.Sprintf("http://%s:%d/mcp", adapter.Name, port)
+			log.Printf("StreamableHTTP: Trying direct URL for development: %s", directURL)
+			return directURL, nil
+		}
+
+		return serviceURL, nil
 	default:
 		return "", fmt.Errorf("unsupported connection type: %s", adapter.ConnectionType)
 	}
+}
+
+// validateTargetConnection validates that the target MCP server is reachable
+func (sht *StreamableHTTPTransport) validateTargetConnection(targetURL string) error {
+	// Create a health check request
+	healthURL := strings.TrimSuffix(targetURL, "/mcp") + "/health"
+	req, err := http.NewRequest("HEAD", healthURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create health check request: %w", err)
+	}
+
+	// Set timeout for health check
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("target server health check failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check if server is healthy
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("target server returned unhealthy status: %d", resp.StatusCode)
+	}
+
+	log.Printf("StreamableHTTP: Target server health check passed for: %s", targetURL)
+	return nil
 }
 
 // applyAuthentication applies authentication to the request
@@ -411,16 +488,56 @@ func (sht *StreamableHTTPTransport) writeJSONResponse(w http.ResponseWriter, mes
 
 // writeErrorResponse writes a JSON-RPC error response
 func (sht *StreamableHTTPTransport) writeErrorResponse(w http.ResponseWriter, id interface{}, code int, message string) {
-	response := CreateErrorResponse(id, code, message, nil)
-	sht.writeJSONResponse(w, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	errorResp := JSONRPCMessage{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error: &JSONRPCError{
+			Code:    code,
+			Message: message,
+		},
+	}
+
+	if err := json.NewEncoder(w).Encode(errorResp); err != nil {
+		log.Printf("StreamableHTTP: Failed to encode error response: %v", err)
+	}
 }
 
 // writeSSEError writes an error via SSE
 func (sht *StreamableHTTPTransport) writeSSEError(w http.ResponseWriter, id interface{}, code int, message string) {
-	errorResponse := CreateErrorResponse(id, code, message, nil)
+	log.Printf("StreamableHTTP: Sending SSE error - Code: %d, Message: %s", code, message)
 
-	if err := sht.streamSSEMessage(w, errorResponse); err != nil {
-		log.Printf("StreamableHTTP: Failed to write SSE error: %v", err)
+	// Set SSE headers if not already set
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	errorData := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"error": map[string]interface{}{
+			"code":    code,
+			"message": message,
+			"data": map[string]interface{}{
+				"timestamp": time.Now().UTC().Format(time.RFC3339),
+				"transport": "streamable-http",
+			},
+		},
+	}
+
+	errorJSON, err := json.Marshal(errorData)
+	if err != nil {
+		log.Printf("StreamableHTTP: Failed to marshal error data: %v", err)
+		// Fallback to simple error
+		fmt.Fprintf(w, "data: {\"error\": \"Internal error marshaling response\"}\n\n")
+		return
+	}
+
+	fmt.Fprintf(w, "data: %s\n\n", errorJSON)
+
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
 	}
 }
 
