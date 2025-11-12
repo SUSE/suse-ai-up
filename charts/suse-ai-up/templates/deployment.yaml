@@ -138,26 +138,26 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
 
-       {{- with .Values.nodeSelector }}
-       nodeSelector:
-         {{- toYaml . | nindent 8 }}
-       {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
-       # Node affinity configuration
-       {{- $affinity := dict }}
-       {{- if .Values.architecture }}
-         {{- $matchExpression := dict "key" "kubernetes.io/arch" "operator" "In" "values" (list .Values.architecture) }}
-         {{- $nodeSelectorTerm := dict "matchExpressions" (list $matchExpression) }}
-         {{- $nodeAffinity := dict "nodeAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list $nodeSelectorTerm))) }}
-         {{- $affinity = merge $affinity $nodeAffinity }}
-       {{- end }}
-       {{- if .Values.affinity }}
-         {{- $affinity = merge $affinity .Values.affinity }}
-       {{- end }}
-       {{- if $affinity }}
-       affinity:
-         {{- toYaml $affinity | nindent 8 }}
-       {{- end }}
+      # Node affinity configuration
+      {{- $affinity := dict }}
+      {{- if .Values.architecture }}
+        {{- $matchExpression := dict "key" "kubernetes.io/arch" "operator" "In" "values" (list .Values.architecture) }}
+        {{- $nodeSelectorTerm := dict "matchExpressions" (list $matchExpression) }}
+        {{- $nodeAffinity := dict "nodeAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list $nodeSelectorTerm))) }}
+        {{- $affinity = merge $affinity $nodeAffinity }}
+      {{- end }}
+      {{- if .Values.affinity }}
+        {{- $affinity = merge $affinity .Values.affinity }}
+      {{- end }}
+      {{- if $affinity }}
+      affinity:
+        {{- toYaml $affinity | nindent 8 }}
+      {{- end }}
 
       {{- with .Values.tolerations }}
       tolerations:
