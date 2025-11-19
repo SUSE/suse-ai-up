@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "suse-ai-up/docs"
+	"suse-ai-up/docs"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
@@ -43,6 +43,7 @@ import (
 // @description Comprehensive MCP proxy with discovery, registry, and deployment capabilities
 // @host localhost:8911
 // @BasePath /
+// @schemes http
 
 // generateID generates a random hex ID
 func generateID() string {
@@ -97,6 +98,9 @@ func initOTEL(ctx context.Context) error {
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Update swagger host dynamically
+	docs.SwaggerInfo.Host = cfg.GetSwaggerHost()
 
 	// Initialize OpenTelemetry
 	ctx := context.Background()
@@ -434,9 +438,17 @@ func main() {
 		Handler: r,
 	}
 
+	// Log available server URLs
+	serverURLs := cfg.GetServerURLs()
+	log.Printf("Server starting on port %s", cfg.Port)
+	log.Printf("Service will be accessible at:")
+	for _, url := range serverURLs {
+		log.Printf("  %s", url)
+	}
+	log.Printf("Swagger documentation: %s/docs/", serverURLs[0])
+
 	// Graceful shutdown
 	go func() {
-		log.Printf("Server starting on port %s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

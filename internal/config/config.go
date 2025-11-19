@@ -1,9 +1,12 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"suse-ai-up/pkg/network"
 )
 
 // ServiceConfig represents the configuration for a plugin service
@@ -21,9 +24,11 @@ type PluginServicesConfig struct {
 
 // Config holds the main application configuration
 type Config struct {
-	Host   string `json:"host"`
-	Port   string `json:"port"`
-	APIKey string `json:"api_key"`
+	Host           string                   `json:"host"`
+	Port           string                   `json:"port"`
+	APIKey         string                   `json:"api_key"`
+	AvailableHosts []network.NetworkAddress `json:"available_hosts"`
+	PrimaryHost    string                   `json:"primary_host"`
 
 	// Plugin services configuration
 	Services PluginServicesConfig `json:"services"`
@@ -39,10 +44,33 @@ type Config struct {
 
 // LoadConfig loads configuration from environment variables
 func LoadConfig() *Config {
+	// Detect available network addresses
+	availableHosts, err := network.GetAvailableAddresses()
+	if err != nil {
+		log.Printf("Warning: Failed to detect network addresses: %v", err)
+		// Fallback to basic localhost
+		availableHosts = []network.NetworkAddress{
+			{IP: "127.0.0.1", Interface: "localhost", IsPublic: false, IsLocal: true, Priority: 0},
+			{IP: "localhost", Interface: "localhost", IsPublic: false, IsLocal: true, Priority: 1},
+		}
+	}
+
+	// Get primary host
+	primaryHost, err := network.GetPrimaryHost()
+	if err != nil {
+		log.Printf("Warning: Failed to get primary host: %v", err)
+		primaryHost = "localhost"
+	}
+
+	// Use HOST env var if set, otherwise use detected primary host
+	configuredHost := getEnv("HOST", primaryHost)
+
 	cfg := &Config{
-		Host:   getEnv("HOST", "localhost"),
-		Port:   getEnv("PORT", "8911"),
-		APIKey: getEnv("API_KEY", ""),
+		Host:           configuredHost,
+		Port:           getEnv("PORT", "8911"),
+		APIKey:         getEnv("API_KEY", ""),
+		AvailableHosts: availableHosts,
+		PrimaryHost:    primaryHost,
 
 		Services: PluginServicesConfig{
 			SmartAgents: ServiceConfig{
@@ -102,4 +130,22 @@ func (c *Config) GetServiceTimeout(serviceType string) time.Duration {
 		return duration
 	}
 	return 30 * time.Second
+}
+
+// GetServerURLs returns all available server URLs for the current configuration
+func (c *Config) GetServerURLs() []string {
+	var urls []string
+
+	for _, addr := range c.AvailableHosts {
+		url := network.FormatHostURL(addr.IP, c.Port)
+		urls = append(urls, "http://"+url)
+	}
+
+	return urls
+}
+
+// GetSwaggerHost returns the best host to use for swagger documentation
+func (c *Config) GetSwaggerHost() string {
+	// Use the primary host with port for swagger
+	return network.FormatHostURL(c.PrimaryHost, c.Port)
 }

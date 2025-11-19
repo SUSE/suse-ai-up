@@ -1548,7 +1548,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/register": {
+        "/plugins/register": {
             "post": {
                 "description": "Register a plugin service with the proxy",
                 "consumes": [
@@ -1594,7 +1594,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/register/{serviceId}": {
+        "/plugins/register/{serviceId}": {
             "delete": {
                 "description": "Remove a plugin service registration",
                 "tags": [
@@ -1623,7 +1623,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/services": {
+        "/plugins/services": {
             "get": {
                 "description": "Get a list of all registered plugin services",
                 "produces": [
@@ -1646,7 +1646,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/services/type/{serviceType}": {
+        "/plugins/services/type/{serviceType}": {
             "get": {
                 "description": "Get all services of a specific type",
                 "produces": [
@@ -1678,7 +1678,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/services/{serviceId}": {
+        "/plugins/services/{serviceId}": {
             "get": {
                 "description": "Get details of a specific plugin service",
                 "produces": [
@@ -1713,7 +1713,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plugins/services/{serviceId}/health": {
+        "/plugins/services/{serviceId}/health": {
             "get": {
                 "description": "Get health status of a specific plugin service",
                 "produces": [
@@ -1836,6 +1836,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.PluginErrorResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.RegisterRequest": {
             "type": "object",
             "required": [
@@ -1861,6 +1872,45 @@ const docTemplate = `{
                 },
                 "token_info": {
                     "$ref": "#/definitions/auth.TokenInfo"
+                }
+            }
+        },
+        "handlers.RegisterServiceRequest": {
+            "type": "object",
+            "required": [
+                "service_id",
+                "service_type",
+                "service_url"
+            ],
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/plugins.ServiceCapability"
+                    }
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "service_url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterServiceResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2451,6 +2501,12 @@ const docTemplate = `{
                 },
                 "command": {
                     "type": "string"
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -3001,7 +3057,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8911",
 	BasePath:         "/",
-	Schemes:          []string{},
+	Schemes:          []string{"http"},
 	Title:            "SUSE AI Universal Proxy API",
 	Description:      "Comprehensive MCP proxy with discovery, registry, and deployment capabilities",
 	InfoInstanceName: "swagger",
