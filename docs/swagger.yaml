@@ -1645,6 +1645,149 @@ paths:
       summary: Get discovered server
       tags:
       - discovery
+  /api/v1/plugins/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new plugin service with the proxy
+      parameters:
+      - description: Service registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.RegisterServiceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Register a plugin service
+      tags:
+      - plugins
+  /api/v1/plugins/register/{serviceId}:
+    delete:
+      description: Remove a plugin service registration
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Unregister a plugin service
+      tags:
+      - plugins
+  /api/v1/plugins/services:
+    get:
+      description: Get a list of all registered plugin services
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+      summary: List all registered plugin services
+      tags:
+      - plugins
+  /api/v1/plugins/services/{serviceId}:
+    get:
+      description: Get details of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceRegistration'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get service details
+      tags:
+      - plugins
+  /api/v1/plugins/services/{serviceId}/health:
+    get:
+      description: Get the health status of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceHealth'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Get service health
+      tags:
+      - plugins
+  /api/v1/plugins/services/type/{serviceType}:
+    get:
+      description: Get all services of a specific type
+      parameters:
+      - description: Service type (smartagents or registry)
+        in: path
+        name: serviceType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: List services by type
+      tags:
+      - plugins
   /api/v1/registry/{id}:
     delete:
       description: Remove an MCP server entry

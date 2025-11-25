@@ -36,7 +36,7 @@ type RegisterServiceResponse struct {
 	ServiceID string `json:"service_id"`
 }
 
-// RegisterService handles POST /plugins/register
+// RegisterService handles POST /api/v1/plugins/register
 // @Summary Register a plugin service
 // @Description Register a new plugin service with the proxy
 // @Tags plugins
@@ -47,7 +47,7 @@ type RegisterServiceResponse struct {
 // @Failure 400 {object} PluginErrorResponse
 // @Failure 409 {object} PluginErrorResponse
 // @Failure 500 {object} PluginErrorResponse
-// @Router /plugins/register [post]
+// @Router /api/v1/plugins/register [post]
 func (h *PluginHandler) RegisterService(c *gin.Context) {
 	var req RegisterServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,18 +59,8 @@ func (h *PluginHandler) RegisterService(c *gin.Context) {
 	log.Printf("Plugin registration: Registering service %s of type %s at %s",
 		req.ServiceID, req.ServiceType, req.ServiceURL)
 
-	// Convert service type string to ServiceType
-	var serviceType plugins.ServiceType
-	switch req.ServiceType {
-	case "smartagents":
-		serviceType = plugins.ServiceTypeSmartAgents
-	case "registry":
-		serviceType = plugins.ServiceTypeRegistry
-	default:
-		log.Printf("Plugin registration: Invalid service type: %s", req.ServiceType)
-		c.JSON(http.StatusBadRequest, PluginErrorResponse{Error: "Invalid service type", Details: "Must be 'smartagents' or 'registry'"})
-		return
-	}
+	// Convert service type string to ServiceType (allow any type)
+	serviceType := plugins.ServiceType(req.ServiceType)
 
 	// Create service registration
 	registration := &plugins.ServiceRegistration{
@@ -98,7 +88,7 @@ func (h *PluginHandler) RegisterService(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// UnregisterService handles DELETE /plugins/register/{serviceId}
+// UnregisterService handles DELETE /api/v1/plugins/register/{serviceId}
 // @Summary Unregister a plugin service
 // @Description Remove a plugin service registration
 // @Tags plugins
@@ -106,7 +96,7 @@ func (h *PluginHandler) RegisterService(c *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 404 {object} PluginErrorResponse
 // @Failure 500 {object} PluginErrorResponse
-// @Router /plugins/register/{serviceId} [delete]
+// @Router /api/v1/plugins/register/{serviceId} [delete]
 func (h *PluginHandler) UnregisterService(c *gin.Context) {
 	serviceID := c.Param("serviceId")
 
@@ -122,19 +112,19 @@ func (h *PluginHandler) UnregisterService(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ListServices handles GET /plugins/services
+// ListServices handles GET /api/v1/plugins/services
 // @Summary List all registered plugin services
 // @Description Get a list of all registered plugin services
 // @Tags plugins
 // @Produce json
 // @Success 200 {array} plugins.ServiceRegistration
-// @Router /plugins/services [get]
+// @Router /api/v1/plugins/services [get]
 func (h *PluginHandler) ListServices(c *gin.Context) {
 	services := h.serviceManager.GetAllServices()
 	c.JSON(http.StatusOK, services)
 }
 
-// GetService handles GET /plugins/services/{serviceId}
+// GetService handles GET /api/v1/plugins/services/{serviceId}
 // @Summary Get service details
 // @Description Get details of a specific plugin service
 // @Tags plugins
@@ -142,7 +132,7 @@ func (h *PluginHandler) ListServices(c *gin.Context) {
 // @Param serviceId path string true "Service ID"
 // @Success 200 {object} plugins.ServiceRegistration
 // @Failure 404 {object} ErrorResponse
-// @Router /plugins/services/{serviceId} [get]
+// @Router /api/v1/plugins/services/{serviceId} [get]
 func (h *PluginHandler) GetService(c *gin.Context) {
 	serviceID := c.Param("serviceId")
 
@@ -155,7 +145,7 @@ func (h *PluginHandler) GetService(c *gin.Context) {
 	c.JSON(http.StatusOK, service)
 }
 
-// ListServicesByType handles GET /plugins/services/type/{serviceType}
+// ListServicesByType handles GET /api/v1/plugins/services/type/{serviceType}
 // @Summary List services by type
 // @Description Get all services of a specific type
 // @Tags plugins
@@ -163,26 +153,19 @@ func (h *PluginHandler) GetService(c *gin.Context) {
 // @Param serviceType path string true "Service type (smartagents or registry)"
 // @Success 200 {array} plugins.ServiceRegistration
 // @Failure 400 {object} PluginErrorResponse
-// @Router /plugins/services/type/{serviceType} [get]
+// @Router /api/v1/plugins/services/type/{serviceType} [get]
 func (h *PluginHandler) ListServicesByType(c *gin.Context) {
 	serviceTypeStr := c.Param("serviceType")
 
 	var serviceType plugins.ServiceType
-	switch serviceTypeStr {
-	case "smartagents":
-		serviceType = plugins.ServiceTypeSmartAgents
-	case "registry":
-		serviceType = plugins.ServiceTypeRegistry
-	default:
-		c.JSON(http.StatusBadRequest, PluginErrorResponse{Error: "Invalid service type", Details: "Must be 'smartagents' or 'registry'"})
-		return
-	}
+	// Allow any service type
+	serviceType = plugins.ServiceType(serviceTypeStr)
 
 	services := h.serviceManager.GetServicesByType(serviceType)
 	c.JSON(http.StatusOK, services)
 }
 
-// GetServiceHealth handles GET /plugins/services/{serviceId}/health
+// GetServiceHealth handles GET /api/v1/plugins/services/{serviceId}/health
 // @Summary Get service health
 // @Description Get the health status of a specific plugin service
 // @Tags plugins
@@ -190,7 +173,7 @@ func (h *PluginHandler) ListServicesByType(c *gin.Context) {
 // @Param serviceId path string true "Service ID"
 // @Success 200 {object} plugins.ServiceHealth
 // @Failure 404 {object} PluginErrorResponse
-// @Router /plugins/services/{serviceId}/health [get]
+// @Router /api/v1/plugins/services/{serviceId}/health [get]
 func (h *PluginHandler) GetServiceHealth(c *gin.Context) {
 	serviceID := c.Param("serviceId")
 

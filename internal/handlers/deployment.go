@@ -272,6 +272,9 @@ func (h *DeploymentHandler) generateKubernetesObjects(server *models.MCPServer, 
 		},
 	}
 
+	// For virtualMCP servers, the template is assumed to be in the container image
+	// TODO: Add logic to ensure template file is available in the container
+
 	// Create service (only for HTTP/SSE transports)
 	var service *corev1.Service
 	if config.Transport == "http" || config.Transport == "sse" {

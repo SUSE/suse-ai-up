@@ -28,7 +28,7 @@ cd suse-ai-up-smartagents && PROXY_URL=http://localhost:8911 go run cmd/main.go
 
 ### 3. Check registered services
 ```bash
-curl http://localhost:8911/plugins/services
+curl http://localhost:8911/api/v1/plugins/services
 ```
 
 ### 4. Test dynamic routing (routes to SmartAgents)
@@ -39,7 +39,7 @@ curl http://localhost:8911/agents
 
 ### 5. Check service health
 ```bash
-curl http://localhost:8911/plugins/services/smartagents-*/health
+curl http://localhost:8911/api/v1/plugins/services/smartagents-*/health
 ```
 
 ## Local Deployment
@@ -179,7 +179,7 @@ curl -X POST http://localhost:8911/api/v1/plugins/register \
 
 ### Health Checks
 - Proxy health: `curl http://localhost:8911/health`
-- Service registration status: `curl http://localhost:8911/plugins/services`
+- Service registration status: `curl http://localhost:8911/api/v1/plugins/services`
 
 ### Logs
 - Proxy logs: Check the terminal where the proxy service is running

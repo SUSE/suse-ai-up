@@ -1171,6 +1171,224 @@
                 }
             }
         },
+        "/api/v1/plugins/register": {
+            "post": {
+                "description": "Register a new plugin service with the proxy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Register a plugin service",
+                "parameters": [
+                    {
+                        "description": "Service registration request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterServiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterServiceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/register/{serviceId}": {
+            "delete": {
+                "description": "Remove a plugin service registration",
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Unregister a plugin service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services": {
+            "get": {
+                "description": "Get a list of all registered plugin services",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List all registered plugin services",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/type/{serviceType}": {
+            "get": {
+                "description": "Get all services of a specific type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List services by type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service type (smartagents or registry)",
+                        "name": "serviceType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/{serviceId}": {
+            "get": {
+                "description": "Get details of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/{serviceId}/health": {
+            "get": {
+                "description": "Get the health status of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service health",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceHealth"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/registry/browse": {
             "get": {
                 "description": "Search and filter MCP servers from all configured sources",

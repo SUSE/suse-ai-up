@@ -132,6 +132,14 @@ func (rm *DefaultRegistryManager) matchesFilters(server *models.MCPServer, filte
 			if server.Repository != nil && !strings.Contains(strings.ToLower(server.Repository.Source), strings.ToLower(fmt.Sprintf("%v", value))) {
 				return false
 			}
+		case "source":
+			// Check in meta.source for VirtualMCP entries
+			if server.Meta == nil {
+				return false
+			}
+			if source, ok := server.Meta["source"].(string); !ok || source != value {
+				return false
+			}
 		}
 	}
 

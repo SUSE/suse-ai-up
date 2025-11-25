@@ -172,7 +172,7 @@ func main() {
 	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager)
 
 	// Initialize plugin service manager
-	serviceManager := plugins.NewServiceManager(cfg)
+	serviceManager := plugins.NewServiceManager(cfg, registryManager)
 	pluginHandler := handlers.NewPluginHandler(serviceManager)
 
 	kubeClient, err := clients.NewKubernetesClient()

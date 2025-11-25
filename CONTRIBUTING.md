@@ -194,7 +194,7 @@ func TestPluginRegistration(t *testing.T) {
     service.SetProxyURL("http://localhost:8911")
 
     // Verify registration
-    resp, err := http.Get("http://localhost:8911/plugins/services")
+    resp, err := http.Get("http://localhost:8911/api/v1/plugins/services")
     // Assert service appears in list
 }
 

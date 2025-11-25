@@ -90,7 +90,7 @@ Plugin Service Framework
 │   └── VirtualMCP (VM-based MCP servers)
 └── Service Discovery
     ├── Auto-registration (PROXY_URL env var)
-    ├── Manual registration (/plugins/register)
+    ├── Manual registration (/api/v1/plugins/register)
     └── Service health checks (/health)
 ```
 

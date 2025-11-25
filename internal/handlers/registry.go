@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -709,6 +711,7 @@ func (h *RegistryHandler) UploadBulkRegistryEntries(c *gin.Context) {
 // @Param transport query string false "Filter by transport type (stdio, sse, websocket)"
 // @Param registryType query string false "Filter by registry type (oci, npm)"
 // @Param validationStatus query string false "Filter by validation status"
+// @Param source query string false "Filter by source (official, docker-mcp, virtualmcp)"
 // @Success 200 {array} models.MCPServer
 // @Router /api/v1/registry/browse [get]
 func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
@@ -723,6 +726,9 @@ func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
 	}
 	if validationStatus := c.Query("validationStatus"); validationStatus != "" {
 		filters["validationStatus"] = validationStatus
+	}
+	if source := c.Query("source"); source != "" {
+		filters["source"] = source
 	}
 
 	servers, err := h.RegistryManager.SearchServers(query, filters)
@@ -751,6 +757,169 @@ func (h *RegistryHandler) SyncOfficialRegistry(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// CreateAdapterFromRegistry handles POST /registry/{id}/create-adapter
+// @Summary Create an adapter from an MCP registry entry
+// @Description Creates an adapter from an MCP server in the registry, specifically for virtualMCP servers
+// @Tags registry, adapters
+// @Accept json
+// @Produce json
+// @Param id path string true "MCP Server ID"
+// @Param request body CreateAdapterFromRegistryRequest true "Adapter creation configuration"
+// @Success 201 {object} CreateAdapterFromRegistryResponse
+// @Failure 400 {string} string "Bad Request"
+// @Failure 404 {string} string "Server not found"
+// @Router /api/v1/registry/{id}/create-adapter [post]
+func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
+	serverID := c.Param("id")
+	if serverID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Server ID is required"})
+		return
+	}
+
+	// Get the MCP server from registry
+	server, err := h.Store.GetMCPServer(serverID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "MCP server not found"})
+		return
+	}
+
+	// Check if this is a virtualMCP server
+	if server.Meta == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Server is not a virtualMCP server"})
+		return
+	}
+
+	source, ok := server.Meta["source"].(string)
+	if !ok || source != "virtualmcp" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Server is not a virtualMCP server"})
+		return
+	}
+
+	// Parse request body for additional configuration
+	var req CreateAdapterFromRegistryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req = CreateAdapterFromRegistryRequest{} // Use defaults
+	}
+
+	// Create adapter data from MCP server
+	adapterData := h.createAdapterDataFromMCPServer(server, req)
+
+	// Generate authentication token
+	tokenInfo, err := h.generateAuthForVirtualMCPAdapter(adapterData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authentication"})
+		return
+	}
+
+	// Create adapter resource
+	adapter := &models.AdapterResource{}
+	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store adapter (assuming we have access to adapter store)
+	// For now, return the adapter configuration
+	response := CreateAdapterFromRegistryResponse{
+		Message:   "Adapter configuration created successfully",
+		Adapter:   adapter,
+		TokenInfo: tokenInfo,
+		Note:      "Use this configuration to deploy the adapter with HTTP transport",
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// CreateAdapterFromRegistryRequest represents the request for creating an adapter from registry
+type CreateAdapterFromRegistryRequest struct {
+	ReplicaCount         int               `json:"replicaCount,omitempty"`
+	EnvironmentVariables map[string]string `json:"environmentVariables,omitempty"`
+}
+
+// CreateAdapterFromRegistryResponse represents the response for adapter creation
+type CreateAdapterFromRegistryResponse struct {
+	Message   string                  `json:"message"`
+	Adapter   *models.AdapterResource `json:"adapter"`
+	TokenInfo *AuthTokenInfo          `json:"tokenInfo,omitempty"`
+	Note      string                  `json:"note"`
+}
+
+// AuthTokenInfo represents authentication token information
+type AuthTokenInfo struct {
+	Token     string    `json:"token"`
+	TokenType string    `json:"tokenType"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// createAdapterDataFromMCPServer creates adapter configuration from MCP server
+func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServer, req CreateAdapterFromRegistryRequest) *models.AdapterData {
+	// Generate adapter name
+	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
+
+	// Create adapter data with HTTP transport
+	adapterData := &models.AdapterData{
+		Name:                 adapterName,
+		ImageName:            "node", // Use Node.js for TypeScript template
+		ImageVersion:         "18-alpine",
+		Protocol:             models.ServerProtocolMCP,
+		ConnectionType:       models.ConnectionTypeStreamableHttp,
+		EnvironmentVariables: make(map[string]string),
+		ReplicaCount:         req.ReplicaCount,
+		Description:          fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
+		UseWorkloadIdentity:  false,
+	}
+
+	if adapterData.ReplicaCount <= 0 {
+		adapterData.ReplicaCount = 1
+	}
+
+	// Set environment variables
+	if req.EnvironmentVariables != nil {
+		for k, v := range req.EnvironmentVariables {
+			adapterData.EnvironmentVariables[k] = v
+		}
+	}
+
+	// Add tools configuration
+	if len(server.Tools) > 0 {
+		toolsJSON, err := json.Marshal(server.Tools)
+		if err == nil {
+			adapterData.EnvironmentVariables["TOOLS_CONFIG"] = string(toolsJSON)
+		}
+	}
+
+	// Set port for HTTP server
+	adapterData.EnvironmentVariables["PORT"] = "3000"
+
+	return adapterData
+}
+
+// generateAuthForVirtualMCPAdapter generates authentication for virtualMCP adapter
+func (h *RegistryHandler) generateAuthForVirtualMCPAdapter(adapterData *models.AdapterData) (*AuthTokenInfo, error) {
+	// Generate a secure token
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+	tokenStr := base64.URLEncoding.EncodeToString(token)
+
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	// Configure authentication
+	adapterData.Authentication = &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		BearerToken: &models.BearerTokenConfig{
+			Token:     tokenStr,
+			Dynamic:   false,
+			ExpiresAt: expiresAt,
+		},
+	}
+
+	return &AuthTokenInfo{
+		Token:     tokenStr,
+		TokenType: "Bearer",
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
 // UploadLocalMCP handles POST /registry/upload/local-mcp

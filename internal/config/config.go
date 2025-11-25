@@ -17,9 +17,9 @@ type ServiceConfig struct {
 }
 
 // PluginServicesConfig holds configuration for all plugin services
+// Uses a map to allow any service type to be configured
 type PluginServicesConfig struct {
-	SmartAgents ServiceConfig `json:"smartagents"`
-	Registry    ServiceConfig `json:"registry"`
+	Services map[string]ServiceConfig `json:"services"`
 }
 
 // Config holds the main application configuration
@@ -73,15 +73,22 @@ func LoadConfig() *Config {
 		PrimaryHost:    primaryHost,
 
 		Services: PluginServicesConfig{
-			SmartAgents: ServiceConfig{
-				Enabled: getEnvBool("SMARTAGENTS_ENABLED", true),
-				URL:     getEnv("SMARTAGENTS_URL", "http://localhost:8910"),
-				Timeout: getEnv("SMARTAGENTS_TIMEOUT", "30s"),
-			},
-			Registry: ServiceConfig{
-				Enabled: getEnvBool("REGISTRY_ENABLED", true),
-				URL:     getEnv("REGISTRY_URL", "http://localhost:8912"),
-				Timeout: getEnv("REGISTRY_TIMEOUT", "30s"),
+			Services: map[string]ServiceConfig{
+				"smartagents": {
+					Enabled: getEnvBool("SMARTAGENTS_ENABLED", true),
+					URL:     getEnv("SMARTAGENTS_URL", "http://localhost:8910"),
+					Timeout: getEnv("SMARTAGENTS_TIMEOUT", "30s"),
+				},
+				"registry": {
+					Enabled: getEnvBool("REGISTRY_ENABLED", true),
+					URL:     getEnv("REGISTRY_URL", "http://localhost:8912"),
+					Timeout: getEnv("REGISTRY_TIMEOUT", "30s"),
+				},
+				"virtualmcp": {
+					Enabled: getEnvBool("VIRTUALMCP_ENABLED", true),
+					URL:     getEnv("VIRTUALMCP_URL", "http://localhost:8913"),
+					Timeout: getEnv("VIRTUALMCP_TIMEOUT", "30s"),
+				},
 			},
 		},
 
@@ -115,19 +122,10 @@ func getEnvBool(key string, defaultValue bool) bool {
 
 // GetServiceTimeout returns the timeout duration for a service
 func (c *Config) GetServiceTimeout(serviceType string) time.Duration {
-	var timeoutStr string
-	switch serviceType {
-	case "smartagents":
-		timeoutStr = c.Services.SmartAgents.Timeout
-	case "registry":
-		timeoutStr = c.Services.Registry.Timeout
-
-	default:
-		timeoutStr = "30s"
-	}
-
-	if duration, err := time.ParseDuration(timeoutStr); err == nil {
-		return duration
+	if serviceConfig, exists := c.Services.Services[serviceType]; exists {
+		if duration, err := time.ParseDuration(serviceConfig.Timeout); err == nil {
+			return duration
+		}
 	}
 	return 30 * time.Second
 }
