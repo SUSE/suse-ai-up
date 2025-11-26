@@ -823,39 +823,62 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	tokenStr := base64.URLEncoding.EncodeToString(tokenBytes)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	// For registry-based adapters, we create local adapters that use the TypeScript template
-	// No server deployment is needed - the adapter handles tool conversion locally
+	// For VirtualMCP adapters, we deploy the virtualmcp-server.ts as a streamable HTTP server
+	// and create a StreamableHttp adapter that connects to it
 
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 
-	// Create adapter data for VirtualMCP - configured as local adapter using TypeScript template
-	// Prepare tools configuration for the adapter
-	toolsJSON, err := json.Marshal(server.Tools)
+	// Prepare tools configuration for the server - convert to template format
+	templateTools := convertToolsForTemplate(server.Tools)
+	toolsJSON, err := json.Marshal(templateTools)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal tools configuration"})
 		return
 	}
 
+	// Update the server's ConfigTemplate for deployment as HTTP server
+	server.ConfigTemplate = &models.MCPConfigTemplate{
+		Command: "npx",
+		Args:    []string{"tsx", "templates/virtualmcp-server.ts", "--transport", "http"},
+		Env: map[string]string{
+			"SERVER_NAME":  adapterName,
+			"PORT":         "8080", // Default port for the HTTP server
+			"BEARER_TOKEN": tokenStr,
+			"TOOLS_CONFIG": string(toolsJSON), // Use TOOLS_CONFIG instead of VIRTUAL_MCP_CONFIG
+		},
+		Transport: "http",
+		Image:     "ghcr.io/alessandro-festa/suse-ai-up:latest",
+	}
+
+	// Add environment variables from request
+	if req.EnvironmentVariables != nil {
+		for k, v := range req.EnvironmentVariables {
+			server.ConfigTemplate.Env[k] = v
+		}
+	}
+
+	// Update the server in the registry
+	if err := h.Store.UpdateMCPServer(server.ID, server); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update server configuration"})
+		return
+	}
+
+	// Deploy the server
+	if err := h.DeploymentHandler.DeployMCPDirect(server.ID, req.EnvironmentVariables, req.ReplicaCount); err != nil {
+		log.Printf("Failed to deploy VirtualMCP server: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to deploy server: %v", err)})
+		return
+	}
+
+	// Create StreamableHttp adapter that connects to the deployed server
 	adapterData := &models.AdapterData{
 		Name:           adapterName,
 		Protocol:       models.ServerProtocolMCP,
-		ConnectionType: models.ConnectionTypeLocalStdio,
+		ConnectionType: models.ConnectionTypeStreamableHttp,
 		ReplicaCount:   req.ReplicaCount,
 		Description:    fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
-		MCPClientConfig: models.MCPClientConfig{
-			MCPServers: map[string]models.MCPServerConfig{
-				"virtualmcp": {
-					Command: "npx",
-					Args:    []string{"tsx", "templates/virtualmcp-server.ts"},
-					Env: map[string]string{
-						"API_BASE_URL": "http://localhost:8000",
-						"SERVER_NAME":  adapterName,
-						"TOOLS_CONFIG": string(toolsJSON),
-					},
-				},
-			},
-		},
+		RemoteUrl:      fmt.Sprintf("http://mcp-%s", strings.ReplaceAll(server.ID, "/", "-")), // Service URL for deployed server
 		Authentication: &models.AdapterAuthConfig{
 			Required: true,
 			Type:     "bearer",
@@ -1284,4 +1307,35 @@ func (h *RegistryHandler) extractDockerConfig(dockerImage string) (*models.MCPCo
 // generateID generates a unique ID for MCP servers
 func generateID() string {
 	return time.Now().Format("20060102150405") + fmt.Sprintf("%06d", time.Now().Nanosecond()/1000)
+}
+
+// TemplateTool represents the tool format expected by the VirtualMCP template
+type TemplateTool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	SourceType  string                 `json:"source_type"`
+	InputSchema map[string]interface{} `json:"input_schema"`
+	Config      map[string]interface{} `json:"config"`
+}
+
+// convertToolsForTemplate converts MCPTool format to VirtualMCPTool format expected by the template
+func convertToolsForTemplate(tools []models.MCPTool) []TemplateTool {
+	templateTools := make([]TemplateTool, len(tools))
+	for i, tool := range tools {
+		templateTools[i] = TemplateTool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			SourceType:  tool.SourceType,
+			InputSchema: tool.InputSchema,
+			Config:      tool.Config,
+		}
+		// Set defaults if missing
+		if templateTools[i].SourceType == "" {
+			templateTools[i].SourceType = "api"
+		}
+		if templateTools[i].Config == nil {
+			templateTools[i].Config = make(map[string]interface{})
+		}
+	}
+	return templateTools
 }

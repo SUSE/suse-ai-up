@@ -28,12 +28,12 @@ const TOOLS_CONFIG = process.env.TOOLS_CONFIG || '[]';
 const SERVER_NAME = process.env.SERVER_NAME || 'virtualmcp-server';
 const PORT = parseInt(process.env.PORT || '3000');
 const BEARER_TOKEN = process.env.BEARER_TOKEN;
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.API_BASE_URL; // No default - only set if explicitly provided
 
 console.log('VirtualMCP Server Configuration:');
 console.log('  SERVER_NAME:', SERVER_NAME);
 console.log('  PORT:', PORT);
-console.log('  API_BASE_URL:', API_BASE_URL);
+console.log('  API_BASE_URL:', API_BASE_URL || 'not set');
 console.log('  TOOLS_CONFIG length:', TOOLS_CONFIG.length);
 console.log('  TOOLS_CONFIG preview:', TOOLS_CONFIG.substring(0, 200) + (TOOLS_CONFIG.length > 200 ? '...' : ''));
 
@@ -112,6 +112,9 @@ try {
         }
 
         // Build API URL from base URL + path
+        if (!API_BASE_URL) {
+          throw new Error(`API_BASE_URL environment variable must be set for OpenAPI tools`);
+        }
         const apiUrl = API_BASE_URL + annotations.path;
         console.log(`Converting tool ${openApiTool.name}: ${annotations.method} ${apiUrl}`);
 
