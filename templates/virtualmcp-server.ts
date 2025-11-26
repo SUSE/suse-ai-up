@@ -7,8 +7,8 @@
  * It runs as an HTTP server with streamable HTTP transport and authentication.
  */
 
-import * as express from 'express';
-import * as cors from 'cors';
+import express from 'express';
+import cors from 'cors';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
@@ -19,7 +19,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Client as PostgresClient } from 'pg';
-import * as mysql from 'mysql2/promise';
+import mysql from 'mysql2/promise';
 import { GraphQLClient, gql } from 'graphql-request';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -19,15 +20,15 @@ import (
 
 // DeploymentHandler handles MCP server deployment operations
 type DeploymentHandler struct {
-	RegistryHandler *RegistryHandler
-	KubeClient      *clients.KubeClientWrapper
+	Store      MCPServerStore
+	KubeClient *clients.KubeClientWrapper
 }
 
 // NewDeploymentHandler creates a new deployment handler
-func NewDeploymentHandler(registryHandler *RegistryHandler, kubeClient *clients.KubeClientWrapper) *DeploymentHandler {
+func NewDeploymentHandler(store MCPServerStore, kubeClient *clients.KubeClientWrapper) *DeploymentHandler {
 	return &DeploymentHandler{
-		RegistryHandler: registryHandler,
-		KubeClient:      kubeClient,
+		Store:      store,
+		KubeClient: kubeClient,
 	}
 }
 
@@ -46,7 +47,7 @@ func (h *DeploymentHandler) GetMCPConfig(c *gin.Context) {
 	serverID = strings.TrimPrefix(serverID, "/")
 
 	// Get server from registry
-	server, err := h.RegistryHandler.Store.GetMCPServer(serverID)
+	server, err := h.Store.GetMCPServer(serverID)
 	if err != nil {
 		log.Printf("MCP server not found: %s", serverID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "MCP server not found"})
@@ -59,6 +60,35 @@ func (h *DeploymentHandler) GetMCPConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, server.ConfigTemplate)
+}
+
+// DeployMCPDirect deploys an MCP server directly with the given parameters
+func (h *DeploymentHandler) DeployMCPDirect(serverID string, envVars map[string]string, replicas int) error {
+	req := DeployRequest{
+		ServerID: serverID,
+		EnvVars:  envVars,
+		Replicas: replicas,
+	}
+
+	// Get server configuration
+	server, err := h.Store.GetMCPServer(req.ServerID)
+	if err != nil {
+		log.Printf("MCP server not found: %s", req.ServerID)
+		return fmt.Errorf("MCP server not found: %s", req.ServerID)
+	}
+
+	if server.ConfigTemplate == nil {
+		return fmt.Errorf("Server does not have a deployment configuration")
+	}
+
+	// Validate that all required environment variables are provided
+	if err := h.validateEnvironmentVariables(server.ConfigTemplate, req.EnvVars); err != nil {
+		return err
+	}
+
+	// Deploy to Kubernetes
+	_, err = h.deployToKubernetes(server, req)
+	return err
 }
 
 // DeployMCP handles POST /deployment/deploy
@@ -86,7 +116,7 @@ func (h *DeploymentHandler) DeployMCP(c *gin.Context) {
 	}
 
 	// Get server configuration
-	server, err := h.RegistryHandler.Store.GetMCPServer(req.ServerID)
+	server, err := h.Store.GetMCPServer(req.ServerID)
 	if err != nil {
 		log.Printf("MCP server not found: %s", req.ServerID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "MCP server not found"})
@@ -183,12 +213,21 @@ func (h *DeploymentHandler) generateKubernetesObjects(server *models.MCPServer, 
 	deploymentName := fmt.Sprintf("mcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 	containerName := strings.ReplaceAll(server.ID, "/", "-")
 
-	// Determine ports based on transport type
+	// Determine ports based on transport type and environment variables
 	var containerPort int32
 	var portName string
 	switch config.Transport {
 	case "http":
-		containerPort = 3000
+		// Check if PORT is specified in environment variables
+		if portStr, exists := config.Env["PORT"]; exists {
+			if port, err := strconv.Atoi(portStr); err == nil {
+				containerPort = int32(port)
+			} else {
+				containerPort = 3000
+			}
+		} else {
+			containerPort = 3000
+		}
 		portName = "http"
 	case "sse":
 		containerPort = 3000

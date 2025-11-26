@@ -169,11 +169,6 @@ func main() {
 	// Initialize missing handlers
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager)
-
-	// Initialize plugin service manager
-	serviceManager := plugins.NewServiceManager(cfg, registryManager)
-	pluginHandler := handlers.NewPluginHandler(serviceManager)
 
 	kubeClient, err := clients.NewKubernetesClient()
 	if err != nil {
@@ -181,7 +176,13 @@ func main() {
 		kubeClient = nil
 	}
 	kubeWrapper := clients.NewKubeClientWrapper(kubeClient, "default")
-	deploymentHandler := handlers.NewDeploymentHandler(registryHandler, kubeWrapper)
+	deploymentHandler := handlers.NewDeploymentHandler(registryStore, kubeWrapper)
+
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler)
+
+	// Initialize plugin service manager
+	serviceManager := plugins.NewServiceManager(cfg, registryManager)
+	pluginHandler := handlers.NewPluginHandler(serviceManager)
 
 	// registrationHandler := handlers.NewRegistrationHandler(networkScanner, adapterStore, tokenManager, cfg)
 
