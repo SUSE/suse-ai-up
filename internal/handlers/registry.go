@@ -797,6 +797,12 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		return
 	}
 
+	// Validate VirtualMCP tools configuration
+	if err := h.validateVirtualMCPTools(server.Tools); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid tool configuration: %v", err)})
+		return
+	}
+
 	// Parse request body for additional configuration
 	var req CreateAdapterFromRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -850,36 +856,82 @@ type AuthTokenInfo struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+// validateVirtualMCPTools validates that VirtualMCP tools have proper configuration
+func (h *RegistryHandler) validateVirtualMCPTools(tools []models.MCPTool) error {
+	for _, tool := range tools {
+		if tool.SourceType == "" {
+			continue // Skip validation for non-VirtualMCP tools
+		}
+
+		switch tool.SourceType {
+		case "api":
+			if tool.Config == nil {
+				return fmt.Errorf("tool %s: config is required for API tools", tool.Name)
+			}
+			if _, ok := tool.Config["api_url"]; !ok {
+				return fmt.Errorf("tool %s: api_url is required for API tools", tool.Name)
+			}
+		case "database":
+			if tool.Config == nil {
+				return fmt.Errorf("tool %s: config is required for database tools", tool.Name)
+			}
+			if _, ok := tool.Config["db_type"]; !ok {
+				return fmt.Errorf("tool %s: db_type is required for database tools", tool.Name)
+			}
+			if _, ok := tool.Config["db_connection"]; !ok {
+				return fmt.Errorf("tool %s: db_connection is required for database tools", tool.Name)
+			}
+			if _, ok := tool.Config["db_query"]; !ok {
+				return fmt.Errorf("tool %s: db_query is required for database tools", tool.Name)
+			}
+		case "graphql":
+			if tool.Config == nil {
+				return fmt.Errorf("tool %s: config is required for GraphQL tools", tool.Name)
+			}
+			if _, ok := tool.Config["graphql_url"]; !ok {
+				return fmt.Errorf("tool %s: graphql_url is required for GraphQL tools", tool.Name)
+			}
+			if _, ok := tool.Config["graphql_query"]; !ok {
+				return fmt.Errorf("tool %s: graphql_query is required for GraphQL tools", tool.Name)
+			}
+		default:
+			return fmt.Errorf("tool %s: unsupported source type: %s", tool.Name, tool.SourceType)
+		}
+	}
+	return nil
+}
+
 // createAdapterDataFromMCPServer creates adapter configuration from MCP server
 func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServer, req CreateAdapterFromRegistryRequest) *models.AdapterData {
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 
-	// Create adapter data with local stdio transport for virtualMCP
+	// Create adapter data with streamable HTTP transport for virtualMCP
 	adapterData := &models.AdapterData{
-		Name:           adapterName,
-		Protocol:       models.ServerProtocolMCP,
-		ConnectionType: models.ConnectionTypeLocalStdio,
-		MCPClientConfig: models.MCPClientConfig{
-			MCPServers: map[string]models.MCPServerConfig{
-				"virtualmcp": {
-					Command: "tsx",
-					Args:    []string{"templates/virtualmcp-server.ts"},
-					Env:     make(map[string]string),
-				},
-			},
-		},
+		Name:                 adapterName,
+		ImageName:            "node", // Use Node.js base image
+		ImageVersion:         "18-alpine",
+		Protocol:             models.ServerProtocolMCP,
+		ConnectionType:       models.ConnectionTypeStreamableHttp,
+		Command:              "npm",
+		Args:                 []string{"run", "http"},
 		EnvironmentVariables: make(map[string]string),
 		ReplicaCount:         req.ReplicaCount,
 		Description:          fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
 		UseWorkloadIdentity:  false,
+		RemoteUrl:            fmt.Sprintf("http://%s:3000", adapterName), // Service URL for deployed adapter
 	}
 
 	if adapterData.ReplicaCount <= 0 {
 		adapterData.ReplicaCount = 1
 	}
 
-	// Set environment variables
+	// Set default environment variables
+	adapterData.EnvironmentVariables["SERVER_NAME"] = server.Name
+	adapterData.EnvironmentVariables["PORT"] = "3000"
+	adapterData.EnvironmentVariables["MCP_PROXY_URL"] = fmt.Sprintf("http://%s:3000/mcp", adapterName)
+
+	// Set environment variables from request
 	if req.EnvironmentVariables != nil {
 		for k, v := range req.EnvironmentVariables {
 			adapterData.EnvironmentVariables[k] = v
@@ -890,7 +942,7 @@ func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServe
 	if len(server.Tools) > 0 {
 		toolsJSON, err := json.Marshal(server.Tools)
 		if err == nil {
-			adapterData.MCPClientConfig.MCPServers["virtualmcp"].Env["TOOLS_CONFIG"] = string(toolsJSON)
+			adapterData.EnvironmentVariables["TOOLS_CONFIG"] = string(toolsJSON)
 		}
 	}
 

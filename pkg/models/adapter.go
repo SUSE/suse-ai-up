@@ -198,6 +198,9 @@ type MCPTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]interface{} `json:"input_schema"`
+	// VirtualMCP specific fields
+	SourceType string                 `json:"source_type,omitempty"` // "api", "database", "graphql"
+	Config     map[string]interface{} `json:"config,omitempty"`      // Tool-specific configuration
 }
 
 // MCPToolsConfig represents the mcp_tools configuration for an agent

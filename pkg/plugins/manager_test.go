@@ -218,9 +218,9 @@ func TestConvertMCPImplementationToMCPServer_VirtualMCP(t *testing.T) {
 	// Verify config template for HTTP transport
 	assert.NotNil(t, server.ConfigTemplate)
 	assert.Equal(t, "http", server.ConfigTemplate.Transport)
-	assert.Equal(t, "node", server.ConfigTemplate.Command)
-	assert.Equal(t, []string{"/app/templates/virtualmcp-server.ts"}, server.ConfigTemplate.Args)
-	assert.Equal(t, "node:18-alpine", server.ConfigTemplate.Image)
+	assert.Equal(t, "tsx", server.ConfigTemplate.Command)
+	assert.Equal(t, []string{"templates/virtualmcp-server.ts"}, server.ConfigTemplate.Args)
+	assert.Equal(t, "ghcr.io/alessandro-festa/suse-ai-up:latest", server.ConfigTemplate.Image)
 
 	// Verify tools are included in environment
 	assert.Contains(t, server.ConfigTemplate.Env, "TOOLS_CONFIG")

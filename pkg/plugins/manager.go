@@ -506,6 +506,13 @@ func (sm *ServiceManager) convertMCPImplementationToMCPServer(impl map[string]in
 				if inputSchema, ok := toolMap["input_schema"].(map[string]interface{}); ok {
 					tool.InputSchema = inputSchema
 				}
+				// Handle VirtualMCP specific fields
+				if sourceType, ok := toolMap["source_type"].(string); ok {
+					tool.SourceType = sourceType
+				}
+				if config, ok := toolMap["config"].(map[string]interface{}); ok {
+					tool.Config = config
+				}
 				server.Tools = append(server.Tools, tool)
 			}
 		}

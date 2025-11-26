@@ -7,26 +7,58 @@
  * It runs as an HTTP server with streamable HTTP transport and authentication.
  */
 
+import * as express from 'express';
+import * as cors from 'cors';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ErrorCode,
   ListToolsRequestSchema,
   McpError,
+  JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Client as PostgresClient } from 'pg';
+import * as mysql from 'mysql2/promise';
+import { GraphQLClient, gql } from 'graphql-request';
+import { v4 as uuidv4 } from 'uuid';
 
 // Configuration from environment variables
 const TOOLS_CONFIG = process.env.TOOLS_CONFIG || '[]';
+const SERVER_NAME = process.env.SERVER_NAME || 'virtualmcp-server';
+const PORT = parseInt(process.env.PORT || '3000');
+const BEARER_TOKEN = process.env.BEARER_TOKEN;
+
+// Transport mode
+const TRANSPORT_MODE = process.argv.includes('--transport') ?
+  process.argv[process.argv.indexOf('--transport') + 1] : 'stdio';
 
 // Parse tool configuration
 interface VirtualMCPTool {
   name: string;
   description: string;
+  source_type: 'api' | 'database' | 'graphql';
   input_schema: {
     type: string;
     properties: Record<string, any>;
     required?: string[];
+  };
+  config: {
+    // API config
+    api_url?: string;
+    api_method?: string;
+    api_headers?: Record<string, string>;
+    request_mapping?: Record<string, string>;
+    response_mapping?: Record<string, string>;
+    // Database config
+    db_type?: 'postgres' | 'mysql';
+    db_connection?: string;
+    db_query?: string;
+    db_params?: Record<string, string>;
+    // GraphQL config
+    graphql_url?: string;
+    graphql_query?: string;
+    graphql_variables?: Record<string, string>;
   };
 }
 
@@ -38,7 +70,6 @@ try {
   console.error('Failed to parse TOOLS_CONFIG:', error);
   process.exit(1);
 }
-
 
 
 // Tool execution function
@@ -60,8 +91,7 @@ async function executeTool(name: string, args: any): Promise<any> {
     }
   }
 
-  // Execute tool based on its specification
-  // This is a generic implementation that can be extended for specific tools
+  // Execute tool based on its source type
   try {
     const result = await executeVirtualMCPTool(tool, args);
     return result;
@@ -71,126 +101,177 @@ async function executeTool(name: string, args: any): Promise<any> {
   }
 }
 
-// Execute a virtualMCP tool based on its specification
+// Execute a virtualMCP tool based on its source type
 async function executeVirtualMCPTool(tool: VirtualMCPTool, args: any): Promise<any> {
-  // This is where you would implement the actual tool execution logic
-  // For now, we provide mock implementations for common tool types
-
-  switch (tool.name) {
-    case 'chat_completion':
-    case 'completion':
-      return await executeChatCompletion(args);
-
-    case 'read_file':
-    case 'readFile':
-      return await executeReadFile(args);
-
-    case 'list_directory':
-    case 'listDirectory':
-    case 'list_dir':
-      return await executeListDirectory(args);
-
-    case 'write_file':
-    case 'writeFile':
-      return await executeWriteFile(args);
-
-    case 'run_command':
-    case 'execute_command':
-      return await executeCommand(args);
-
+  switch (tool.source_type) {
+    case 'api':
+      return await executeApiTool(tool, args);
+    case 'database':
+      return await executeDatabaseTool(tool, args);
+    case 'graphql':
+      return await executeGraphQLTool(tool, args);
     default:
-      // Generic tool execution - return a structured response
-      return {
-        content: [{
-          type: 'text',
-          text: `Executed tool '${tool.name}' with parameters: ${JSON.stringify(args, null, 2)}`
-        }]
-      };
+      throw new Error(`Unsupported source type: ${tool.source_type}`);
   }
 }
 
-// Mock implementations for common tool types
-async function executeChatCompletion(args: any): Promise<any> {
-  const messages = args.messages || [];
-  const maxTokens = args.max_tokens || 100;
+// API Tool Execution
+async function executeApiTool(tool: VirtualMCPTool, args: any): Promise<any> {
+  const config = tool.config;
+  if (!config.api_url) {
+    throw new Error('API URL is required for API tools');
+  }
 
-  // Mock response - in real implementation, call actual AI API
-  return {
-    content: [{
-      type: 'text',
-      text: `Mock chat completion response for ${messages.length} messages (max ${maxTokens} tokens)`
-    }],
-    usage: {
-      prompt_tokens: messages.length * 10,
-      completion_tokens: 50,
-      total_tokens: messages.length * 10 + 50
+  // Build request configuration
+  const requestConfig: AxiosRequestConfig = {
+    method: config.api_method || 'GET',
+    url: config.api_url,
+    headers: config.api_headers || {},
+  };
+
+  // Apply request mapping
+  if (config.request_mapping) {
+    if (requestConfig.method === 'GET') {
+      requestConfig.params = {};
+      for (const [paramKey, argKey] of Object.entries(config.request_mapping)) {
+        if (args[argKey]) {
+          requestConfig.params[paramKey] = args[argKey];
+        }
+      }
+    } else {
+      requestConfig.data = {};
+      for (const [paramKey, argKey] of Object.entries(config.request_mapping)) {
+        if (args[argKey] !== undefined) {
+          requestConfig.data[paramKey] = args[argKey];
+        }
+      }
     }
-  };
-}
-
-async function executeReadFile(args: any): Promise<any> {
-  const path = args.path;
-  if (!path) {
-    throw new Error('Path parameter is required');
+  } else {
+    // Default: pass all args as request data
+    if (requestConfig.method !== 'GET') {
+      requestConfig.data = args;
+    } else {
+      requestConfig.params = args;
+    }
   }
 
-  // Mock response - in real implementation, read actual file
-  return {
-    content: [{
-      type: 'text',
-      text: `Mock file content for: ${path}\n\nThis is mock content. In a real implementation, this would read the actual file.`
-    }]
-  };
+  try {
+    const response = await axios.request(requestConfig);
+
+    // Apply response mapping
+    let result = response.data;
+    if (config.response_mapping) {
+      result = {};
+      for (const [resultKey, responsePath] of Object.entries(config.response_mapping)) {
+        // Simple dot notation support
+        const value = responsePath.split('.').reduce((obj, key) => obj?.[key], response.data);
+        result[resultKey] = value;
+      }
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
+    };
+  } catch (error: any) {
+    throw new Error(`API request failed: ${error.message}`);
+  }
 }
 
-async function executeListDirectory(args: any): Promise<any> {
-  const path = args.path || '.';
-
-  // Mock response - in real implementation, list actual directory
-  return {
-    content: [{
-      type: 'text',
-      text: `Mock directory listing for: ${path}\n\n- file1.txt\n- file2.js\n- subdirectory/\n\nThis is mock content. In a real implementation, this would list the actual directory contents.`
-    }]
-  };
-}
-
-async function executeWriteFile(args: any): Promise<any> {
-  const path = args.path;
-  const content = args.content;
-
-  if (!path || content === undefined) {
-    throw new Error('Path and content parameters are required');
+// Database Tool Execution
+async function executeDatabaseTool(tool: VirtualMCPTool, args: any): Promise<any> {
+  const config = tool.config;
+  if (!config.db_type || !config.db_connection || !config.db_query) {
+    throw new Error('Database type, connection, and query are required for database tools');
   }
 
-  // Mock response - in real implementation, write actual file
-  return {
-    content: [{
-      type: 'text',
-      text: `Mock file write successful: ${path}\n\nWrote ${content.length} characters. In a real implementation, this would write to the actual file.`
-    }]
-  };
+  try {
+    let result: any;
+
+    if (config.db_type === 'postgres') {
+      const client = new PostgresClient(config.db_connection);
+      await client.connect();
+
+      // Prepare parameters
+      const params: any[] = [];
+      if (config.db_params) {
+        for (const [paramName, argKey] of Object.entries(config.db_params)) {
+          const paramIndex = parseInt(paramName.replace('$', ''));
+          params[paramIndex - 1] = args[argKey];
+        }
+      }
+
+      const queryResult = await client.query(config.db_query, params);
+      result = queryResult.rows;
+
+      await client.end();
+    } else if (config.db_type === 'mysql') {
+      const connection = await mysql.createConnection(config.db_connection);
+
+      // Prepare parameters
+      const params: any[] = [];
+      if (config.db_params) {
+        for (const [paramName, argKey] of Object.entries(config.db_params)) {
+          params.push(args[argKey]);
+        }
+      }
+
+      const [rows] = await connection.execute(config.db_query, params);
+      result = rows;
+
+      await connection.end();
+    } else {
+      throw new Error(`Unsupported database type: ${config.db_type}`);
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
+    };
+  } catch (error: any) {
+    throw new Error(`Database query failed: ${error.message}`);
+  }
 }
 
-async function executeCommand(args: any): Promise<any> {
-  const command = args.command;
-  if (!command) {
-    throw new Error('Command parameter is required');
+// GraphQL Tool Execution
+async function executeGraphQLTool(tool: VirtualMCPTool, args: any): Promise<any> {
+  const config = tool.config;
+  if (!config.graphql_url || !config.graphql_query) {
+    throw new Error('GraphQL URL and query are required for GraphQL tools');
   }
 
-  // Mock response - in real implementation, execute actual command
-  return {
-    content: [{
-      type: 'text',
-      text: `Mock command execution: ${command}\n\nExit code: 0\n\nThis is mock output. In a real implementation, this would execute the actual command.`
-    }]
-  };
+  try {
+    const client = new GraphQLClient(config.graphql_url);
+
+    // Prepare variables
+    const variables: Record<string, any> = {};
+    if (config.graphql_variables) {
+      for (const [varName, argKey] of Object.entries(config.graphql_variables)) {
+        variables[varName] = args[argKey];
+      }
+    }
+
+    const data = await client.request(config.graphql_query, variables);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(data, null, 2)
+      }]
+    };
+  } catch (error: any) {
+    throw new Error(`GraphQL request failed: ${error.message}`);
+  }
 }
 
 // Create MCP server
 const server = new Server(
   {
-    name: 'virtualmcp-server',
+    name: SERVER_NAME,
     version: '1.0.0',
   },
   {
@@ -226,24 +307,194 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the server with stdio transport
-async function main() {
-  console.log(`Starting VirtualMCP server with stdio transport`);
-  console.log(`Loaded ${tools.length} tools:`, tools.map(t => t.name));
+// Authentication middleware
+function authenticate(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!BEARER_TOKEN) {
+    return next(); // No auth required if no token set
+  }
 
-  // Use stdio transport for local execution
-  const transport = new StdioServerTransport();
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
 
-  await server.connect(transport);
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  if (token !== BEARER_TOKEN) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
 
-  console.log('VirtualMCP server connected via stdio');
+  next();
+}
+
+// Streamable HTTP transport implementation
+class StreamableHTTPTransport {
+  private sessions: Map<string, { messages: JSONRPCMessage[] }> = new Map();
+
+  async handleRequest(req: express.Request, res: express.Response) {
+    const sessionId = req.headers['mcp-session-id'] as string || uuidv4();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('MCP-Protocol-Version', '2024-11-05');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    if (req.method === 'POST') {
+      await this.handlePost(req, res, sessionId);
+    } else if (req.method === 'GET') {
+      await this.handleGet(req, res, sessionId);
+    } else {
+      res.status(405).json({ error: 'Method not allowed' });
+    }
+  }
+
+  private async handlePost(req: express.Request, res: express.Response, sessionId: string) {
+    try {
+      const message: any = req.body;
+      let response: any;
+
+      // Handle MCP methods directly
+      if (message.method === 'tools/list') {
+        response = {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            tools: tools.map(tool => ({
+              name: tool.name,
+              description: tool.description,
+              inputSchema: tool.input_schema,
+            }))
+          }
+        };
+      } else if (message.method === 'tools/call') {
+        const { name, arguments: args = {} } = message.params;
+        try {
+          const result = await executeTool(name, args);
+          response = {
+            jsonrpc: '2.0',
+            id: message.id,
+            result: result
+          };
+        } catch (error: any) {
+          response = {
+            jsonrpc: '2.0',
+            id: message.id,
+            error: {
+              code: error.code || -32603,
+              message: error.message || 'Tool execution failed'
+            }
+          };
+        }
+      } else if (message.method === 'initialize') {
+        response = {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            protocolVersion: '2024-11-05',
+            capabilities: {
+              tools: {}
+            },
+            serverInfo: {
+              name: SERVER_NAME,
+              version: '1.0.0'
+            }
+          }
+        };
+      } else {
+        response = {
+          jsonrpc: '2.0',
+          id: message.id,
+          error: { code: -32601, message: 'Method not found' }
+        };
+      }
+
+      // Store response for GET polling
+      const session = this.sessions.get(sessionId) || { messages: [] };
+      session.messages.push(response);
+      this.sessions.set(sessionId, session);
+
+      res.json(response);
+    } catch (error) {
+      console.error('Error processing request:', error);
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal error' },
+        id: req.body?.id || null
+      });
+    }
+  }
+
+  private async handleGet(req: express.Request, res: express.Response, sessionId: string) {
+    const session = this.sessions.get(sessionId);
+    const messages = session ? session.messages.splice(0) : [];
+
+    res.json({ messages });
+  }
+}
+
+const transport = new StreamableHTTPTransport();
+
+// HTTP Server mode
+async function startHTTPServer() {
+  const app = express();
+
+  app.use(cors({
+    origin: true,
+    credentials: true,
+  }));
+
+  app.use(express.json());
+
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({
+      status: 'healthy',
+      server: SERVER_NAME,
+      tools: tools.length,
+      transport: 'streamable-http'
+    });
+  });
+
+  // MCP endpoint with authentication
+  app.use('/mcp', authenticate);
+
+  app.all('/mcp', (req, res) => {
+    transport.handleRequest(req, res);
+  });
+
+  app.listen(PORT, () => {
+    console.log(`VirtualMCP HTTP server '${SERVER_NAME}' listening on port ${PORT}`);
+    console.log(`Loaded ${tools.length} tools:`, tools.map(t => t.name));
+    console.log(`Source types:`, Array.from(new Set(tools.map(t => t.source_type))));
+  });
 
   // Graceful shutdown
-  process.on('SIGINT', async () => {
-    console.log('Shutting down VirtualMCP server...');
-    await server.close();
+  process.on('SIGINT', () => {
+    console.log('Shutting down VirtualMCP HTTP server...');
     process.exit(0);
   });
+}
+
+// Stdio mode (legacy)
+async function startStdioServer() {
+  console.log(`Starting VirtualMCP server '${SERVER_NAME}' with stdio transport`);
+  console.log(`Loaded ${tools.length} tools:`, tools.map(t => t.name));
+
+  // Import stdio transport dynamically to avoid issues when not used
+  const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+  const stdioTransport = new StdioServerTransport();
+
+  await server.connect(stdioTransport);
+  console.log('VirtualMCP server connected via stdio');
+}
+
+// Main entry point
+async function main() {
+  if (TRANSPORT_MODE === 'http') {
+    await startHTTPServer();
+  } else {
+    await startStdioServer();
+  }
 }
 
 main().catch((error) => {
