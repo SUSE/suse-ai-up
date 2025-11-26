@@ -55,26 +55,7 @@ target "dev" {
   dockerfile = "Dockerfile"
 }
 
-# VirtualMCP server image
-target "virtualmcp" {
-  platforms = ["linux/amd64", "linux/arm64"]
-  tags = [
-    "${REGISTRY}/${REPO_NAME}/virtualmcp:latest",
-    "${REGISTRY}/${REPO_NAME}/virtualmcp:${TAG}"
-  ]
-  context = "."
-  dockerfile = "Dockerfile.virtualmcp"
-  args = {
-    BUILDKIT_INLINE_CACHE = "1"
-  }
-}
 
-# VirtualMCP development build
-target "virtualmcp-dev" {
-  tags = ["${REGISTRY}/${REPO_NAME}/virtualmcp:dev"]
-  context = "."
-  dockerfile = "Dockerfile.virtualmcp"
-}
 
 # Release target with additional metadata
 target "release" {

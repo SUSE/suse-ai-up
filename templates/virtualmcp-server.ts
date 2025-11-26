@@ -9,7 +9,6 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
   CallToolRequestSchema,
   ErrorCode,
@@ -18,8 +17,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // Configuration from environment variables
-const PORT = process.env.PORT || '3000';
-const AUTH_TOKEN = process.env.AUTH_TOKEN;
 const TOOLS_CONFIG = process.env.TOOLS_CONFIG || '[]';
 
 // Parse tool configuration
@@ -42,20 +39,7 @@ try {
   process.exit(1);
 }
 
-// Authentication middleware
-function authenticateRequest(req: any): boolean {
-  if (!AUTH_TOKEN) {
-    return true; // No auth required
-  }
 
-  const authHeader = req.headers.authorization || req.headers['Authorization'];
-  if (!authHeader) {
-    return false;
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  return token === AUTH_TOKEN;
-}
 
 // Tool execution function
 async function executeTool(name: string, args: any): Promise<any> {
@@ -242,24 +226,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the server with HTTP transport
+// Start the server with stdio transport
 async function main() {
-  console.log(`Starting VirtualMCP server on port ${PORT}`);
+  console.log(`Starting VirtualMCP server with stdio transport`);
   console.log(`Loaded ${tools.length} tools:`, tools.map(t => t.name));
 
-  // Use SSE transport for HTTP streaming
-  const transport = new SSEServerTransport('/sse', {
-    authenticate: authenticateRequest,
-  });
+  // Use stdio transport for local execution
+  const transport = new StdioServerTransport();
 
   await server.connect(transport);
 
-  // Start HTTP server
-  const httpServer = transport.createServer();
-  httpServer.listen(parseInt(PORT), '0.0.0.0', () => {
-    console.log(`VirtualMCP server listening on http://0.0.0.0:${PORT}`);
-    console.log(`SSE endpoint: http://0.0.0.0:${PORT}/sse`);
-  });
+  console.log('VirtualMCP server connected via stdio');
 
   // Graceful shutdown
   process.on('SIGINT', async () => {

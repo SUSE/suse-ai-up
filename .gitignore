@@ -16,3 +16,4 @@ service.log
 /build
 build/service-amd64
 build/service-arm64
+server

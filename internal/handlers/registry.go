@@ -823,7 +823,7 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		Message:   "Adapter configuration created successfully",
 		Adapter:   adapter,
 		TokenInfo: tokenInfo,
-		Note:      "Use this configuration to deploy the adapter with HTTP transport",
+		Note:      "Use this configuration to run the adapter locally with stdio transport",
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -855,13 +855,20 @@ func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServe
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 
-	// Create adapter data with HTTP transport
+	// Create adapter data with local stdio transport for virtualMCP
 	adapterData := &models.AdapterData{
-		Name:                 adapterName,
-		ImageName:            "node", // Use Node.js for TypeScript template
-		ImageVersion:         "18-alpine",
-		Protocol:             models.ServerProtocolMCP,
-		ConnectionType:       models.ConnectionTypeStreamableHttp,
+		Name:           adapterName,
+		Protocol:       models.ServerProtocolMCP,
+		ConnectionType: models.ConnectionTypeLocalStdio,
+		MCPClientConfig: models.MCPClientConfig{
+			MCPServers: map[string]models.MCPServerConfig{
+				"virtualmcp": {
+					Command: "tsx",
+					Args:    []string{"templates/virtualmcp-server.ts"},
+					Env:     make(map[string]string),
+				},
+			},
+		},
 		EnvironmentVariables: make(map[string]string),
 		ReplicaCount:         req.ReplicaCount,
 		Description:          fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
@@ -883,12 +890,9 @@ func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServe
 	if len(server.Tools) > 0 {
 		toolsJSON, err := json.Marshal(server.Tools)
 		if err == nil {
-			adapterData.EnvironmentVariables["TOOLS_CONFIG"] = string(toolsJSON)
+			adapterData.MCPClientConfig.MCPServers["virtualmcp"].Env["TOOLS_CONFIG"] = string(toolsJSON)
 		}
 	}
-
-	// Set port for HTTP server
-	adapterData.EnvironmentVariables["PORT"] = "3000"
 
 	return adapterData
 }

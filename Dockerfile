@@ -26,11 +26,11 @@ ARG TARGETARCH
 # Install only essential runtime dependencies
 RUN zypper --non-interactive install --no-recommends \
     ca-certificates \
-    python3-base \
+    python3 \
     python3-pip \
     curl \
-    nodejs18 \
-    npm18 \
+    nodejs \
+    npm \
     && zypper clean --all \
     && rm -rf /var/cache/zypp/* \
     && rm -rf /tmp/*
