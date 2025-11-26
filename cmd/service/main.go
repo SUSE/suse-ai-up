@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -50,6 +51,127 @@ func generateID() string {
 	bytes := make([]byte, 8)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
+}
+
+// isVirtualMCPAdapter checks if an adapter is configured for VirtualMCP
+func isVirtualMCPAdapter(data *models.AdapterData) bool {
+	log.Printf("Checking adapter for VirtualMCP: %s (type: %s)", data.Name, data.ConnectionType)
+
+	// Check if any MCP server config references a VirtualMCP package
+	for serverName, serverConfig := range data.MCPClientConfig.MCPServers {
+		log.Printf("Checking server config: %s", serverName)
+		log.Printf("  Command: %s", serverConfig.Command)
+		log.Printf("  Args: %v", serverConfig.Args)
+
+		// Check command
+		cmdLower := strings.ToLower(serverConfig.Command)
+		if strings.Contains(cmdLower, "@suse") ||
+			strings.Contains(cmdLower, "virtual-mcp") ||
+			strings.Contains(cmdLower, "virtualmcp") ||
+			strings.Contains(cmdLower, "virtual") {
+			log.Printf("Detected VirtualMCP package in command: %s", serverConfig.Command)
+			return true
+		}
+
+		// Check all args
+		for i, arg := range serverConfig.Args {
+			log.Printf("  Arg[%d]: %s", i, arg)
+			argLower := strings.ToLower(arg)
+			if strings.Contains(argLower, "@suse") ||
+				strings.Contains(argLower, "virtual-mcp") ||
+				strings.Contains(argLower, "virtualmcp") ||
+				strings.Contains(argLower, "virtual") {
+				log.Printf("Detected VirtualMCP package in args: %s", arg)
+				return true
+			}
+		}
+
+		// Check env vars
+		for envKey, envValue := range serverConfig.Env {
+			log.Printf("  Env[%s]: %s", envKey, envValue)
+			envLower := strings.ToLower(envValue)
+			if strings.Contains(envLower, "@suse") ||
+				strings.Contains(envLower, "virtual-mcp") ||
+				strings.Contains(envLower, "virtualmcp") ||
+				strings.Contains(envLower, "virtual") {
+				log.Printf("Detected VirtualMCP package in env: %s", envValue)
+				return true
+			}
+		}
+	}
+
+	// Check adapter metadata for VirtualMCP indicators
+	nameLower := strings.ToLower(data.Name)
+	descLower := strings.ToLower(data.Description)
+	if strings.Contains(nameLower, "virtual") ||
+		strings.Contains(descLower, "virtual") ||
+		strings.Contains(nameLower, "suse") ||
+		strings.Contains(descLower, "suse") ||
+		strings.Contains(nameLower, "mcp") ||
+		strings.Contains(descLower, "mcp") {
+		log.Printf("Detected VirtualMCP by name/description: %s - %s", data.Name, data.Description)
+		return true
+	}
+
+	log.Printf("Adapter %s is not VirtualMCP", data.Name)
+	return false
+}
+
+// reconfigureVirtualMCPAdapter reconfigures a VirtualMCP adapter to run VirtualMCP server locally via stdio
+func reconfigureVirtualMCPAdapter(data *models.AdapterData) {
+	log.Printf("Reconfiguring VirtualMCP adapter: %s", data.Name)
+	log.Printf("Original connection type: %s", data.ConnectionType)
+
+	// Get API base URL from adapter configuration or default
+	apiBaseUrl := data.ApiBaseUrl
+	if apiBaseUrl == "" {
+		apiBaseUrl = "http://localhost:8000"
+	}
+
+	// Get tools config from Tools field or default to empty
+	toolsConfig := "[]"
+	if len(data.Tools) > 0 {
+		if toolsJSON, err := json.Marshal(data.Tools); err == nil {
+			toolsConfig = string(toolsJSON)
+		}
+	}
+
+	// Keep connection type as LocalStdio for stdio communication
+	data.ConnectionType = models.ConnectionTypeLocalStdio
+
+	// Modify MCPClientConfig to run VirtualMCP server locally via stdio
+	log.Printf("Modifying MCPClientConfig for VirtualMCP adapter")
+	data.MCPClientConfig = models.MCPClientConfig{
+		MCPServers: map[string]models.MCPServerConfig{
+			"virtualmcp": {
+				Command: "tsx",
+				Args:    []string{"templates/virtualmcp-server.ts"}, // No --transport flag = stdio mode
+				Env: map[string]string{
+					"SERVER_NAME":  data.Name,
+					"TOOLS_CONFIG": toolsConfig, // Use tools from Tools field
+					"API_BASE_URL": apiBaseUrl,  // Use configured API base URL
+				},
+			},
+		},
+	}
+
+	// Add authentication for VirtualMCP (required for MCP protocol)
+	data.Authentication = &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		Token:    "virtualmcp-token", // Static token for VirtualMCP
+		BearerToken: &models.BearerTokenConfig{
+			Token:     "virtualmcp-token",
+			Dynamic:   false,
+			ExpiresAt: time.Now().Add(365 * 24 * time.Hour), // Long expiry
+		},
+	}
+
+	// Update description
+	data.Description = fmt.Sprintf("VirtualMCP adapter: %s", data.Description)
+
+	log.Printf("Reconfigured VirtualMCP adapter: connectionType=%s, tools=%s, apiBaseUrl=%s",
+		data.ConnectionType, toolsConfig, apiBaseUrl)
 }
 
 // initOTEL initializes OpenTelemetry tracing and metrics
@@ -271,6 +393,25 @@ func main() {
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
+
+				// Check if this is a VirtualMCP adapter that needs reconfiguration
+				if isVirtualMCPAdapter(&data) {
+					log.Printf("Detected VirtualMCP adapter, reconfiguring: %s", data.Name)
+					reconfigureVirtualMCPAdapter(&data)
+				}
+
+				// Ensure ApiBaseUrl is set in environment variables for VirtualMCP adapters
+				if isVirtualMCPAdapter(&data) && data.ApiBaseUrl != "" {
+					for serverName, serverConfig := range data.MCPClientConfig.MCPServers {
+						if serverConfig.Env == nil {
+							serverConfig.Env = make(map[string]string)
+						}
+						serverConfig.Env["API_BASE_URL"] = data.ApiBaseUrl
+						data.MCPClientConfig.MCPServers[serverName] = serverConfig
+						break
+					}
+				}
+
 				adapter := &models.AdapterResource{}
 				adapter.Create(data, "system", time.Now())
 				if err := adapterStore.Create(adapter); err != nil {
@@ -300,13 +441,26 @@ func main() {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 					return
 				}
+
+				// Check if this is a VirtualMCP adapter being updated
+				wasVirtualMCP := isVirtualMCPAdapter(&adapter.AdapterData)
+				isVirtualMCP := isVirtualMCPAdapter(&data)
+
+				// Update adapter data
 				adapter.AdapterData = data
 				adapter.LastUpdatedAt = time.Now()
+
+				// If it became a VirtualMCP adapter or the config changed, reconfigure
+				if isVirtualMCP && (!wasVirtualMCP || data.ApiBaseUrl != adapter.ApiBaseUrl) {
+					log.Printf("Reconfiguring updated VirtualMCP adapter: %s", adapter.Name)
+					reconfigureVirtualMCPAdapter(&adapter.AdapterData)
+				}
+
 				if err := adapterStore.Update(adapter); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
-				c.JSON(http.StatusOK, adapter)
+				c.JSON(http.StatusOK, gin.H{"status": "ok"})
 			})
 			adapters.DELETE("/:name", func(c *gin.Context) {
 				// Delete adapter

@@ -28,6 +28,14 @@ const TOOLS_CONFIG = process.env.TOOLS_CONFIG || '[]';
 const SERVER_NAME = process.env.SERVER_NAME || 'virtualmcp-server';
 const PORT = parseInt(process.env.PORT || '3000');
 const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+
+console.log('VirtualMCP Server Configuration:');
+console.log('  SERVER_NAME:', SERVER_NAME);
+console.log('  PORT:', PORT);
+console.log('  API_BASE_URL:', API_BASE_URL);
+console.log('  TOOLS_CONFIG length:', TOOLS_CONFIG.length);
+console.log('  TOOLS_CONFIG preview:', TOOLS_CONFIG.substring(0, 200) + (TOOLS_CONFIG.length > 200 ? '...' : ''));
 
 // Transport mode
 const TRANSPORT_MODE = process.argv.includes('--transport') ?
@@ -62,10 +70,83 @@ interface VirtualMCPTool {
   };
 }
 
+// OpenAPI-style tool definition
+interface OpenAPITool {
+  name: string;
+  title?: string;
+  description: string;
+  inputSchema?: {
+    type: string;
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  annotations?: {
+    openapi?: {
+      method: string;
+      path: string;
+    };
+  };
+}
+
 let tools: VirtualMCPTool[] = [];
 
 try {
-  tools = JSON.parse(TOOLS_CONFIG);
+  console.log('Parsing TOOLS_CONFIG...');
+  const rawTools = JSON.parse(TOOLS_CONFIG);
+  console.log('Raw tools count:', Array.isArray(rawTools) ? rawTools.length : 'not array');
+
+  // Check if tools are in OpenAPI format or legacy format
+  if (Array.isArray(rawTools) && rawTools.length > 0) {
+    console.log('Processing tools array...');
+    const firstTool = rawTools[0];
+    console.log('First tool keys:', Object.keys(firstTool));
+
+    // Check if it's OpenAPI format (has annotations.openapi)
+    if (firstTool.annotations?.openapi) {
+      console.log('Detected OpenAPI format, converting...');
+      // Convert OpenAPI format to VirtualMCPTool format
+      tools = rawTools.map((openApiTool: OpenAPITool) => {
+        const annotations = openApiTool.annotations?.openapi;
+        if (!annotations) {
+          throw new Error(`Tool ${openApiTool.name} missing OpenAPI annotations`);
+        }
+
+        // Build API URL from base URL + path
+        const apiUrl = API_BASE_URL + annotations.path;
+        console.log(`Converting tool ${openApiTool.name}: ${annotations.method} ${apiUrl}`);
+
+        return {
+          name: openApiTool.name,
+          description: openApiTool.title ? `${openApiTool.title}: ${openApiTool.description}` : openApiTool.description,
+          source_type: 'api' as const,
+          input_schema: openApiTool.inputSchema || {
+            type: 'object',
+            properties: {},
+            required: []
+          },
+          config: {
+            api_url: apiUrl,
+            api_method: annotations.method,
+            api_headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          }
+        };
+      });
+    } else {
+      console.log('Using legacy VirtualMCPTool format...');
+      // Assume it's already in VirtualMCPTool format
+      tools = rawTools as VirtualMCPTool[];
+    }
+  } else {
+    console.log('No tools found in TOOLS_CONFIG');
+  }
+
+  console.log('Final tools count:', tools.length);
+  tools.forEach((tool, i) => {
+    console.log(`  Tool ${i}: ${tool.name} - ${tool.description}`);
+  });
 } catch (error) {
   console.error('Failed to parse TOOLS_CONFIG:', error);
   process.exit(1);
@@ -283,13 +364,16 @@ const server = new Server(
 
 // List tools handler
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
+  console.log('Handling tools/list request, returning', tools.length, 'tools');
+  const result = {
     tools: tools.map(tool => ({
       name: tool.name,
       description: tool.description,
       inputSchema: tool.input_schema,
     })),
   };
+  console.log('Tools result:', JSON.stringify(result, null, 2));
+  return result;
 });
 
 // Call tool handler

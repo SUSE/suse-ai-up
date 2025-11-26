@@ -34,6 +34,10 @@ type AdapterData struct {
 	UseWorkloadIdentity  bool              `json:"useWorkloadIdentity,omitempty" example:"false"`
 	// For remote HTTP
 	RemoteUrl string `json:"remoteUrl,omitempty" example:"https://remote-mcp.example.com"`
+	// For VirtualMCP API configuration
+	ApiBaseUrl string `json:"apiBaseUrl,omitempty" example:"http://localhost:8000"`
+	// For VirtualMCP tools configuration
+	Tools []interface{} `json:"tools,omitempty"`
 	// For local stdio
 	Command string   `json:"command,omitempty" example:"python"`
 	Args    []string `json:"args,omitempty" example:"my_server.py"`

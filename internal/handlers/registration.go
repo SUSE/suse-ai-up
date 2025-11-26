@@ -122,38 +122,65 @@ func (h *RegistrationHandler) createAdapterDataFromDiscovered(server *models.Dis
 	// Generate adapter name from discovered server
 	adapterName := h.generateAdapterName(server)
 
-	// Extract connection type from discovered server
-	connectionType := models.ConnectionTypeStreamableHttp // Default
-	if server.Connection != "" {
-		connectionType = models.ConnectionType(server.Connection)
-	}
-
-	// Create base adapter configuration
-	adapterData := &models.AdapterData{
-		Name:                 adapterName,
-		ImageName:            "mcp-proxy", // Use proxy image for all discovered servers
-		ImageVersion:         "1.0.0",
-		Protocol:             models.ServerProtocolMCP,
-		ConnectionType:       connectionType,
-		EnvironmentVariables: make(map[string]string),
-		ReplicaCount:         1,
-		Description:          fmt.Sprintf("Auto-discovered MCP server at %s", server.Address),
-		UseWorkloadIdentity:  false,
-		RemoteUrl:            server.Address,
-		Command:              "",
-		Args:                 []string{},
-	}
-
-	// Set environment variables for proxy
-	adapterData.EnvironmentVariables["MCP_PROXY_URL"] = server.Address
+	// Check if this is a VirtualMCP server
+	isVirtualMCP := false
 	if server.Metadata != nil {
-		if authTypeStr, exists := server.Metadata["auth_type"]; exists {
-			adapterData.EnvironmentVariables["MCP_SERVER_AUTH_TYPE"] = authTypeStr
+		if source, exists := server.Metadata["source"]; exists && source == "virtualmcp" {
+			isVirtualMCP = true
 		}
 	}
 
-	log.Printf("Registration: Created adapter data for '%s' with connection type: %s",
-		adapterName, connectionType)
+	var adapterData *models.AdapterData
+
+	if isVirtualMCP {
+		// VirtualMCP servers should be deployed remotely and connected via HTTP
+		adapterData = &models.AdapterData{
+			Name:                 adapterName,
+			Protocol:             models.ServerProtocolMCP,
+			ConnectionType:       models.ConnectionTypeStreamableHttp,
+			EnvironmentVariables: make(map[string]string),
+			ReplicaCount:         1,
+			Description:          fmt.Sprintf("VirtualMCP server: %s", server.Name),
+			UseWorkloadIdentity:  false,
+			RemoteUrl:            server.Address, // Will be updated when server is deployed
+		}
+
+		// VirtualMCP servers don't need MCPClientConfig - they connect remotely
+		log.Printf("Registration: Created VirtualMCP adapter data for '%s'", adapterName)
+	} else {
+		// Extract connection type from discovered server
+		connectionType := models.ConnectionTypeStreamableHttp // Default
+		if server.Connection != "" {
+			connectionType = models.ConnectionType(server.Connection)
+		}
+
+		// Create base adapter configuration for regular MCP servers
+		adapterData = &models.AdapterData{
+			Name:                 adapterName,
+			ImageName:            "mcp-proxy", // Use proxy image for all discovered servers
+			ImageVersion:         "1.0.0",
+			Protocol:             models.ServerProtocolMCP,
+			ConnectionType:       connectionType,
+			EnvironmentVariables: make(map[string]string),
+			ReplicaCount:         1,
+			Description:          fmt.Sprintf("Auto-discovered MCP server at %s", server.Address),
+			UseWorkloadIdentity:  false,
+			RemoteUrl:            server.Address,
+			Command:              "",
+			Args:                 []string{},
+		}
+
+		// Set environment variables for proxy
+		adapterData.EnvironmentVariables["MCP_PROXY_URL"] = server.Address
+		if server.Metadata != nil {
+			if authTypeStr, exists := server.Metadata["auth_type"]; exists {
+				adapterData.EnvironmentVariables["MCP_SERVER_AUTH_TYPE"] = authTypeStr
+			}
+		}
+
+		log.Printf("Registration: Created adapter data for '%s' with connection type: %s",
+			adapterName, connectionType)
+	}
 
 	return adapterData
 }
