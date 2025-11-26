@@ -53,24 +53,8 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build Go binaries
-      run: |
-        # Create build directory
-        mkdir -p build
-
-        # Build for amd64
-        echo "Building for AMD64..."
-        GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/service-amd64 ./cmd/service
-
-        # Build for arm64
-        echo "Building for ARM64..."
-        GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o build/service-arm64 ./cmd/service
-
-        # List built binaries
-        ls -la build/
-
     - name: Build and push Docker image
-      uses: docker/buildx-action@v3
+      uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
