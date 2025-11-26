@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/models"
 )
 
@@ -38,14 +38,16 @@ type RegistryHandler struct {
 	Store             MCPServerStore
 	RegistryManager   RegistryManagerInterface
 	DeploymentHandler *DeploymentHandler
+	AdapterStore      *clients.InMemoryAdapterStore
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler *DeploymentHandler) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler *DeploymentHandler, adapterStore *clients.InMemoryAdapterStore) *RegistryHandler {
 	return &RegistryHandler{
 		Store:             store,
 		RegistryManager:   registryManager,
 		DeploymentHandler: deploymentHandler,
+		AdapterStore:      adapterStore,
 	}
 }
 
@@ -821,64 +823,39 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	tokenStr := base64.URLEncoding.EncodeToString(tokenBytes)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	// Generate random port for VirtualMCP server (3001-8999)
-	randomPort := 3001 + rand.Intn(8999-3001+1)
-
-	// Update the server's ConfigTemplate for deployment
-	server.ConfigTemplate = &models.MCPConfigTemplate{
-		Command: "tsx",
-		Args:    []string{"templates/virtualmcp-server.ts", "--transport", "http"},
-		Env: map[string]string{
-			"SERVER_NAME":  server.Name,
-			"PORT":         fmt.Sprintf("%d", randomPort),
-			"BEARER_TOKEN": tokenStr,
-			"TOOLS_CONFIG": "", // Will be set below
-		},
-		Transport: "http",
-		Image:     "ghcr.io/alessandro-festa/suse-ai-up:latest",
-	}
-
-	// Add tools configuration
-	if len(server.Tools) > 0 {
-		toolsJSON, err := json.Marshal(server.Tools)
-		if err == nil {
-			server.ConfigTemplate.Env["TOOLS_CONFIG"] = string(toolsJSON)
-		}
-	}
-
-	// Add environment variables from request
-	if req.EnvironmentVariables != nil {
-		for k, v := range req.EnvironmentVariables {
-			server.ConfigTemplate.Env[k] = v
-		}
-	}
-
-	// Update the server in the registry
-	if err := h.Store.UpdateMCPServer(server.ID, server); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update server configuration"})
-		return
-	}
-
-	// Deploy the server immediately
-	if err := h.DeploymentHandler.DeployMCPDirect(server.ID, req.EnvironmentVariables, req.ReplicaCount); err != nil {
-		log.Printf("Failed to deploy VirtualMCP server: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to deploy server: %v", err)})
-		return
-	}
+	// For registry-based adapters, we create local adapters that use the TypeScript template
+	// No server deployment is needed - the adapter handles tool conversion locally
 
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 
-	// Create adapter data for VirtualMCP - configured for remote connection to deployed server
+	// Create adapter data for VirtualMCP - configured as local adapter using TypeScript template
+	// Prepare tools configuration for the adapter
+	toolsJSON, err := json.Marshal(server.Tools)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal tools configuration"})
+		return
+	}
+
 	adapterData := &models.AdapterData{
-		Name:                 adapterName,
-		Protocol:             models.ServerProtocolMCP,
-		ConnectionType:       models.ConnectionTypeStreamableHttp,
-		EnvironmentVariables: make(map[string]string),
-		ReplicaCount:         req.ReplicaCount,
-		Description:          fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
-		UseWorkloadIdentity:  false,
-		RemoteUrl:            fmt.Sprintf("http://mcp-%s", strings.ReplaceAll(server.ID, "/", "-")), // Service URL for deployed server
+		Name:           adapterName,
+		Protocol:       models.ServerProtocolMCP,
+		ConnectionType: models.ConnectionTypeLocalStdio,
+		ReplicaCount:   req.ReplicaCount,
+		Description:    fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
+		MCPClientConfig: models.MCPClientConfig{
+			MCPServers: map[string]models.MCPServerConfig{
+				"virtualmcp": {
+					Command: "npx",
+					Args:    []string{"tsx", "templates/virtualmcp-server.ts"},
+					Env: map[string]string{
+						"API_BASE_URL": "http://localhost:8000",
+						"SERVER_NAME":  adapterName,
+						"TOOLS_CONFIG": string(toolsJSON),
+					},
+				},
+			},
+		},
 		Authentication: &models.AdapterAuthConfig{
 			Required: true,
 			Type:     "bearer",
@@ -893,6 +870,13 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	// Create adapter resource
 	adapter := &models.AdapterResource{}
 	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store the adapter
+	if err := h.AdapterStore.Create(adapter); err != nil {
+		log.Printf("Failed to store adapter: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
+		return
+	}
 
 	tokenInfo := &AuthTokenInfo{
 		Token:     tokenStr,
@@ -1028,7 +1012,7 @@ func (h *RegistryHandler) createAdapterDataFromMCPServer(server *models.MCPServe
 func (h *RegistryHandler) generateAuthForVirtualMCPAdapter(adapterData *models.AdapterData) (*AuthTokenInfo, error) {
 	// Generate a secure token
 	token := make([]byte, 32)
-	if _, err := rand.Read(token); err != nil {
+	if _, err := crand.Read(token); err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 	tokenStr := base64.URLEncoding.EncodeToString(token)

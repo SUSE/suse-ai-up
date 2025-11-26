@@ -300,7 +300,7 @@ func main() {
 	kubeWrapper := clients.NewKubeClientWrapper(kubeClient, "default")
 	deploymentHandler := handlers.NewDeploymentHandler(registryStore, kubeWrapper)
 
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler)
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler, adapterStore)
 
 	// Initialize plugin service manager
 	serviceManager := plugins.NewServiceManager(cfg, registryManager)
@@ -558,6 +558,7 @@ func main() {
 			registry.POST("/upload/bulk", registryHandler.UploadBulkRegistryEntries)
 			registry.POST("/upload/local-mcp", registryHandler.UploadLocalMCP)
 			registry.GET("/browse", registryHandler.BrowseRegistry)
+			registry.POST("/:id/create-adapter", registryHandler.CreateAdapterFromRegistry)
 			registry.GET("/:id", registryHandler.GetMCPServer)
 			registry.PUT("/:id", registryHandler.UpdateMCPServer)
 			registry.DELETE("/:id", registryHandler.DeleteMCPServer)
