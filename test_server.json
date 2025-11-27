@@ -1,0 +1,40 @@
+{
+  "name": "test-github-mcp",
+  "description": "Test GitHub MCP server for in-container spawning",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "get_user_info",
+      "description": "Get GitHub user information",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "GitHub username"
+          }
+        },
+        "required": ["username"]
+      },
+      "source_type": "api",
+      "config": {
+        "api_url": "https://api.github.com/users/{username}",
+        "api_method": "GET",
+        "api_headers": {
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "request_mapping": {
+          "username": "username"
+        },
+        "response_mapping": {
+          "login": "login",
+          "name": "name",
+          "bio": "bio"
+        }
+      }
+    }
+  ],
+  "meta": {
+    "source": "virtualmcp"
+  }
+}

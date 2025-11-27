@@ -22,6 +22,12 @@ type PluginServicesConfig struct {
 	Services map[string]ServiceConfig `json:"services"`
 }
 
+// LocalDeploymentConfig holds configuration for local MCP server deployment
+type LocalDeploymentConfig struct {
+	MinPort int `json:"min_port"`
+	MaxPort int `json:"max_port"`
+}
+
 // Config holds the main application configuration
 type Config struct {
 	Host           string                   `json:"host"`
@@ -37,6 +43,9 @@ type Config struct {
 	RegistryEnableOfficial bool     `json:"registry_enable_official"`
 	RegistrySyncInterval   string   `json:"registry_sync_interval"`
 	RegistryCustomSources  []string `json:"registry_custom_sources"`
+
+	// Local deployment configuration
+	LocalDeployment LocalDeploymentConfig `json:"local_deployment"`
 
 	// Authentication
 	AuthMode string `json:"auth_mode"`
@@ -96,6 +105,11 @@ func LoadConfig() *Config {
 		RegistrySyncInterval:   getEnv("REGISTRY_SYNC_INTERVAL", "1h"),
 		RegistryCustomSources:  []string{}, // TODO: Parse from env
 
+		LocalDeployment: LocalDeploymentConfig{
+			MinPort: getEnvInt("LOCAL_DEPLOYMENT_MIN_PORT", 9000),
+			MaxPort: getEnvInt("LOCAL_DEPLOYMENT_MAX_PORT", 9999),
+		},
+
 		AuthMode: getEnv("AUTH_MODE", "development"),
 	}
 
@@ -114,6 +128,16 @@ func getEnv(key, defaultValue string) string {
 func getEnvBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
+			return parsed
+		}
+	}
+	return defaultValue
+}
+
+// getEnvInt gets an integer environment variable with a default value
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
 			return parsed
 		}
 	}

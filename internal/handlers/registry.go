@@ -34,15 +34,22 @@ type MCPServerStore interface {
 }
 
 // RegistryHandler handles MCP server registry operations
+// DeploymentHandlerInterface defines the interface for MCP server deployment
+type DeploymentHandlerInterface interface {
+	DeployMCPDirect(serverID string, envVars map[string]string, replicas int) error
+	GetProcessInfo(serverID string) (*ProcessInfo, error)
+	Shutdown()
+}
+
 type RegistryHandler struct {
 	Store             MCPServerStore
 	RegistryManager   RegistryManagerInterface
-	DeploymentHandler *DeploymentHandler
+	DeploymentHandler DeploymentHandlerInterface
 	AdapterStore      *clients.InMemoryAdapterStore
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler *DeploymentHandler, adapterStore *clients.InMemoryAdapterStore) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler DeploymentHandlerInterface, adapterStore *clients.InMemoryAdapterStore) *RegistryHandler {
 	return &RegistryHandler{
 		Store:             store,
 		RegistryManager:   registryManager,
@@ -871,6 +878,14 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		return
 	}
 
+	// Get process information to determine the actual URL
+	processInfo, err := h.DeploymentHandler.GetProcessInfo(server.ID)
+	if err != nil {
+		log.Printf("Failed to get process info for server %s: %v", server.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get deployment information"})
+		return
+	}
+
 	// Create StreamableHttp adapter that connects to the deployed server
 	adapterData := &models.AdapterData{
 		Name:           adapterName,
@@ -878,7 +893,7 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		ConnectionType: models.ConnectionTypeStreamableHttp,
 		ReplicaCount:   req.ReplicaCount,
 		Description:    fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
-		RemoteUrl:      fmt.Sprintf("http://mcp-%s", strings.ReplaceAll(server.ID, "/", "-")), // Service URL for deployed server
+		RemoteUrl:      fmt.Sprintf("http://localhost:%d", processInfo.Port), // Local process URL
 		Authentication: &models.AdapterAuthConfig{
 			Required: true,
 			Type:     "bearer",

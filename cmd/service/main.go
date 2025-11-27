@@ -292,13 +292,8 @@ func main() {
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
-	kubeClient, err := clients.NewKubernetesClient()
-	if err != nil {
-		log.Printf("Warning: Failed to create Kubernetes client: %v", err)
-		kubeClient = nil
-	}
-	kubeWrapper := clients.NewKubeClientWrapper(kubeClient, "default")
-	deploymentHandler := handlers.NewDeploymentHandler(registryStore, kubeWrapper)
+	// Initialize local process deployment handler (replaces Kubernetes deployment)
+	deploymentHandler := handlers.NewLocalProcessDeploymentHandler(registryStore, cfg.LocalDeployment.MinPort, cfg.LocalDeployment.MaxPort)
 
 	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler, adapterStore)
 
@@ -615,6 +610,10 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
+
+	// Shutdown deployment handler
+	log.Println("Shutting down deployment handler...")
+	deploymentHandler.Shutdown()
 
 	// Give outstanding requests 30 seconds to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
