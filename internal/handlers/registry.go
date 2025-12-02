@@ -1388,9 +1388,7 @@ func generateID() string {
 type TemplateTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	SourceType  string                 `json:"source_type"`
-	InputSchema map[string]interface{} `json:"input_schema"`
-	Config      map[string]interface{} `json:"config"`
+	InputSchema map[string]interface{} `json:"inputSchema"`
 }
 
 // convertToolsForTemplate converts MCPTool format to VirtualMCPTool format expected by the template
@@ -1400,16 +1398,7 @@ func convertToolsForTemplate(tools []models.MCPTool) []TemplateTool {
 		templateTools[i] = TemplateTool{
 			Name:        tool.Name,
 			Description: tool.Description,
-			SourceType:  tool.SourceType,
 			InputSchema: tool.InputSchema,
-			Config:      tool.Config,
-		}
-		// Set defaults if missing
-		if templateTools[i].SourceType == "" {
-			templateTools[i].SourceType = "api"
-		}
-		if templateTools[i].Config == nil {
-			templateTools[i].Config = make(map[string]interface{})
 		}
 	}
 	return templateTools
