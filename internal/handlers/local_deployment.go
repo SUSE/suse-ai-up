@@ -126,7 +126,7 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 
 	// Prepare environment variables
 	env := []string{
-		fmt.Sprintf("PORT=%d", port),
+		fmt.Sprintf("MCP_PORT=%d", port),
 		fmt.Sprintf("TOOLS_CONFIG=%s", string(toolsJSON)),
 		fmt.Sprintf("BEARER_TOKEN=%s", tokenStr),
 		fmt.Sprintf("SERVER_NAME=%s", serverID),
@@ -135,7 +135,7 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 
 	// Add server-specific environment variables
 	for key, value := range server.ConfigTemplate.Env {
-		if key != "PORT" && key != "TOOLS_CONFIG" && key != "BEARER_TOKEN" { // Don't override our values
+		if key != "PORT" && key != "MCP_PORT" && key != "TOOLS_CONFIG" && key != "BEARER_TOKEN" { // Don't override our values
 			env = append(env, fmt.Sprintf("%s=%s", key, value))
 		}
 	}
@@ -153,10 +153,37 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 	// Capture output for logging
 	// Note: In production, you might want to redirect to files or a logging system
 	log.Printf("Starting MCP server process for %s on port %d", serverID, port)
+	log.Printf("Command: %s %s", cmd.Path, cmd.Args)
+	log.Printf("Environment: %v", env)
+	log.Printf("Working directory: %s", cmd.Dir)
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to start MCP server process: %v", err)
 		h.portAllocator.Release(port)
 		return fmt.Errorf("failed to start MCP server process: %v", err)
+	}
+
+	log.Printf("Successfully started MCP server process with PID: %d", cmd.Process.Pid)
+
+	// Wait a bit for the server to start up
+	time.Sleep(2 * time.Second)
+
+	// Health check the server
+	healthURL := fmt.Sprintf("http://localhost:%d/health", port)
+	log.Printf("Performing health check on %s", healthURL)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		log.Printf("Health check failed for server %s: %v", serverID, err)
+		// Don't fail the deployment, just log the warning
+	} else {
+		resp.Body.Close()
+		if resp.StatusCode == 200 {
+			log.Printf("Health check passed for server %s", serverID)
+		} else {
+			log.Printf("Health check failed for server %s with status: %d", serverID, resp.StatusCode)
+		}
 	}
 
 	// Store process information
@@ -169,8 +196,6 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 		Pid:      cmd.Process.Pid,
 	}
 	h.mutex.Unlock()
-
-	log.Printf("Successfully started MCP server %s (PID: %d) on port %d", serverID, cmd.Process.Pid, port)
 
 	// Monitor the process in a goroutine
 	go h.monitorProcess(serverID)

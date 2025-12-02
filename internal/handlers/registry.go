@@ -916,13 +916,30 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		},
 	}
 
-	discoveredTools, err := h.ToolDiscovery.DiscoverTools(context.Background(), serverURL+"/mcp", authConfig)
-	if err != nil {
-		log.Printf("Registry: Failed to discover tools from deployed server, using registry tools as fallback: %v", err)
+	// Try to discover tools with retry logic to allow server startup time
+	var discoveredTools []models.MCPTool
+	var discoveryErr error
+
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			log.Printf("Registry: Retrying tool discovery in 2 seconds (attempt %d/%d)", i+1, maxRetries)
+			time.Sleep(2 * time.Second)
+		}
+
+		discoveredTools, discoveryErr = h.ToolDiscovery.DiscoverTools(context.Background(), serverURL+"/mcp", authConfig)
+		if discoveryErr == nil {
+			log.Printf("Registry: Successfully discovered %d tools from deployed server", len(discoveredTools))
+			break
+		}
+
+		log.Printf("Registry: Tool discovery attempt %d failed: %v", i+1, discoveryErr)
+	}
+
+	if discoveryErr != nil {
+		log.Printf("Registry: Failed to discover tools from deployed server after %d attempts, using registry tools as fallback: %v", maxRetries, discoveryErr)
 		// Fall back to registry tools if discovery fails
 		discoveredTools = server.Tools
-	} else {
-		log.Printf("Registry: Successfully discovered %d tools from deployed server", len(discoveredTools))
 	}
 
 	// Convert discovered tools to template format for TOOLS_CONFIG

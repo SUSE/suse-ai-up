@@ -149,6 +149,21 @@ const mcpPostHandler = async (req: Request, res: Response) => {
 
       // Connect the transport to the MCP server BEFORE handling the request
       await server.connect(transport);
+    } else if (!sessionId && req.body && req.body.method === 'tools/list') {
+      // Special case: Allow tools/list without session for discovery
+      console.log('Handling tools/list request without session for discovery');
+
+      // Return tools directly without MCP transport
+      const response = {
+        jsonrpc: '2.0',
+        id: req.body.id,
+        result: {
+          tools: tools
+        }
+      };
+
+      res.json(response);
+      return;
     } else {
       // Invalid request - no session ID or not initialization request
       res.status(400).json({

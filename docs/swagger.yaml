@@ -1,6 +1,210 @@
 basePath: /
 definitions:
-  auth.TokenInfo:
+  internal_handlers.AuthTokenInfo:
+    properties:
+      expiresAt:
+        type: string
+      token:
+        type: string
+      tokenType:
+        type: string
+    type: object
+  internal_handlers.CreateAdapterFromRegistryRequest:
+    properties:
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      replicaCount:
+        type: integer
+    type: object
+  internal_handlers.CreateAdapterFromRegistryResponse:
+    properties:
+      adapter:
+        $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
+      mcp_endpoint:
+        type: string
+      message:
+        type: string
+      note:
+        type: string
+      token_info:
+        $ref: '#/definitions/internal_handlers.AuthTokenInfo'
+    type: object
+  internal_handlers.DeployRequest:
+    properties:
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      replicas:
+        type: integer
+      resources:
+        $ref: '#/definitions/internal_handlers.ResourceLimits'
+      server_id:
+        type: string
+    required:
+    - server_id
+    type: object
+  internal_handlers.DeployResponse:
+    properties:
+      deployment_id:
+        type: string
+      manifests:
+        additionalProperties:
+          type: string
+        type: object
+      server_id:
+        type: string
+      status:
+        type: string
+    type: object
+  internal_handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_handlers.PluginErrorResponse:
+    properties:
+      details:
+        type: string
+      error:
+        type: string
+    type: object
+  internal_handlers.RegisterRequest:
+    properties:
+      discoveredServerId:
+        type: string
+    required:
+    - discoveredServerId
+    type: object
+  internal_handlers.RegisterResponse:
+    properties:
+      adapter:
+        $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
+      mcp_endpoint:
+        type: string
+      message:
+        type: string
+      security_note:
+        type: string
+      token_info:
+        $ref: '#/definitions/suse-ai-up_pkg_auth.TokenInfo'
+    type: object
+  internal_handlers.RegisterServiceRequest:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceCapability'
+        type: array
+      service_id:
+        type: string
+      service_type:
+        type: string
+      service_url:
+        type: string
+      version:
+        type: string
+    required:
+    - service_id
+    - service_type
+    - service_url
+    type: object
+  internal_handlers.RegisterServiceResponse:
+    properties:
+      message:
+        type: string
+      service_id:
+        type: string
+    type: object
+  internal_handlers.ResourceLimits:
+    properties:
+      cpu:
+        type: string
+      memory:
+        type: string
+    type: object
+  internal_handlers.SyncResult:
+    properties:
+      duration:
+        $ref: '#/definitions/time.Duration'
+      error:
+        type: string
+      lastCursor:
+        type: string
+      pagesFetched:
+        type: integer
+      totalAdded:
+        type: integer
+      totalErrors:
+        type: integer
+      totalFetched:
+        type: integer
+      totalUpdated:
+        type: integer
+    type: object
+  internal_service.BulkSessionDeleteResponse:
+    properties:
+      adapterName:
+        type: string
+      message:
+        type: string
+    type: object
+  internal_service.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_service.LogsResponse:
+    properties:
+      logs:
+        type: string
+    type: object
+  internal_service.SessionDeleteResponse:
+    properties:
+      message:
+        type: string
+      sessionId:
+        type: string
+    type: object
+  internal_service.SessionListResponse:
+    properties:
+      adapterName:
+        type: string
+      sessions:
+        items:
+          $ref: '#/definitions/suse-ai-up_pkg_session.SessionDetails'
+        type: array
+    type: object
+  internal_service.SessionReinitializeRequest:
+    properties:
+      clientInfo:
+        additionalProperties: true
+        type: object
+      forceReinitialize:
+        type: boolean
+    type: object
+  internal_service.SessionReinitializeResponse:
+    properties:
+      adapterName:
+        type: string
+      message:
+        type: string
+      sessionId:
+        type: string
+    type: object
+  suse-ai-up_internal_service.ClientTokenResponse:
+    properties:
+      expiresAt:
+        type: string
+      message:
+        type: string
+      token:
+        type: string
+      type:
+        type: string
+    type: object
+  suse-ai-up_pkg_auth.TokenInfo:
     properties:
       accessToken:
         type: string
@@ -23,98 +227,7 @@ definitions:
       tokenType:
         type: string
     type: object
-  handlers.DeployRequest:
-    properties:
-      env_vars:
-        additionalProperties:
-          type: string
-        type: object
-      replicas:
-        type: integer
-      resources:
-        $ref: '#/definitions/handlers.ResourceLimits'
-      server_id:
-        type: string
-    required:
-    - server_id
-    type: object
-  handlers.DeployResponse:
-    properties:
-      deployment_id:
-        type: string
-      manifests:
-        additionalProperties:
-          type: string
-        type: object
-      server_id:
-        type: string
-      status:
-        type: string
-    type: object
-  handlers.ErrorResponse:
-    properties:
-      error:
-        type: string
-    type: object
-  handlers.PluginErrorResponse:
-    properties:
-      details:
-        type: string
-      error:
-        type: string
-    type: object
-  handlers.RegisterRequest:
-    properties:
-      discoveredServerId:
-        type: string
-    required:
-    - discoveredServerId
-    type: object
-  handlers.RegisterResponse:
-    properties:
-      adapter:
-        $ref: '#/definitions/models.AdapterResource'
-      message:
-        type: string
-      security_note:
-        type: string
-      token_info:
-        $ref: '#/definitions/auth.TokenInfo'
-    type: object
-  handlers.RegisterServiceRequest:
-    properties:
-      capabilities:
-        items:
-          $ref: '#/definitions/plugins.ServiceCapability'
-        type: array
-      service_id:
-        type: string
-      service_type:
-        type: string
-      service_url:
-        type: string
-      version:
-        type: string
-    required:
-    - service_id
-    - service_type
-    - service_url
-    type: object
-  handlers.RegisterServiceResponse:
-    properties:
-      message:
-        type: string
-      service_id:
-        type: string
-    type: object
-  handlers.ResourceLimits:
-    properties:
-      cpu:
-        type: string
-      memory:
-        type: string
-    type: object
-  models.APIKeyConfig:
+  suse-ai-up_pkg_models.APIKeyConfig:
     properties:
       key:
         type: string
@@ -125,28 +238,29 @@ definitions:
         description: Header name, query param, or cookie name
         type: string
     type: object
-  models.AdapterAuthConfig:
+  suse-ai-up_pkg_models.AdapterAuthConfig:
     properties:
       apiKey:
-        $ref: '#/definitions/models.APIKeyConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.APIKeyConfig'
       basic:
-        $ref: '#/definitions/models.BasicAuthConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.BasicAuthConfig'
       bearerToken:
-        $ref: '#/definitions/models.BearerTokenConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.BearerTokenConfig'
       oauth:
-        $ref: '#/definitions/models.OAuthConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.OAuthConfig'
       required:
         description: true = require auth, false = optional
         type: boolean
-      token:
-        description: Legacy field for backward compatibility
-        type: string
       type:
         description: '"bearer", "oauth", "basic", "apikey", "none"'
         type: string
     type: object
-  models.AdapterData:
+  suse-ai-up_pkg_models.AdapterData:
     properties:
+      apiBaseUrl:
+        description: For VirtualMCP API configuration
+        example: http://localhost:8000
+        type: string
       args:
         example:
         - my_server.py
@@ -155,7 +269,7 @@ definitions:
         type: array
       authentication:
         allOf:
-        - $ref: '#/definitions/models.AdapterAuthConfig'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig'
         description: Authentication configuration
       command:
         description: For local stdio
@@ -163,7 +277,7 @@ definitions:
         type: string
       connectionType:
         allOf:
-        - $ref: '#/definitions/models.ConnectionType'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ConnectionType'
         example: StreamableHttp
       description:
         example: My MCP adapter
@@ -180,18 +294,18 @@ definitions:
         type: string
       mcpClientConfig:
         allOf:
-        - $ref: '#/definitions/models.MCPClientConfig'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPClientConfig'
         description: For MCP client configuration (alternative to Command/Args)
       mcpFunctionality:
         allOf:
-        - $ref: '#/definitions/models.MCPFunctionality'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPFunctionality'
         description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
       protocol:
         allOf:
-        - $ref: '#/definitions/models.ServerProtocol'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ServerProtocol'
         example: MCP
       remoteUrl:
         description: For remote HTTP
@@ -200,12 +314,20 @@ definitions:
       replicaCount:
         example: 1
         type: integer
+      tools:
+        description: For VirtualMCP tools configuration
+        items: {}
+        type: array
       useWorkloadIdentity:
         example: false
         type: boolean
     type: object
-  models.AdapterResource:
+  suse-ai-up_pkg_models.AdapterResource:
     properties:
+      apiBaseUrl:
+        description: For VirtualMCP API configuration
+        example: http://localhost:8000
+        type: string
       args:
         example:
         - my_server.py
@@ -214,7 +336,7 @@ definitions:
         type: array
       authentication:
         allOf:
-        - $ref: '#/definitions/models.AdapterAuthConfig'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig'
         description: Authentication configuration
       command:
         description: For local stdio
@@ -222,7 +344,7 @@ definitions:
         type: string
       connectionType:
         allOf:
-        - $ref: '#/definitions/models.ConnectionType'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ConnectionType'
         example: StreamableHttp
       createdAt:
         type: string
@@ -249,18 +371,18 @@ definitions:
         type: string
       mcpClientConfig:
         allOf:
-        - $ref: '#/definitions/models.MCPClientConfig'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPClientConfig'
         description: For MCP client configuration (alternative to Command/Args)
       mcpFunctionality:
         allOf:
-        - $ref: '#/definitions/models.MCPFunctionality'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPFunctionality'
         description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
       protocol:
         allOf:
-        - $ref: '#/definitions/models.ServerProtocol'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ServerProtocol'
         example: MCP
       remoteUrl:
         description: For remote HTTP
@@ -269,11 +391,15 @@ definitions:
       replicaCount:
         example: 1
         type: integer
+      tools:
+        description: For VirtualMCP tools configuration
+        items: {}
+        type: array
       useWorkloadIdentity:
         example: false
         type: boolean
     type: object
-  models.AdapterStatus:
+  suse-ai-up_pkg_models.AdapterStatus:
     properties:
       availableReplicas:
         example: 1
@@ -291,14 +417,14 @@ definitions:
         example: 1
         type: integer
     type: object
-  models.BasicAuthConfig:
+  suse-ai-up_pkg_models.BasicAuthConfig:
     properties:
       password:
         type: string
       username:
         type: string
     type: object
-  models.BearerTokenConfig:
+  suse-ai-up_pkg_models.BearerTokenConfig:
     properties:
       dynamic:
         description: Use token manager
@@ -309,7 +435,7 @@ definitions:
         description: Static token
         type: string
     type: object
-  models.ConnectionType:
+  suse-ai-up_pkg_models.ConnectionType:
     enum:
     - SSE
     - StreamableHttp
@@ -321,14 +447,14 @@ definitions:
     - ConnectionTypeStreamableHttp
     - ConnectionTypeRemoteHttp
     - ConnectionTypeLocalStdio
-  models.DiscoveredServer:
+  suse-ai-up_pkg_models.DiscoveredServer:
     properties:
       address:
         example: http://192.168.1.100:8000
         type: string
       connection:
         allOf:
-        - $ref: '#/definitions/models.ConnectionType'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ConnectionType'
         example: StreamableHttp
       id:
         example: server-123
@@ -344,7 +470,7 @@ definitions:
         type: string
       protocol:
         allOf:
-        - $ref: '#/definitions/models.ServerProtocol'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.ServerProtocol'
         example: MCP
       status:
         example: healthy
@@ -353,7 +479,7 @@ definitions:
         example: high
         type: string
     type: object
-  models.EnvironmentVariable:
+  suse-ai-up_pkg_models.EnvironmentVariable:
     properties:
       default:
         description: default value if any
@@ -369,7 +495,7 @@ definitions:
       name:
         type: string
     type: object
-  models.MCPArgument:
+  suse-ai-up_pkg_models.MCPArgument:
     properties:
       description:
         type: string
@@ -378,14 +504,14 @@ definitions:
       required:
         type: boolean
     type: object
-  models.MCPClientConfig:
+  suse-ai-up_pkg_models.MCPClientConfig:
     properties:
       mcpServers:
         additionalProperties:
-          $ref: '#/definitions/models.MCPServerConfig'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPServerConfig'
         type: object
     type: object
-  models.MCPConfigTemplate:
+  suse-ai-up_pkg_models.MCPConfigTemplate:
     properties:
       args:
         description: command arguments
@@ -407,37 +533,37 @@ definitions:
         description: stdio, http, sse, websocket
         type: string
     type: object
-  models.MCPFunctionality:
+  suse-ai-up_pkg_models.MCPFunctionality:
     properties:
       lastRefreshed:
         type: string
       prompts:
         items:
-          $ref: '#/definitions/models.MCPPrompt'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPPrompt'
         type: array
       resources:
         items:
-          $ref: '#/definitions/models.MCPResource'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPResource'
         type: array
       serverInfo:
-        $ref: '#/definitions/models.MCPServerInfo'
+        $ref: '#/definitions/suse-ai-up_pkg_models.MCPServerInfo'
       tools:
         items:
-          $ref: '#/definitions/models.MCPTool'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPTool'
         type: array
     type: object
-  models.MCPPrompt:
+  suse-ai-up_pkg_models.MCPPrompt:
     properties:
       arguments:
         items:
-          $ref: '#/definitions/models.MCPArgument'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPArgument'
         type: array
       description:
         type: string
       name:
         type: string
     type: object
-  models.MCPResource:
+  suse-ai-up_pkg_models.MCPResource:
     properties:
       description:
         type: string
@@ -448,7 +574,7 @@ definitions:
       uri:
         type: string
     type: object
-  models.MCPServer:
+  suse-ai-up_pkg_models.MCPServer:
     properties:
       _meta:
         additionalProperties: true
@@ -456,7 +582,7 @@ definitions:
         type: object
       config_template:
         allOf:
-        - $ref: '#/definitions/models.MCPConfigTemplate'
+        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate'
         description: Docker/K8s deployment config
       description:
         type: string
@@ -468,15 +594,15 @@ definitions:
         type: string
       packages:
         items:
-          $ref: '#/definitions/models.Package'
+          $ref: '#/definitions/suse-ai-up_pkg_models.Package'
         type: array
       protocol:
         type: string
       repository:
-        $ref: '#/definitions/models.Repository'
+        $ref: '#/definitions/suse-ai-up_pkg_models.Repository'
       tools:
         items:
-          $ref: '#/definitions/models.MCPTool'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPTool'
         type: array
       url:
         description: Legacy fields for backward compatibility
@@ -487,7 +613,7 @@ definitions:
       version:
         type: string
     type: object
-  models.MCPServerConfig:
+  suse-ai-up_pkg_models.MCPServerConfig:
     properties:
       args:
         items:
@@ -500,7 +626,7 @@ definitions:
           type: string
         type: object
     type: object
-  models.MCPServerInfo:
+  suse-ai-up_pkg_models.MCPServerInfo:
     properties:
       capabilities:
         additionalProperties: true
@@ -512,8 +638,12 @@ definitions:
       version:
         type: string
     type: object
-  models.MCPTool:
+  suse-ai-up_pkg_models.MCPTool:
     properties:
+      config:
+        additionalProperties: true
+        description: Tool-specific configuration
+        type: object
       description:
         type: string
       input_schema:
@@ -521,8 +651,11 @@ definitions:
         type: object
       name:
         type: string
+      source_type:
+        description: VirtualMCP specific fields
+        type: string
     type: object
-  models.OAuthConfig:
+  suse-ai-up_pkg_models.OAuthConfig:
     properties:
       authUrl:
         type: string
@@ -539,11 +672,11 @@ definitions:
       tokenUrl:
         type: string
     type: object
-  models.Package:
+  suse-ai-up_pkg_models.Package:
     properties:
       environmentVariables:
         items:
-          $ref: '#/definitions/models.EnvironmentVariable'
+          $ref: '#/definitions/suse-ai-up_pkg_models.EnvironmentVariable'
         type: array
       identifier:
         description: docker.io/user/image:tag
@@ -552,9 +685,9 @@ definitions:
         description: oci, npm, etc.
         type: string
       transport:
-        $ref: '#/definitions/models.Transport'
+        $ref: '#/definitions/suse-ai-up_pkg_models.Transport'
     type: object
-  models.Repository:
+  suse-ai-up_pkg_models.Repository:
     properties:
       source:
         description: github, gitlab, etc.
@@ -562,7 +695,7 @@ definitions:
       url:
         type: string
     type: object
-  models.ScanConfig:
+  suse-ai-up_pkg_models.ScanConfig:
     properties:
       excludeAddresses:
         description: Additional addresses to skip
@@ -595,10 +728,10 @@ definitions:
         example: 30s
         type: string
     type: object
-  models.ScanJob:
+  suse-ai-up_pkg_models.ScanJob:
     properties:
       config:
-        $ref: '#/definitions/models.ScanConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.ScanConfig'
       error:
         type: string
       id:
@@ -606,7 +739,7 @@ definitions:
         type: string
       results:
         items:
-          $ref: '#/definitions/models.DiscoveredServer'
+          $ref: '#/definitions/suse-ai-up_pkg_models.DiscoveredServer'
         type: array
       startTime:
         type: string
@@ -614,19 +747,19 @@ definitions:
         example: running
         type: string
     type: object
-  models.ServerProtocol:
+  suse-ai-up_pkg_models.ServerProtocol:
     enum:
     - MCP
     type: string
     x-enum-varnames:
     - ServerProtocolMCP
-  models.Transport:
+  suse-ai-up_pkg_models.Transport:
     properties:
       type:
         description: stdio, sse, websocket, http
         type: string
     type: object
-  plugins.ServiceCapability:
+  suse-ai-up_pkg_plugins.ServiceCapability:
     properties:
       description:
         type: string
@@ -639,7 +772,7 @@ definitions:
         description: API path (e.g., "/v1/*", "/agents/*")
         type: string
     type: object
-  plugins.ServiceHealth:
+  suse-ai-up_pkg_plugins.ServiceHealth:
     properties:
       last_checked:
         type: string
@@ -652,11 +785,11 @@ definitions:
         description: '"healthy", "unhealthy", "unknown"'
         type: string
     type: object
-  plugins.ServiceRegistration:
+  suse-ai-up_pkg_plugins.ServiceRegistration:
     properties:
       capabilities:
         items:
-          $ref: '#/definitions/plugins.ServiceCapability'
+          $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceCapability'
         type: array
       last_heartbeat:
         type: string
@@ -665,24 +798,26 @@ definitions:
       service_id:
         type: string
       service_type:
-        $ref: '#/definitions/plugins.ServiceType'
+        $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceType'
       service_url:
         type: string
       version:
         type: string
     type: object
-  plugins.ServiceType:
+  suse-ai-up_pkg_plugins.ServiceType:
     enum:
     - smartagents
     - registry
+    - virtualmcp
     type: string
     x-enum-varnames:
     - ServiceTypeSmartAgents
     - ServiceTypeRegistry
-  scanner.ScanJob:
+    - ServiceTypeVirtualMCP
+  suse-ai-up_pkg_scanner.ScanJob:
     properties:
       config:
-        $ref: '#/definitions/models.ScanConfig'
+        $ref: '#/definitions/suse-ai-up_pkg_models.ScanConfig'
       endTime:
         type: string
       errors:
@@ -697,14 +832,14 @@ definitions:
         type: number
       results:
         items:
-          $ref: '#/definitions/models.DiscoveredServer'
+          $ref: '#/definitions/suse-ai-up_pkg_models.DiscoveredServer'
         type: array
       startTime:
         type: string
       status:
-        $ref: '#/definitions/scanner.ScanStatus'
+        $ref: '#/definitions/suse-ai-up_pkg_scanner.ScanStatus'
     type: object
-  scanner.ScanStatus:
+  suse-ai-up_pkg_scanner.ScanStatus:
     enum:
     - pending
     - running
@@ -718,68 +853,7 @@ definitions:
     - ScanStatusCompleted
     - ScanStatusFailed
     - ScanStatusCancelled
-  service.BulkSessionDeleteResponse:
-    properties:
-      adapterName:
-        type: string
-      message:
-        type: string
-    type: object
-  service.ClientTokenResponse:
-    properties:
-      expiresAt:
-        type: string
-      message:
-        type: string
-      token:
-        type: string
-      type:
-        type: string
-    type: object
-  service.ErrorResponse:
-    properties:
-      error:
-        type: string
-    type: object
-  service.LogsResponse:
-    properties:
-      logs:
-        type: string
-    type: object
-  service.SessionDeleteResponse:
-    properties:
-      message:
-        type: string
-      sessionId:
-        type: string
-    type: object
-  service.SessionListResponse:
-    properties:
-      adapterName:
-        type: string
-      sessions:
-        items:
-          $ref: '#/definitions/session.SessionDetails'
-        type: array
-    type: object
-  service.SessionReinitializeRequest:
-    properties:
-      clientInfo:
-        additionalProperties: true
-        type: object
-      forceReinitialize:
-        type: boolean
-    type: object
-  service.SessionReinitializeResponse:
-    properties:
-      adapterName:
-        type: string
-      message:
-        type: string
-      sessionId:
-        type: string
-    type: object
-  session.AuthorizationInfo:
+  suse-ai-up_pkg_session.AuthorizationInfo:
     properties:
       accessToken:
         type: string
@@ -801,14 +875,14 @@ definitions:
       tokenType:
         type: string
     type: object
-  session.MCPClientInfo:
+  suse-ai-up_pkg_session.MCPClientInfo:
     properties:
       name:
         type: string
       version:
         type: string
     type: object
-  session.MCPServerInfo:
+  suse-ai-up_pkg_session.MCPServerInfo:
     properties:
       name:
         type: string
@@ -817,12 +891,12 @@ definitions:
       version:
         type: string
     type: object
-  session.SessionDetails:
+  suse-ai-up_pkg_session.SessionDetails:
     properties:
       adapterName:
         type: string
       authorizationInfo:
-        $ref: '#/definitions/session.AuthorizationInfo'
+        $ref: '#/definitions/suse-ai-up_pkg_session.AuthorizationInfo'
       connectionType:
         type: string
       createdAt:
@@ -833,9 +907,9 @@ definitions:
         additionalProperties: true
         type: object
       mcpClientInfo:
-        $ref: '#/definitions/session.MCPClientInfo'
+        $ref: '#/definitions/suse-ai-up_pkg_session.MCPClientInfo'
       mcpServerInfo:
-        $ref: '#/definitions/session.MCPServerInfo'
+        $ref: '#/definitions/suse-ai-up_pkg_session.MCPServerInfo'
       mcpSessionId:
         description: MCP-specific fields
         type: string
@@ -846,9 +920,9 @@ definitions:
       targetAddress:
         type: string
       tokenInfo:
-        $ref: '#/definitions/session.TokenInfo'
+        $ref: '#/definitions/suse-ai-up_pkg_session.TokenInfo'
     type: object
-  session.TokenInfo:
+  suse-ai-up_pkg_session.TokenInfo:
     properties:
       accessToken:
         type: string
@@ -863,6 +937,27 @@ definitions:
       tokenType:
         type: string
     type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    format: int64
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
 host: localhost:8911
 info:
   contact: {}
@@ -880,12 +975,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.AdapterResource'
+              $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: List all MCP server adapters
       tags:
       - adapters
@@ -899,22 +994,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/models.AdapterData'
+          $ref: '#/definitions/suse-ai-up_pkg_models.AdapterData'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.AdapterResource'
+            $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Create a new MCP server adapter
       tags:
       - adapters
@@ -935,11 +1030,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Delete an adapter
       tags:
       - adapters
@@ -958,11 +1053,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AdapterResource'
+            $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Get an adapter
       tags:
       - adapters
@@ -982,22 +1077,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/models.AdapterResource'
+          $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AdapterResource'
+            $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Update an adapter
       tags:
       - adapters
@@ -1017,15 +1112,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.ClientTokenResponse'
+            $ref: '#/definitions/suse-ai-up_internal_service.ClientTokenResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Get client token for adapter
       tags:
       - adapters
@@ -1045,15 +1140,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.LogsResponse'
+            $ref: '#/definitions/internal_service.LogsResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Get adapter logs
       tags:
       - adapters
@@ -1072,15 +1167,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.BulkSessionDeleteResponse'
+            $ref: '#/definitions/internal_service.BulkSessionDeleteResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Delete all sessions for an adapter
       tags:
       - sessions
@@ -1098,15 +1193,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.SessionListResponse'
+            $ref: '#/definitions/internal_service.SessionListResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: List all sessions for an adapter
       tags:
       - sessions
@@ -1125,26 +1220,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/service.SessionReinitializeRequest'
+          $ref: '#/definitions/internal_service.SessionReinitializeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.SessionReinitializeResponse'
+            $ref: '#/definitions/internal_service.SessionReinitializeResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Reinitialize a session
       tags:
       - sessions
@@ -1168,15 +1263,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.SessionDeleteResponse'
+            $ref: '#/definitions/internal_service.SessionDeleteResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Delete a session
       tags:
       - sessions
@@ -1199,15 +1294,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/session.SessionDetails'
+            $ref: '#/definitions/suse-ai-up_pkg_session.SessionDetails'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Get session details
       tags:
       - sessions
@@ -1226,15 +1321,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AdapterStatus'
+            $ref: '#/definitions/suse-ai-up_pkg_models.AdapterStatus'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Get adapter deployment status
       tags:
       - adapters
@@ -1261,15 +1356,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Test adapter authentication
       tags:
       - adapters
@@ -1298,19 +1393,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.TokenInfo'
+            $ref: '#/definitions/suse-ai-up_pkg_auth.TokenInfo'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Get adapter token
       tags:
       - tokens
@@ -1332,19 +1427,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.TokenInfo'
+            $ref: '#/definitions/suse-ai-up_pkg_auth.TokenInfo'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Refresh adapter token
       tags:
       - tokens
@@ -1371,11 +1466,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Validate token
       tags:
       - tokens
@@ -1395,7 +1490,7 @@ paths:
         name: authConfig
         required: true
         schema:
-          $ref: '#/definitions/models.AdapterAuthConfig'
+          $ref: '#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig'
       produces:
       - application/json
       responses:
@@ -1407,7 +1502,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Validate adapter authentication configuration
       tags:
       - adapters
@@ -1427,7 +1522,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.MCPConfigTemplate'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate'
         "404":
           description: Server not found
           schema:
@@ -1446,14 +1541,14 @@ paths:
         name: deployment
         required: true
         schema:
-          $ref: '#/definitions/handlers.DeployRequest'
+          $ref: '#/definitions/internal_handlers.DeployRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.DeployResponse'
+            $ref: '#/definitions/internal_handlers.DeployResponse'
         "400":
           description: Bad Request
           schema:
@@ -1481,15 +1576,15 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.AdapterResource'
+            $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Register discovered server
       tags:
       - discovery
@@ -1503,7 +1598,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.ScanJob'
+              $ref: '#/definitions/suse-ai-up_pkg_models.ScanJob'
             type: array
       summary: List all scan jobs
       tags:
@@ -1518,7 +1613,7 @@ paths:
         name: config
         required: true
         schema:
-          $ref: '#/definitions/models.ScanConfig'
+          $ref: '#/definitions/suse-ai-up_pkg_models.ScanConfig'
       produces:
       - application/json
       responses:
@@ -1530,7 +1625,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Start network scan for MCP servers
       tags:
       - discovery
@@ -1574,7 +1669,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/scanner.ScanJob'
+            $ref: '#/definitions/suse-ai-up_pkg_scanner.ScanJob'
         "404":
           description: Not Found
           schema:
@@ -1598,11 +1693,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ScanJob'
+            $ref: '#/definitions/suse-ai-up_pkg_models.ScanJob'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/internal_service.ErrorResponse'
       summary: Get scan status
       tags:
       - discovery
@@ -1616,7 +1711,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.DiscoveredServer'
+              $ref: '#/definitions/suse-ai-up_pkg_models.DiscoveredServer'
             type: array
       summary: List discovered servers
       tags:
@@ -1636,7 +1731,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.DiscoveredServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.DiscoveredServer'
         "404":
           description: Not Found
           schema:
@@ -1656,26 +1751,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.RegisterServiceRequest'
+          $ref: '#/definitions/internal_handlers.RegisterServiceRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.RegisterServiceResponse'
+            $ref: '#/definitions/internal_handlers.RegisterServiceResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
       summary: Register a plugin service
       tags:
       - plugins
@@ -1694,11 +1789,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
       summary: Unregister a plugin service
       tags:
       - plugins
@@ -1712,7 +1807,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/plugins.ServiceRegistration'
+              $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
             type: array
       summary: List all registered plugin services
       tags:
@@ -1732,11 +1827,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/plugins.ServiceRegistration'
+            $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Get service details
       tags:
       - plugins
@@ -1755,11 +1850,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/plugins.ServiceHealth'
+            $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceHealth'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
       summary: Get service health
       tags:
       - plugins
@@ -1779,12 +1874,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/plugins.ServiceRegistration'
+              $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
             type: array
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.PluginErrorResponse'
+            $ref: '#/definitions/internal_handlers.PluginErrorResponse'
       summary: List services by type
       tags:
       - plugins
@@ -1821,7 +1916,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.MCPServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
         "404":
           description: Not Found
           schema:
@@ -1844,14 +1939,14 @@ paths:
         name: server
         required: true
         schema:
-          $ref: '#/definitions/models.MCPServer'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.MCPServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
         "400":
           description: Bad Request
           schema:
@@ -1863,6 +1958,43 @@ paths:
       summary: Update an MCP server
       tags:
       - registry
+  /api/v1/registry/{id}/create-adapter:
+    post:
+      consumes:
+      - application/json
+      description: Creates an adapter from an MCP server in the registry, specifically
+        for virtualMCP servers
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Adapter creation configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CreateAdapterFromRegistryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_handlers.CreateAdapterFromRegistryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Server not found
+          schema:
+            type: string
+      summary: Create an adapter from an MCP registry entry
+      tags:
+      - registry
+      - adapters
   /api/v1/registry/browse:
     get:
       description: Search and filter MCP servers from all configured sources
@@ -1883,6 +2015,10 @@ paths:
         in: query
         name: validationStatus
         type: string
+      - description: Filter by source (official, docker-mcp, virtualmcp)
+        in: query
+        name: source
+        type: string
       produces:
       - application/json
       responses:
@@ -1890,7 +2026,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.MCPServer'
+              $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
             type: array
       summary: Browse registry servers with search and filters
       tags:
@@ -1934,8 +2070,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/internal_handlers.SyncResult'
       summary: Sync from official MCP registry
       tags:
       - registry
@@ -1950,14 +2085,14 @@ paths:
         name: server
         required: true
         schema:
-          $ref: '#/definitions/models.MCPServer'
+          $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.MCPServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
         "400":
           description: Bad Request
           schema:
@@ -1977,7 +2112,7 @@ paths:
         required: true
         schema:
           items:
-            $ref: '#/definitions/models.MCPServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
           type: array
       produces:
       - application/json
@@ -2028,7 +2163,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.MCPServer'
+            $ref: '#/definitions/suse-ai-up_pkg_models.MCPServer'
         "400":
           description: Bad Request
           schema:
@@ -2047,14 +2182,14 @@ paths:
         name: registration
         required: true
         schema:
-          $ref: '#/definitions/plugins.ServiceRegistration'
+          $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/plugins.ServiceRegistration'
+            $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
         "400":
           description: Bad Request
           schema:
@@ -2095,7 +2230,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/plugins.ServiceRegistration'
+              $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
             type: array
       summary: List registered plugin services
       tags:
@@ -2115,7 +2250,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/plugins.ServiceRegistration'
+            $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
         "404":
           description: Not Found
           schema:
@@ -2138,7 +2273,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/plugins.ServiceHealth'
+            $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceHealth'
         "404":
           description: Not Found
           schema:
@@ -2162,7 +2297,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/plugins.ServiceRegistration'
+              $ref: '#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration'
             type: array
       summary: List services by type
       tags:
