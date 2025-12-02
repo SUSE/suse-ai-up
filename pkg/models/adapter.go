@@ -299,8 +299,6 @@ type AdapterAuthConfig struct {
 	OAuth       *OAuthConfig       `json:"oauth,omitempty"`
 	Basic       *BasicAuthConfig   `json:"basic,omitempty"`
 	APIKey      *APIKeyConfig      `json:"apiKey,omitempty"`
-	// Legacy field for backward compatibility
-	Token string `json:"token,omitempty"` // For bearer token validation
 }
 
 // RegistrySource represents a source of MCP registry data

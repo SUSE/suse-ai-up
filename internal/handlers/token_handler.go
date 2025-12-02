@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"suse-ai-up/pkg/auth"
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/models"
 )
 
 // TokenHandler handles token-related operations
@@ -80,8 +81,8 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 	// Check if we have a token manager for JWT tokens
 	if th.tokenManager != nil {
 		// Try to validate existing token as JWT first
-		if adapter.Authentication.Token != "" {
-			if existingTokenInfo, err := th.tokenManager.ValidateToken(adapter.Authentication.Token, adapter.RemoteUrl); err == nil {
+		if adapter.Authentication.BearerToken != nil && adapter.Authentication.BearerToken.Token != "" {
+			if existingTokenInfo, err := th.tokenManager.ValidateToken(adapter.Authentication.BearerToken.Token, adapter.RemoteUrl); err == nil {
 				// Existing token is valid JWT
 				tokenInfo = existingTokenInfo
 				c.JSON(http.StatusOK, gin.H{
@@ -113,7 +114,10 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 			}
 
 			// Update adapter with new token
-			adapter.Authentication.Token = newTokenInfo.AccessToken
+			if adapter.Authentication.BearerToken == nil {
+				adapter.Authentication.BearerToken = &models.BearerTokenConfig{}
+			}
+			adapter.Authentication.BearerToken.Token = newTokenInfo.AccessToken
 			if err := th.store.UpsertAsync(*adapter, nil); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update adapter with new token"})
 				return
@@ -140,11 +144,11 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 	}
 
 	// Fallback to legacy token handling
-	if adapter.Authentication.Token != "" {
+	if adapter.Authentication.BearerToken != nil && adapter.Authentication.BearerToken.Token != "" {
 		c.JSON(http.StatusOK, gin.H{
 			"adapter": adapterName,
 			"token": gin.H{
-				"access_token": adapter.Authentication.Token,
+				"access_token": adapter.Authentication.BearerToken.Token,
 				"token_type":   "Bearer",
 				"format":       "legacy",
 				"note":         "Legacy token format - consider upgrading to JWT",
@@ -220,7 +224,7 @@ func (th *TokenHandler) ValidateToken(c *gin.Context) {
 	}
 
 	// Fallback to legacy validation
-	if adapter.Authentication != nil && adapter.Authentication.Token == token {
+	if adapter.Authentication != nil && adapter.Authentication.BearerToken != nil && adapter.Authentication.BearerToken.Token == token {
 		c.JSON(http.StatusOK, gin.H{
 			"valid":   true,
 			"adapter": adapterName,
@@ -299,7 +303,10 @@ func (th *TokenHandler) RefreshToken(c *gin.Context) {
 		}
 
 		// Update adapter with new token
-		adapter.Authentication.Token = newTokenInfo.AccessToken
+		if adapter.Authentication.BearerToken == nil {
+			adapter.Authentication.BearerToken = &models.BearerTokenConfig{}
+		}
+		adapter.Authentication.BearerToken.Token = newTokenInfo.AccessToken
 		if err := th.store.UpsertAsync(*adapter, nil); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update adapter with new token"})
 			return
@@ -324,7 +331,10 @@ func (th *TokenHandler) RefreshToken(c *gin.Context) {
 	} else {
 		// Fallback to legacy token generation
 		newToken := generateLegacyToken()
-		adapter.Authentication.Token = newToken
+		if adapter.Authentication.BearerToken == nil {
+			adapter.Authentication.BearerToken = &models.BearerTokenConfig{}
+		}
+		adapter.Authentication.BearerToken.Token = newToken
 		if err := th.store.UpsertAsync(*adapter, nil); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update adapter with new token"})
 			return

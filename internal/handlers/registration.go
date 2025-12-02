@@ -13,25 +13,28 @@ import (
 	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/auth"
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/scanner"
 )
 
 // RegistrationHandler handles registration of discovered MCP servers as adapters
 type RegistrationHandler struct {
-	scanner      *scanner.NetworkScanner
-	adapterStore clients.AdapterResourceStore
-	tokenManager *auth.TokenManager
-	config       *config.Config
+	scanner       *scanner.NetworkScanner
+	adapterStore  clients.AdapterResourceStore
+	tokenManager  *auth.TokenManager
+	config        *config.Config
+	toolDiscovery *mcp.MCPToolDiscoveryService
 }
 
 // NewRegistrationHandler creates a new registration handler
 func NewRegistrationHandler(scanner *scanner.NetworkScanner, adapterStore clients.AdapterResourceStore, tokenManager *auth.TokenManager, config *config.Config) *RegistrationHandler {
 	return &RegistrationHandler{
-		scanner:      scanner,
-		adapterStore: adapterStore,
-		tokenManager: tokenManager,
-		config:       config,
+		scanner:       scanner,
+		adapterStore:  adapterStore,
+		tokenManager:  tokenManager,
+		config:        config,
+		toolDiscovery: mcp.NewMCPToolDiscoveryService(),
 	}
 }
 
@@ -44,6 +47,7 @@ type RegisterRequest struct {
 type RegisterResponse struct {
 	Message      string                  `json:"message"`
 	Adapter      *models.AdapterResource `json:"adapter"`
+	McpEndpoint  string                  `json:"mcp_endpoint"`
 	SecurityNote string                  `json:"security_note,omitempty"`
 	TokenInfo    *auth.TokenInfo         `json:"token_info,omitempty"`
 }
@@ -92,6 +96,24 @@ func (h *RegistrationHandler) RegisterDiscoveredServer(c *gin.Context) {
 		return
 	}
 
+	// Try to discover tools from the discovered server
+	var discoveredTools []models.MCPTool
+	if adapterData.ConnectionType == models.ConnectionTypeStreamableHttp {
+		log.Printf("Registration: Attempting to discover tools from discovered server at %s", discoveredServer.Address)
+		discoveredTools, err = h.toolDiscovery.DiscoverTools(c.Request.Context(), discoveredServer.Address, adapterData.Authentication)
+		if err != nil {
+			log.Printf("Registration: Failed to discover tools from discovered server, adapter will be created without tool information: %v", err)
+			discoveredTools = []models.MCPTool{}
+		} else {
+			log.Printf("Registration: Successfully discovered %d tools from discovered server", len(discoveredTools))
+			// Store discovered functionality in adapter data
+			adapterData.MCPFunctionality = &models.MCPFunctionality{
+				Tools:         discoveredTools,
+				LastRefreshed: time.Now(),
+			}
+		}
+	}
+
 	// Create adapter resource
 	adapter := &models.AdapterResource{}
 	adapter.Create(*adapterData, "system", time.Now())
@@ -110,6 +132,7 @@ func (h *RegistrationHandler) RegisterDiscoveredServer(c *gin.Context) {
 	response := RegisterResponse{
 		Message:      "Adapter created successfully",
 		Adapter:      adapter,
+		McpEndpoint:  fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
 		SecurityNote: h.getSecurityNote(discoveredServer),
 		TokenInfo:    tokenInfo,
 	}
@@ -248,21 +271,22 @@ func (h *RegistrationHandler) configureAuthentication(server *models.DiscoveredS
 
 // generateAdapterName generates a unique adapter name from discovered server
 func (h *RegistrationHandler) generateAdapterName(server *models.DiscoveredServer) string {
-	// Extract host and port from address for naming
+	// Use server name directly if available
+	if server.Name != "" && server.Name != "Unknown MCP Server" {
+		// Clean the name for use as an identifier
+		return strings.ToLower(strings.ReplaceAll(server.Name, " ", "-"))
+	}
+
+	// Fallback to server ID or address-based name
 	parts := strings.Split(server.Address, ":")
 	if len(parts) >= 3 {
 		// Format: http://host:port -> host-port
 		host := strings.ReplaceAll(parts[1], ".", "-")
 		port := parts[2]
-		return fmt.Sprintf("discovered-%s-%s", host, port)
+		return fmt.Sprintf("%s-%s", host, port)
 	}
 
-	// Fallback to server ID or name
-	if server.Name != "" && server.Name != "Unknown MCP Server" {
-		return fmt.Sprintf("discovered-%s", strings.ToLower(strings.ReplaceAll(server.Name, " ", "-")))
-	}
-
-	return fmt.Sprintf("discovered-%s", server.ID)
+	return server.ID
 }
 
 // generateSecureToken generates a cryptographically secure random token

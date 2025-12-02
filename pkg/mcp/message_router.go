@@ -347,9 +347,9 @@ func (mr *MessageRouter) applyAuthentication(req *http.Request, adapter models.A
 
 // applyBearerAuth applies bearer authentication
 func (mr *MessageRouter) applyBearerAuth(req *http.Request, adapter models.AdapterResource) error {
-	token := adapter.Authentication.Token // Legacy field
+	var token string
 
-	// Check new bearer token configuration
+	// Check bearer token configuration
 	if adapter.Authentication.BearerToken != nil && adapter.Authentication.BearerToken.Token != "" {
 		token = adapter.Authentication.BearerToken.Token
 	}

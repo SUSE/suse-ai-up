@@ -346,14 +346,21 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 				adapterData.Authentication = &models.AdapterAuthConfig{
 					Required: true,
 					Type:     "bearer",
-					Token:    secureToken,
+					BearerToken: &models.BearerTokenConfig{
+						Token:   secureToken,
+						Dynamic: false,
+					},
 				}
 			} else {
 				// Use JWT token
 				adapterData.Authentication = &models.AdapterAuthConfig{
 					Required: true,
 					Type:     "bearer",
-					Token:    tokenInfo.AccessToken,
+					BearerToken: &models.BearerTokenConfig{
+						Token:     tokenInfo.AccessToken,
+						Dynamic:   true,
+						ExpiresAt: tokenInfo.ExpiresAt,
+					},
 				}
 				generatedTokenInfo = tokenInfo
 				log.Printf("DiscoveryService: JWT token generated (ID: %s, Expires: %s)", tokenInfo.TokenID, tokenInfo.ExpiresAt.Format(time.RFC3339))
@@ -364,7 +371,10 @@ func (ds *DiscoveryService) RegisterServer(c *gin.Context) {
 			adapterData.Authentication = &models.AdapterAuthConfig{
 				Required: true,
 				Type:     "bearer",
-				Token:    secureToken,
+				BearerToken: &models.BearerTokenConfig{
+					Token:   secureToken,
+					Dynamic: false,
+				},
 			}
 		}
 

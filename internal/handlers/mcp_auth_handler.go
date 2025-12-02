@@ -93,7 +93,6 @@ func (h *MCPAuthHandler) ValidateAuthConfig(c *gin.Context) {
 	modelAuthConfig := &models.AdapterAuthConfig{
 		Required: authConfig.Required,
 		Type:     authConfig.Type,
-		Token:    authConfig.Token,
 	}
 
 	// Convert nested configs if present

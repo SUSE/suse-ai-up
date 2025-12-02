@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -159,7 +161,6 @@ func reconfigureVirtualMCPAdapter(data *models.AdapterData) {
 	data.Authentication = &models.AdapterAuthConfig{
 		Required: true,
 		Type:     "bearer",
-		Token:    "virtualmcp-token", // Static token for VirtualMCP
 		BearerToken: &models.BearerTokenConfig{
 			Token:     "virtualmcp-token",
 			Dynamic:   false,
@@ -537,6 +538,26 @@ func main() {
 			adapters.Any("/:name/mcp", func(c *gin.Context) {
 				handleMCPProxy(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
 			})
+
+			// REST-style MCP endpoints
+			adapters.GET("/:name/tools", func(c *gin.Context) {
+				handleMCPToolsList(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
+			adapters.POST("/:name/tools/:toolName/call", func(c *gin.Context) {
+				handleMCPToolCall(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
+			adapters.GET("/:name/resources", func(c *gin.Context) {
+				handleMCPResourcesList(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
+			adapters.GET("/:name/resources/*uri", func(c *gin.Context) {
+				handleMCPResourceRead(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
+			adapters.GET("/:name/prompts", func(c *gin.Context) {
+				handleMCPPromptsList(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
+			adapters.GET("/:name/prompts/:promptName", func(c *gin.Context) {
+				handleMCPPromptGet(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
+			})
 		}
 
 		// Registry routes
@@ -626,6 +647,440 @@ func main() {
 	log.Println("Server exited")
 }
 
+// handleMCPToolsList handles GET /adapters/{name}/tools - REST-style tools/list
+func handleMCPToolsList(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Create tools/list JSON-RPC request
+	toolsListRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/list",
+		Params:  map[string]interface{}{},
+	}
+
+	// Convert to JSON
+	requestBody, err := json.Marshal(toolsListRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
+// handleMCPToolCall handles POST /adapters/{name}/tools/{toolName}/call - REST-style tools/call
+func handleMCPToolCall(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+	toolName := c.Param("toolName")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Parse request body for tool arguments
+	var requestBody map[string]interface{}
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Create tools/call JSON-RPC request
+	toolCallRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/call",
+		Params: map[string]interface{}{
+			"name":      toolName,
+			"arguments": requestBody,
+		},
+	}
+
+	// Convert to JSON
+	jsonRequestBody, err := json.Marshal(toolCallRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(jsonRequestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
+// handleMCPResourcesList handles GET /adapters/{name}/resources - REST-style resources/list
+func handleMCPResourcesList(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Create resources/list JSON-RPC request
+	resourcesListRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      3,
+		Method:  "resources/list",
+		Params:  map[string]interface{}{},
+	}
+
+	// Convert to JSON
+	requestBody, err := json.Marshal(resourcesListRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
+// handleMCPResourceRead handles GET /adapters/{name}/resources/*uri - REST-style resources/read
+func handleMCPResourceRead(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+	resourceURI := c.Param("uri")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Create resources/read JSON-RPC request
+	resourceReadRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      4,
+		Method:  "resources/read",
+		Params: map[string]interface{}{
+			"uri": resourceURI,
+		},
+	}
+
+	// Convert to JSON
+	requestBody, err := json.Marshal(resourceReadRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
+// handleMCPPromptsList handles GET /adapters/{name}/prompts - REST-style prompts/list
+func handleMCPPromptsList(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Create prompts/list JSON-RPC request
+	promptsListRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      5,
+		Method:  "prompts/list",
+		Params:  map[string]interface{}{},
+	}
+
+	// Convert to JSON
+	requestBody, err := json.Marshal(promptsListRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
+// handleMCPPromptGet handles GET /adapters/{name}/prompts/{promptName} - REST-style prompts/get
+func handleMCPPromptGet(c *gin.Context, adapterStore clients.AdapterResourceStore, stdioToHTTPAdapter *proxy.StdioToHTTPAdapter, remoteHTTPPlugin *proxy.RemoteHttpProxyPlugin, sessionStore session.SessionStore) {
+	adapterName := c.Param("name")
+	promptName := c.Param("promptName")
+
+	// Get adapter
+	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	if err != nil || adapter == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
+		return
+	}
+
+	// Validate client authentication
+	if adapter.Authentication != nil && adapter.Authentication.Required {
+		if err := validateClientAuthentication(c, adapter.Authentication); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required: " + err.Error()})
+			return
+		}
+	}
+
+	// Parse query parameters for prompt arguments
+	args := make(map[string]interface{})
+	for key, values := range c.Request.URL.Query() {
+		if len(values) > 0 {
+			args[key] = values[0]
+		}
+	}
+
+	// Create prompts/get JSON-RPC request
+	promptGetRequest := mcp.MCPMessage{
+		JSONRPC: "2.0",
+		ID:      6,
+		Method:  "prompts/get",
+		Params: map[string]interface{}{
+			"name":      promptName,
+			"arguments": args,
+		},
+	}
+
+	// Convert to JSON
+	requestBody, err := json.Marshal(promptGetRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Create a mock gin context with the JSON-RPC request
+	mockContext, _ := gin.CreateTestContext(c.Writer)
+	mockContext.Request = c.Request
+	mockContext.Request.Method = "POST"
+	mockContext.Request.Header.Set("Content-Type", "application/json")
+	mockContext.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	mockContext.Params = c.Params
+
+	// Route to appropriate handler based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		if stdioToHTTPAdapter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Stdio to HTTP adapter not initialized"})
+			return
+		}
+		if err := stdioToHTTPAdapter.HandleRequest(mockContext, *adapter); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Stdio adapter error: %v", err)})
+			return
+		}
+	case models.ConnectionTypeRemoteHttp, models.ConnectionTypeStreamableHttp, models.ConnectionTypeSSE:
+		if remoteHTTPPlugin == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Remote HTTP plugin not initialized"})
+			return
+		}
+		if err := remoteHTTPPlugin.ProxyRequest(mockContext, *adapter, sessionStore); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Remote HTTP plugin error: %v", err)})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
+		return
+	}
+}
+
 // validateClientAuthentication validates client authentication for adapter access
 func validateClientAuthentication(c *gin.Context, auth *models.AdapterAuthConfig) error {
 	if auth == nil || !auth.Required {
@@ -657,9 +1112,9 @@ func validateBearerAuth(c *gin.Context, auth *models.AdapterAuthConfig) error {
 	}
 
 	token := strings.TrimPrefix(authHeader, bearerPrefix)
-	expectedToken := auth.Token
+	var expectedToken string
 
-	// Check new bearer token config
+	// Check bearer token config
 	if auth.BearerToken != nil && auth.BearerToken.Token != "" {
 		expectedToken = auth.BearerToken.Token
 	}

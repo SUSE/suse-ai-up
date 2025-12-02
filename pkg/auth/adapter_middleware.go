@@ -110,7 +110,7 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 			}
 
 			// Fallback to legacy token validation (string comparison)
-			if token != adapter.Authentication.Token {
+			if adapter.Authentication.BearerToken == nil || token != adapter.Authentication.BearerToken.Token {
 				fmt.Printf("AUTH: Invalid legacy token for adapter %s from %s\n", adapterName, clientIP)
 				c.JSON(http.StatusUnauthorized, AuthError{
 					Code:    ErrCodeInvalidToken,

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -14,14 +15,28 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
 )
 
 // RegistryManagerInterface defines the interface for registry management
+// SyncResult represents the result of a registry sync operation
+type SyncResult struct {
+	TotalFetched int           `json:"totalFetched"`
+	TotalAdded   int           `json:"totalAdded"`
+	TotalUpdated int           `json:"totalUpdated"`
+	TotalErrors  int           `json:"totalErrors"`
+	PagesFetched int           `json:"pagesFetched"`
+	Duration     time.Duration `json:"duration"`
+	LastCursor   string        `json:"lastCursor,omitempty"`
+	Error        string        `json:"error,omitempty"`
+}
+
 type RegistryManagerInterface interface {
 	UploadRegistryEntries(entries []*models.MCPServer) error
 	LoadFromCustomSource(sourceURL string) error
 	SearchServers(query string, filters map[string]interface{}) ([]*models.MCPServer, error)
+	SyncOfficialRegistry(ctx context.Context) (*SyncResult, error)
 }
 
 // MCPServerStore interface for MCP server storage operations
@@ -46,6 +61,7 @@ type RegistryHandler struct {
 	RegistryManager   RegistryManagerInterface
 	DeploymentHandler DeploymentHandlerInterface
 	AdapterStore      *clients.InMemoryAdapterStore
+	ToolDiscovery     *mcp.MCPToolDiscoveryService
 }
 
 // NewRegistryHandler creates a new registry handler
@@ -55,6 +71,7 @@ func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInt
 		RegistryManager:   registryManager,
 		DeploymentHandler: deploymentHandler,
 		AdapterStore:      adapterStore,
+		ToolDiscovery:     mcp.NewMCPToolDiscoveryService(),
 	}
 }
 
@@ -758,17 +775,24 @@ func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
 // @Description Manually trigger synchronization with the official MCP registry
 // @Tags registry
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} SyncResult
 // @Router /api/v1/registry/sync/official [post]
 func (h *RegistryHandler) SyncOfficialRegistry(c *gin.Context) {
-	// For now, return a placeholder response
-	// In full implementation, this would trigger the RegistryManager.SyncOfficialRegistry()
-	response := map[string]interface{}{
-		"message": "Official registry sync not yet implemented",
-		"status":  "pending",
+	log.Printf("Starting manual official registry sync")
+
+	// Perform the sync
+	result, err := h.RegistryManager.SyncOfficialRegistry(c.Request.Context())
+	if err != nil {
+		log.Printf("Official registry sync failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to sync official registry",
+			"details": err.Error(),
+		})
+		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	log.Printf("Official registry sync completed successfully")
+	c.JSON(http.StatusOK, result)
 }
 
 // CreateAdapterFromRegistry handles POST /registry/{id}/create-adapter
@@ -836,15 +860,7 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
 
-	// Prepare tools configuration for the server - convert to template format
-	templateTools := convertToolsForTemplate(server.Tools)
-	toolsJSON, err := json.Marshal(templateTools)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal tools configuration"})
-		return
-	}
-
-	// Update the server's ConfigTemplate for deployment as HTTP server
+	// Initialize ConfigTemplate with placeholder - will be updated with discovered tools
 	server.ConfigTemplate = &models.MCPConfigTemplate{
 		Command: "npx",
 		Args:    []string{"tsx", "templates/virtualmcp-server.ts", "--transport", "http"},
@@ -852,7 +868,7 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 			"SERVER_NAME":  adapterName,
 			"PORT":         "8080", // Default port for the HTTP server
 			"BEARER_TOKEN": tokenStr,
-			"TOOLS_CONFIG": string(toolsJSON), // Use TOOLS_CONFIG instead of VIRTUAL_MCP_CONFIG
+			"TOOLS_CONFIG": "[]", // Placeholder - will be updated with discovered tools
 		},
 		Transport: "http",
 		Image:     "ghcr.io/alessandro-festa/suse-ai-up:latest",
@@ -886,6 +902,47 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		return
 	}
 
+	serverURL := fmt.Sprintf("http://localhost:%d", processInfo.Port)
+
+	// Discover tools from the deployed MCP server
+	log.Printf("Registry: Discovering tools from deployed server at %s", serverURL)
+	authConfig := &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		BearerToken: &models.BearerTokenConfig{
+			Token:     tokenStr,
+			Dynamic:   false,
+			ExpiresAt: expiresAt,
+		},
+	}
+
+	discoveredTools, err := h.ToolDiscovery.DiscoverTools(context.Background(), serverURL+"/mcp", authConfig)
+	if err != nil {
+		log.Printf("Registry: Failed to discover tools from deployed server, using registry tools as fallback: %v", err)
+		// Fall back to registry tools if discovery fails
+		discoveredTools = server.Tools
+	} else {
+		log.Printf("Registry: Successfully discovered %d tools from deployed server", len(discoveredTools))
+	}
+
+	// Convert discovered tools to template format for TOOLS_CONFIG
+	discoveredTemplateTools := convertToolsForTemplate(discoveredTools)
+	discoveredToolsJSON, err := json.Marshal(discoveredTemplateTools)
+	if err != nil {
+		log.Printf("Registry: Failed to marshal discovered tools: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process discovered tools"})
+		return
+	}
+
+	// Update the server's ConfigTemplate with discovered tools
+	server.ConfigTemplate.Env["TOOLS_CONFIG"] = string(discoveredToolsJSON)
+
+	// Update the server in the registry with discovered tools
+	if err := h.Store.UpdateMCPServer(server.ID, server); err != nil {
+		log.Printf("Registry: Failed to update server with discovered tools: %v", err)
+		// Continue anyway - this is not critical
+	}
+
 	// Create StreamableHttp adapter that connects to the deployed server
 	adapterData := &models.AdapterData{
 		Name:           adapterName,
@@ -893,15 +950,16 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		ConnectionType: models.ConnectionTypeStreamableHttp,
 		ReplicaCount:   req.ReplicaCount,
 		Description:    fmt.Sprintf("VirtualMCP adapter for %s", server.Name),
-		RemoteUrl:      fmt.Sprintf("http://localhost:%d", processInfo.Port), // Local process URL
-		Authentication: &models.AdapterAuthConfig{
-			Required: true,
-			Type:     "bearer",
-			BearerToken: &models.BearerTokenConfig{
-				Token:     tokenStr,
-				Dynamic:   false,
-				ExpiresAt: expiresAt,
+		RemoteUrl:      serverURL, // Local process URL
+		Authentication: authConfig,
+		// Store discovered functionality
+		MCPFunctionality: &models.MCPFunctionality{
+			ServerInfo: models.MCPServerInfo{
+				Name:    server.Name,
+				Version: server.Version,
 			},
+			Tools:         discoveredTools,
+			LastRefreshed: time.Now(),
 		},
 	}
 
@@ -923,10 +981,11 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	}
 
 	response := CreateAdapterFromRegistryResponse{
-		Message:   "VirtualMCP adapter created and deployed successfully",
-		Adapter:   adapter,
-		TokenInfo: tokenInfo,
-		Note:      "VirtualMCP server is now running and ready to use",
+		Message:     "VirtualMCP adapter created and deployed successfully",
+		Adapter:     adapter,
+		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+		TokenInfo:   tokenInfo,
+		Note:        "VirtualMCP server is now running and ready to use",
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -940,10 +999,11 @@ type CreateAdapterFromRegistryRequest struct {
 
 // CreateAdapterFromRegistryResponse represents the response for adapter creation
 type CreateAdapterFromRegistryResponse struct {
-	Message   string                  `json:"message"`
-	Adapter   *models.AdapterResource `json:"adapter"`
-	TokenInfo *AuthTokenInfo          `json:"tokenInfo,omitempty"`
-	Note      string                  `json:"note"`
+	Message     string                  `json:"message"`
+	Adapter     *models.AdapterResource `json:"adapter"`
+	McpEndpoint string                  `json:"mcp_endpoint"`
+	TokenInfo   *AuthTokenInfo          `json:"token_info,omitempty"`
+	Note        string                  `json:"note,omitempty"`
 }
 
 // AuthTokenInfo represents authentication token information

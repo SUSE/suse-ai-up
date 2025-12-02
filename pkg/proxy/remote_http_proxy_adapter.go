@@ -529,13 +529,11 @@ func (a *RemoteHTTPProxyAdapter) applyAuthentication(req *http.Request, auth *mo
 
 // applyBearerAuth applies bearer authentication to request
 func (a *RemoteHTTPProxyAdapter) applyBearerAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
-	token := auth.Token // Legacy field
+	var token string
 
-	// Check new bearer token configuration
-	if auth.BearerToken != nil {
-		if auth.BearerToken.Token != "" {
-			token = auth.BearerToken.Token
-		}
+	// Check bearer token configuration
+	if auth.BearerToken != nil && auth.BearerToken.Token != "" {
+		token = auth.BearerToken.Token
 	}
 
 	if token == "" {

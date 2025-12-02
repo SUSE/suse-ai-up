@@ -186,13 +186,11 @@ func (p *RemoteHttpProxyPlugin) applyBackendAuthentication(req *http.Request, au
 
 // applyBearerAuth applies bearer authentication to request
 func (p *RemoteHttpProxyPlugin) applyBearerAuth(req *http.Request, auth *models.AdapterAuthConfig) error {
-	token := auth.Token // Legacy field
+	var token string
 
-	// Check new bearer token configuration
-	if auth.BearerToken != nil {
-		if auth.BearerToken.Token != "" {
-			token = auth.BearerToken.Token
-		}
+	// Check bearer token configuration
+	if auth.BearerToken != nil && auth.BearerToken.Token != "" {
+		token = auth.BearerToken.Token
 		// Note: Dynamic token generation would require token manager integration
 	}
 

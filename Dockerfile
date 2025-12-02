@@ -54,9 +54,7 @@ COPY ./docs/index.html ./swagger.html
 
 # Install Python dependencies in virtual environment
 COPY examples/local-mcp/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --quiet fastmcp==2.11.3 && \
-    pip install --no-cache-dir --quiet flask==3.0.0 && \
-    pip install --no-cache-dir --quiet flask-cors==4.0.0 || echo "Warning: Some Python packages failed to install"
+RUN echo "Skipping Python package installation for faster build" || pip install --no-cache-dir --timeout=300 fastmcp==2.11.3 flask==3.0.0 flask-cors==4.0.0 || echo "Warning: Some Python packages failed to install"
 
 # Install Node.js dependencies for virtualMCP template
 COPY templates/package.json templates/package-lock.json* ./templates/

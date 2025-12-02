@@ -408,9 +408,9 @@ func (sht *StreamableHTTPTransport) applyAuthentication(req *http.Request, adapt
 
 // applyBearerAuth applies bearer authentication
 func (sht *StreamableHTTPTransport) applyBearerAuth(req *http.Request, adapter models.AdapterResource) error {
-	token := adapter.Authentication.Token // Legacy field
+	var token string
 
-	// Check new bearer token configuration
+	// Check bearer token configuration
 	if adapter.Authentication.BearerToken != nil && adapter.Authentication.BearerToken.Token != "" {
 		token = adapter.Authentication.BearerToken.Token
 	}
