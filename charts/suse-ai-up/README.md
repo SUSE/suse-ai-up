@@ -2,7 +2,7 @@
 
 ![SUSE Logo](https://apps.rancher.io/logos/suse-ai-deployer.png)
 
-This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities and support for spawning Python and Node.js MCP servers.
+This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities, MCP server registry management, and automatic spawning of MCP servers with configurable resource limits.
 
 **Certified for SUSE Rancher** | **OpenTelemetry Enabled** | **Multi-Architecture Support**
 
@@ -71,11 +71,14 @@ helm install suse-ai-up ./charts/suse-ai-up -n ai-up --create-namespace
 
 | Parameter | Description | Default | Rancher UI Category |
 |-----------|-------------|---------|-------------------|
-| `otel.enabled` | Enable OpenTelemetry | `false` | OpenTelemetry (OTEL) |
+| `otel.enabled` | Enable OpenTelemetry collector sidecar | `false` | OpenTelemetry (OTEL) |
 | `otel.serviceName` | Service name for OTEL | `suse-ai-up` | OpenTelemetry (OTEL) |
 | `otel.serviceLabels.genai.system.suseai-up` | System identifier label | `true` | OpenTelemetry (OTEL) |
 | `otel.exporters.jaeger.enabled` | Enable Jaeger exporter | `true` | OpenTelemetry (OTEL) |
 | `otel.exporters.prometheus.enabled` | Enable Prometheus exporter | `true` | OpenTelemetry (OTEL) |
+| `otel.app.enabled` | Enable application OTEL instrumentation | `false` | OpenTelemetry (OTEL) |
+| `otel.app.endpoint` | OTEL collector endpoint | `http://localhost:4318` | OpenTelemetry (OTEL) |
+| `otel.app.protocol` | OTEL protocol (grpc/http) | `grpc` | OpenTelemetry (OTEL) |
 
 ### Runtime Support
 
@@ -83,6 +86,19 @@ helm install suse-ai-up ./charts/suse-ai-up -n ai-up --create-namespace
 |-----------|-------------|---------|-------------------|
 | `env.python.enabled` | Enable Python runtime | `true` | Runtime Support |
 | `env.nodejs.enabled` | Enable Node.js runtime | `true` | Runtime Support |
+
+### MCP Server Spawning
+
+| Parameter | Description | Default | Rancher UI Category |
+|-----------|-------------|---------|-------------------|
+| `env.spawning.retryAttempts` | Number of retry attempts for failed spawns | `3` | MCP Server Spawning |
+| `env.spawning.retryBackoffMs` | Delay between retry attempts (ms) | `2000` | MCP Server Spawning |
+| `env.spawning.defaultCpu` | Default CPU limit for spawned servers | `500m` | MCP Server Spawning |
+| `env.spawning.defaultMemory` | Default memory limit for spawned servers | `256Mi` | MCP Server Spawning |
+| `env.spawning.maxCpu` | Maximum allowed CPU limit | `1000m` | MCP Server Spawning |
+| `env.spawning.maxMemory` | Maximum allowed memory limit | `1Gi` | MCP Server Spawning |
+| `env.spawning.logLevel` | Log level for spawning operations | `debug` | MCP Server Spawning |
+| `env.spawning.includeContext` | Include context in spawning logs | `true` | MCP Server Spawning |
 
 ### Multi-Architecture Support
 
@@ -149,8 +165,9 @@ This Helm chart includes a comprehensive `questions.yaml` file that provides an 
 
 - **Basic Configuration**: Image settings, replicas, and core parameters
 - **Service Configuration**: Networking and service type options
-- **OpenTelemetry (OTEL)**: Observability and monitoring configuration
+- **OpenTelemetry (OTEL)**: Collector sidecar and application instrumentation
 - **Runtime Support**: Python and Node.js runtime toggles
+- **MCP Server Spawning**: Resource limits, retry logic, and spawning configuration
 - **Authentication & Security**: Auth modes and service accounts
 - **Networking**: Ingress and external access configuration
 - **Resources**: CPU and memory allocation
@@ -175,12 +192,23 @@ The form includes validation, helpful descriptions, and conditional fields that 
 - **Metrics Collection**: Application and system metrics with Prometheus export
 - **Structured Logging**: OTEL-compatible log collection
 - **Resource Detection**: Automatic Kubernetes pod metadata detection
+- **Application Instrumentation**: Optional in-process OTEL instrumentation
+- **Collector Sidecar**: Optional OTEL collector for advanced processing
 
 ### 🐍 Runtime Support
 
 - **Python MCP Servers**: Full Python 3.11+ support with pip and common MCP libraries
 - **Node.js MCP Servers**: Node.js 18+ with npm for JavaScript/TypeScript MCP servers
 - **Container Security**: Non-root execution with minimal attack surface
+
+### 🔄 MCP Server Spawning
+
+- **Automatic Spawning**: Registry entries spawn as running processes when adapters are created
+- **Resource Management**: Configurable CPU/memory limits prevent resource exhaustion
+- **Retry Logic**: Exponential backoff retry for failed spawning attempts
+- **Tool Discovery**: Runtime tool discovery with fallback to registry definitions
+- **Pre-loaded Servers**: Built-in support for official MCP servers (filesystem, git, memory, etc.)
+- **Configurable Logging**: Debug-level logging with contextual information
 
 ### ☸️ Kubernetes Native
 
@@ -228,6 +256,80 @@ curl -X POST http://localhost:8911/api/v1/adapters \
       "PYTHONPATH": "/app"
     }
   }'
+```
+
+### Spawning MCP Servers from Registry
+
+The service includes automatic MCP server spawning capabilities. Registry entries can be spawned as running processes with proper resource management.
+
+#### Spawn Official MCP Server
+
+```bash
+# Spawn the filesystem MCP server
+curl -X POST http://localhost:8911/api/v1/registry/filesystem/create-adapter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentVariables": {
+      "ALLOWED_DIRS": "/tmp,/app/data"
+    }
+  }'
+```
+
+#### Response
+
+```json
+{
+  "message": "LocalStdio adapter created successfully",
+  "adapter": {
+    "id": "localstdio-filesystem-123",
+    "name": "localstdio-filesystem",
+    "connectionType": "LocalStdio"
+  },
+  "mcp_endpoint": "http://localhost:8911/api/v1/adapters/localstdio-filesystem-123/mcp"
+}
+```
+
+#### Spawn with Custom Resource Limits
+
+```bash
+# Spawn with custom environment and resource configuration
+curl -X POST http://localhost:8911/api/v1/registry/git/create-adapter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentVariables": {
+      "GIT_AUTHOR_NAME": "AI Assistant",
+      "GIT_AUTHOR_EMAIL": "ai@example.com"
+    }
+  }'
+```
+
+#### Available Pre-loaded Servers
+
+The service includes pre-loaded official MCP servers:
+
+- **filesystem**: Secure file operations with directory restrictions
+- **git**: Git repository operations and analysis
+- **memory**: Knowledge graph-based persistent memory
+- **sequential-thinking**: Dynamic problem-solving tools
+- **time**: Timezone conversion and date operations
+- **everything**: Reference implementation with all features
+- **fetch**: Web content fetching and conversion
+
+#### Spawning Configuration
+
+Configure spawning behavior through Helm values:
+
+```yaml
+env:
+  spawning:
+    retryAttempts: 3      # Number of retry attempts
+    retryBackoffMs: 2000  # Delay between retries (ms)
+    defaultCpu: "500m"    # Default CPU limit
+    defaultMemory: "256Mi" # Default memory limit
+    maxCpu: "1000m"       # Maximum CPU limit
+    maxMemory: "1Gi"      # Maximum memory limit
+    logLevel: "debug"     # Logging level
+    includeContext: true  # Include context in logs
 ```
 
 ## Troubleshooting

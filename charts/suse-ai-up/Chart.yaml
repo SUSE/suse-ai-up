@@ -1,9 +1,9 @@
 apiVersion: v2
 name: suse-ai-up
-description: SUSE AI Universal Proxy - A comprehensive platform for managing and proxying Model Context Protocol (MCP) servers
+description: SUSE AI Universal Proxy - A comprehensive platform for managing and proxying Model Context Protocol (MCP) servers with automatic spawning capabilities
 type: application
-version: 0.1.0
-appVersion: "1.0.0"
+version: 0.2.0
+appVersion: "1.1.0"
 icon: https://apps.rancher.io/logos/suse-ai-deployer.png
 keywords:
   - ai

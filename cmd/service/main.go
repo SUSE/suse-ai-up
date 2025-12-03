@@ -176,15 +176,21 @@ func reconfigureVirtualMCPAdapter(data *models.AdapterData) {
 }
 
 // initOTEL initializes OpenTelemetry tracing and metrics
-func initOTEL(ctx context.Context) error {
+func initOTEL(ctx context.Context, cfg *config.Config) error {
 	// Create OTLP trace exporter
-	traceExporter, err := otlptracegrpc.New(ctx)
+	traceExporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(cfg.OtelEndpoint),
+		otlptracegrpc.WithInsecure(),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
 	// Create OTLP metric exporter
-	metricExporter, err := otlpmetricgrpc.New(ctx)
+	metricExporter, err := otlpmetricgrpc.New(ctx,
+		otlpmetricgrpc.WithEndpoint(cfg.OtelEndpoint),
+		otlpmetricgrpc.WithInsecure(),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create metric exporter: %w", err)
 	}
@@ -225,11 +231,13 @@ func main() {
 	// Update swagger host dynamically
 	docs.SwaggerInfo.Host = cfg.GetSwaggerHost()
 
-	// Initialize OpenTelemetry
-	ctx := context.Background()
-	if err := initOTEL(ctx); err != nil {
-		log.Printf("Failed to initialize OpenTelemetry: %v", err)
-		// Continue without OTEL rather than failing
+	// Initialize OpenTelemetry (if enabled)
+	if cfg.OtelEnabled {
+		ctx := context.Background()
+		if err := initOTEL(ctx, cfg); err != nil {
+			log.Printf("Failed to initialize OpenTelemetry: %v", err)
+			// Continue without OTEL rather than failing
+		}
 	}
 
 	// Initialize Gin
@@ -239,8 +247,10 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// Add OTEL Gin middleware
-	r.Use(otelgin.Middleware("suse-ai-up"))
+	// Add OTEL Gin middleware (if enabled)
+	if cfg.OtelEnabled {
+		r.Use(otelgin.Middleware("suse-ai-up"))
+	}
 
 	// Initialize stores
 	adapterStore := clients.NewInMemoryAdapterStore()

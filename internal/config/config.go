@@ -64,6 +64,11 @@ type Config struct {
 
 	// Authentication
 	AuthMode string `json:"auth_mode"`
+
+	// OpenTelemetry configuration
+	OtelEnabled  bool   `json:"otel_enabled"`
+	OtelEndpoint string `json:"otel_endpoint"`
+	OtelProtocol string `json:"otel_protocol"`
 }
 
 // LoadConfig loads configuration from environment variables
@@ -137,6 +142,10 @@ func LoadConfig() *Config {
 		},
 
 		AuthMode: getEnv("AUTH_MODE", "development"),
+
+		OtelEnabled:  getEnvBool("OTEL_ENABLED", false),
+		OtelEndpoint: getEnv("OTEL_ENDPOINT", "http://localhost:4318"),
+		OtelProtocol: getEnv("OTEL_PROTOCOL", "grpc"),
 	}
 
 	return cfg

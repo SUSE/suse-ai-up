@@ -59,6 +59,17 @@ env:
     enabled: true
     version: "18"
 
+  # MCP server spawning configuration
+  spawning:
+    retryAttempts: 3
+    retryBackoffMs: 2000
+    defaultCpu: "500m"
+    defaultMemory: "256Mi"
+    maxCpu: "1000m"
+    maxMemory: "1Gi"
+    logLevel: "debug"
+    includeContext: true
+
 # OpenTelemetry Configuration
 otel:
   enabled: false
@@ -89,6 +100,12 @@ otel:
     otlpEndpoint: "http://localhost:4318"
     otlpProtocol: "grpc"
     insecure: "true"
+
+  # Application OTEL Configuration
+  app:
+    enabled: false
+    endpoint: "http://localhost:4318"
+    protocol: "grpc"
 
   # OTEL Resource Attributes
   resourceAttributes:

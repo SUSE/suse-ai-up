@@ -126,6 +126,30 @@ Main application environment variables
   value: {{ .Values.env.registryEnabled | quote }}
 - name: SMARTAGENTS_ENABLED
   value: {{ .Values.env.smartAgentsEnabled | quote }}
+# MCP server spawning configuration
+- name: SPAWNING_RETRY_ATTEMPTS
+  value: {{ .Values.env.spawning.retryAttempts | quote }}
+- name: SPAWNING_RETRY_BACKOFF_MS
+  value: {{ .Values.env.spawning.retryBackoffMs | quote }}
+- name: SPAWNING_DEFAULT_CPU
+  value: {{ .Values.env.spawning.defaultCpu | quote }}
+- name: SPAWNING_DEFAULT_MEMORY
+  value: {{ .Values.env.spawning.defaultMemory | quote }}
+- name: SPAWNING_MAX_CPU
+  value: {{ .Values.env.spawning.maxCpu | quote }}
+- name: SPAWNING_MAX_MEMORY
+  value: {{ .Values.env.spawning.maxMemory | quote }}
+- name: SPAWNING_LOG_LEVEL
+  value: {{ .Values.env.spawning.logLevel | quote }}
+- name: SPAWNING_INCLUDE_CONTEXT
+  value: {{ .Values.env.spawning.includeContext | quote }}
+# OpenTelemetry configuration
+- name: OTEL_ENABLED
+  value: {{ .Values.otel.app.enabled | quote }}
+- name: OTEL_ENDPOINT
+  value: {{ .Values.otel.app.endpoint | quote }}
+- name: OTEL_PROTOCOL
+  value: {{ .Values.otel.app.protocol | quote }}
 {{- end }}
 
 {{/*
