@@ -70,6 +70,10 @@ env:
     logLevel: "debug"
     includeContext: true
 
+  # GitHub integration
+  github:
+    pat: ""  # GitHub Personal Access Token for MCP server access
+
 # OpenTelemetry Configuration
 otel:
   enabled: false

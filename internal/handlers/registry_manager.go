@@ -72,7 +72,7 @@ func (rm *DefaultRegistryManager) SearchServers(query string, filters map[string
 		if query != "" {
 			searchText := strings.ToLower(query)
 			serverText := strings.ToLower(fmt.Sprintf("%s %s", server.Name, server.Description))
-			if server.Repository != nil {
+			if server.Repository.Source != "" {
 				serverText += " " + strings.ToLower(server.Repository.Source)
 			}
 			if !strings.Contains(serverText, searchText) {
@@ -133,7 +133,7 @@ func (rm *DefaultRegistryManager) matchesFilters(server *models.MCPServer, filte
 			}
 		case "provider":
 			// Check in repository source
-			if server.Repository != nil && !strings.Contains(strings.ToLower(server.Repository.Source), strings.ToLower(fmt.Sprintf("%v", value))) {
+			if server.Repository.Source != "" && !strings.Contains(strings.ToLower(server.Repository.Source), strings.ToLower(fmt.Sprintf("%v", value))) {
 				return false
 			}
 		case "source":
@@ -327,7 +327,7 @@ func (rm *DefaultRegistryManager) convertOfficialRegistryResponse(servers []inte
 
 		// Extract repository information
 		if repoData, ok := serverData["repository"].(map[string]interface{}); ok {
-			repo := &models.Repository{}
+			repo := models.Repository{}
 			if repoURL, ok := repoData["url"].(string); ok {
 				repo.URL = repoURL
 			}

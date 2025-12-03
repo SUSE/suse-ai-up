@@ -150,6 +150,11 @@ Main application environment variables
   value: {{ .Values.otel.app.endpoint | quote }}
 - name: OTEL_PROTOCOL
   value: {{ .Values.otel.app.protocol | quote }}
+# GitHub configuration
+{{- if .Values.env.github.pat }}
+- name: GITHUB_PAT
+  value: {{ .Values.env.github.pat | quote }}
+{{- end }}
 {{- end }}
 
 {{/*

@@ -184,6 +184,14 @@ questions:
     default: true
     group: "MCP Server Spawning"
 
+  # GitHub Integration
+  - variable: env.github.pat
+    label: "GitHub Personal Access Token"
+    description: "GitHub PAT for accessing GitHub MCP server (required for GitHub adapter)"
+    type: password
+    default: ""
+    group: "GitHub Integration"
+
   # Authentication & Security
   - variable: env.authMode
     label: "Authentication Mode"

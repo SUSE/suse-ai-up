@@ -158,23 +158,29 @@ type ResourceLimits struct {
 	Memory string `json:"memory,omitempty"` // Memory limit (e.g., "256Mi", "1Gi")
 }
 
+// GitHubConfig represents GitHub-specific MCP server configuration
+type GitHubConfig struct {
+	APIEndpoint string `json:"api_endpoint,omitempty"` // GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)
+	Token       string `json:"token,omitempty"`        // GitHub Personal Access Token
+	Owner       string `json:"owner,omitempty"`        // Repository owner (for repo-specific servers)
+	Repo        string `json:"repo,omitempty"`         // Repository name (for repo-specific servers)
+}
+
 // MCPServer represents an MCP server entry (enhanced to match MCP registry schema)
 type MCPServer struct {
 	ID               string                 `json:"id"`
 	Name             string                 `json:"name"`
 	Description      string                 `json:"description"`
-	Repository       *Repository            `json:"repository,omitempty"`
-	Version          string                 `json:"version,omitempty"`
-	Packages         []Package              `json:"packages,omitempty"`
-	ValidationStatus string                 `json:"validation_status"` // new, approved, certified
-	DiscoveredAt     time.Time              `json:"discovered_at"`
+	Version          string                 `json:"version"`
+	Repository       Repository             `json:"repository,omitempty"`
+	Packages         []Package              `json:"packages"`
 	Tools            []MCPTool              `json:"tools,omitempty"`
-	Meta             map[string]interface{} `json:"_meta,omitempty"`           // Registry metadata
-	ConfigTemplate   *MCPConfigTemplate     `json:"config_template,omitempty"` // Docker/K8s deployment config
-
-	// Legacy fields for backward compatibility
-	URL      string `json:"url,omitempty"`
-	Protocol string `json:"protocol,omitempty"`
+	ValidationStatus string                 `json:"validation_status"`
+	DiscoveredAt     time.Time              `json:"discovered_at"`
+	URL              string                 `json:"url,omitempty"` // Legacy URL field for remote servers
+	Meta             map[string]interface{} `json:"_meta,omitempty"`
+	ConfigTemplate   *MCPConfigTemplate     `json:"config_template,omitempty"`
+	GitHubConfig     *GitHubConfig          `json:"github_config,omitempty"`
 }
 
 // Repository represents repository information for an MCP server

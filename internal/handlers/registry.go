@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ const (
 	ServerTypeLocalStdio ServerType = "localstdio"
 	ServerTypeVirtualMCP ServerType = "virtualmcp"
 	ServerTypeRemoteHTTP ServerType = "remotehttp"
+	ServerTypeGitHub     ServerType = "github"
 )
 
 // RegistryManagerInterface defines the interface for registry management
@@ -100,6 +102,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 		description string
 		npmPackage  string
 		transport   string
+		isGitHub    bool
 	}{
 		{
 			id:          "filesystem",
@@ -107,6 +110,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Secure file operations with configurable access controls",
 			npmPackage:  "@modelcontextprotocol/server-filesystem",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "git",
@@ -114,6 +118,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Tools to read, search, and manipulate Git repositories",
 			npmPackage:  "@modelcontextprotocol/server-git",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "memory",
@@ -121,6 +126,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Knowledge graph-based persistent memory system",
 			npmPackage:  "@modelcontextprotocol/server-memory",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "sequential-thinking",
@@ -128,6 +134,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Dynamic and reflective problem-solving through thought sequences",
 			npmPackage:  "@modelcontextprotocol/server-sequential-thinking",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "time",
@@ -135,6 +142,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Time and timezone conversion capabilities",
 			npmPackage:  "@modelcontextprotocol/server-time",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "everything",
@@ -142,6 +150,7 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Reference/test server with prompts, resources, and tools",
 			npmPackage:  "@modelcontextprotocol/server-everything",
 			transport:   "stdio",
+			isGitHub:    false,
 		},
 		{
 			id:          "fetch",
@@ -149,6 +158,15 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			description: "Web content fetching and conversion for efficient LLM usage",
 			npmPackage:  "@modelcontextprotocol/server-fetch",
 			transport:   "stdio",
+			isGitHub:    false,
+		},
+		{
+			id:          "github",
+			name:        "github",
+			description: "GitHub integration with repository management, pull requests, and code analysis tools",
+			npmPackage:  "",
+			transport:   "http",
+			isGitHub:    true,
 		},
 	}
 
@@ -179,6 +197,14 @@ func (h *RegistryHandler) initializePreloadedServers() {
 			},
 		}
 
+		// Add GitHub-specific configuration if this is a GitHub server
+		if serverInfo.isGitHub {
+			server.GitHubConfig = &models.GitHubConfig{
+				APIEndpoint: "https://api.githubcopilot.com/mcp/",
+			}
+			server.Meta["source"] = "github"
+		}
+
 		// Generate config template
 		server.ConfigTemplate = h.generateConfigTemplate(server, "official")
 
@@ -193,6 +219,11 @@ func (h *RegistryHandler) initializePreloadedServers() {
 
 // DetectServerType determines the type of MCP server from registry metadata and package information
 func DetectServerType(server *models.MCPServer) ServerType {
+	// Check for GitHub servers first
+	if server.GitHubConfig != nil || (server.Meta != nil && server.Meta["source"] == "github") {
+		return ServerTypeGitHub
+	}
+
 	// Check metadata source first
 	if server.Meta != nil {
 		if source, ok := server.Meta["source"].(string); ok {
@@ -484,7 +515,7 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 
 	// Handle repository
 	if repoData, ok := serverData["repository"].(map[string]interface{}); ok {
-		repo := &models.Repository{}
+		repo := models.Repository{}
 		if url, ok := repoData["url"].(string); ok {
 			repo.URL = url
 		}
@@ -1122,6 +1153,12 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Remote HTTP server must have URL or package configuration"})
 			return
 		}
+	case ServerTypeGitHub:
+		// Validate that we have GitHub configuration
+		if server.GitHubConfig == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub server must have GitHub configuration"})
+			return
+		}
 	}
 
 	// Parse request body for additional configuration
@@ -1138,6 +1175,8 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		h.createLocalStdioAdapter(c, server, req)
 	case ServerTypeRemoteHTTP:
 		h.createRemoteHTTPAdapter(c, server, req)
+	case ServerTypeGitHub:
+		h.createGitHubAdapter(c, server, req)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported server type: %s", serverType)})
 	}
@@ -1433,6 +1472,82 @@ func (h *RegistryHandler) createRemoteHTTPAdapter(c *gin.Context, server *models
 		Adapter:     adapter,
 		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
 		Note:        "Remote HTTP server will route requests to the configured endpoint",
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// createGitHubAdapter creates a GitHub-specific MCP adapter
+func (h *RegistryHandler) createGitHubAdapter(c *gin.Context, server *models.MCPServer, req CreateAdapterFromRegistryRequest) {
+	// Generate adapter name
+	adapterName := fmt.Sprintf("github-%s", strings.ReplaceAll(server.ID, "/", "-"))
+
+	// Get GitHub configuration
+	githubConfig := server.GitHubConfig
+	if githubConfig == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub server missing configuration"})
+		return
+	}
+
+	// Set the remote URL to GitHub MCP API
+	remoteURL := githubConfig.APIEndpoint
+	if remoteURL == "" {
+		remoteURL = "https://api.githubcopilot.com/mcp/"
+	}
+
+	// Create GitHub adapter
+	adapterData := &models.AdapterData{
+		Name:           adapterName,
+		Protocol:       models.ServerProtocolMCP,
+		ConnectionType: models.ConnectionTypeRemoteHttp,
+		ReplicaCount:   1, // GitHub API doesn't use replicas
+		Description:    fmt.Sprintf("GitHub MCP adapter for %s", server.Name),
+		RemoteUrl:      remoteURL,
+		// Add environment variables from request
+		EnvironmentVariables: make(map[string]string),
+	}
+
+	// Add GitHub PAT from environment or request
+	githubToken := os.Getenv("GITHUB_PAT")
+	if githubToken == "" && req.EnvironmentVariables != nil {
+		if token, exists := req.EnvironmentVariables["GITHUB_PAT"]; exists {
+			githubToken = token
+		}
+	}
+
+	if githubToken != "" {
+		adapterData.EnvironmentVariables["GITHUB_PAT"] = githubToken
+	}
+
+	// Add other environment variables from request
+	if req.EnvironmentVariables != nil {
+		for k, v := range req.EnvironmentVariables {
+			if k != "GITHUB_PAT" { // Already handled above
+				adapterData.EnvironmentVariables[k] = v
+			}
+		}
+	}
+
+	// Create adapter resource
+	adapter := &models.AdapterResource{}
+	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store the adapter
+	if err := h.AdapterStore.Create(adapter); err != nil {
+		log.Printf("Failed to store GitHub adapter: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
+		return
+	}
+
+	response := CreateAdapterFromRegistryResponse{
+		Message:     "GitHub MCP adapter created successfully",
+		Adapter:     adapter,
+		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+		Note:        "GitHub MCP server will proxy requests to GitHub Copilot API",
+	}
+
+	if githubToken == "" {
+		response.Note += ". Warning: No GitHub PAT configured - authentication may fail"
 	}
 
 	c.JSON(http.StatusCreated, response)

@@ -314,6 +314,31 @@ The service includes pre-loaded official MCP servers:
 - **time**: Timezone conversion and date operations
 - **everything**: Reference implementation with all features
 - **fetch**: Web content fetching and conversion
+- **github**: GitHub integration with repository management and code analysis tools
+
+#### GitHub MCP Server
+
+The GitHub MCP server provides access to GitHub's MCP API for repository management, pull requests, and code analysis. To use the GitHub server:
+
+1. **Configure GitHub PAT**: Set the `GITHUB_PAT` environment variable with a GitHub Personal Access Token that has appropriate permissions
+2. **Create Adapter**: Spawn the GitHub adapter from the registry
+3. **Access Features**: Use MCP tools for GitHub operations like repository analysis, pull request management, and code search
+
+```bash
+# Set GitHub PAT
+export GITHUB_PAT=your_github_personal_access_token
+
+# Create GitHub adapter
+curl -X POST http://localhost:8911/api/v1/registry/github/create-adapter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentVariables": {
+      "GITHUB_PAT": "'$GITHUB_PAT'"
+    }
+  }'
+```
+
+The GitHub adapter automatically proxies requests to `https://api.githubcopilot.com/mcp/` with proper authentication headers.
 
 #### Spawning Configuration
 

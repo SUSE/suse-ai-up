@@ -32,15 +32,28 @@ func (p *RemoteHttpProxyPlugin) CanHandle(connectionType models.ConnectionType) 
 }
 
 func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.AdapterResource, sessionStore session.SessionStore) error {
-	// Use the RemoteUrl directly - it should already include the full MCP endpoint
-	targetURL, err := url.Parse(adapter.RemoteUrl)
-	if err != nil {
-		return err
-	}
+	var targetURL *url.URL
+	var err error
+	var isGitHubAdapter bool
 
-	// For MCP protocol servers, ensure the path includes /mcp
-	if adapter.Protocol == models.ServerProtocolMCP && targetURL.Path == "" {
-		targetURL.Path = "/mcp"
+	// Check if this is a GitHub adapter (created from GitHub MCP server)
+	if strings.HasPrefix(adapter.Name, "github-") {
+		isGitHubAdapter = true
+		targetURL, err = url.Parse("https://api.githubcopilot.com/mcp/")
+		if err != nil {
+			return err
+		}
+	} else {
+		// Use the RemoteUrl directly - it should already include the full MCP endpoint
+		targetURL, err = url.Parse(adapter.RemoteUrl)
+		if err != nil {
+			return err
+		}
+
+		// For MCP protocol servers, ensure the path includes /mcp
+		if adapter.Protocol == models.ServerProtocolMCP && targetURL.Path == "" {
+			targetURL.Path = "/mcp"
+		}
 	}
 
 	// Build target URL
@@ -83,6 +96,16 @@ func (p *RemoteHttpProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 	if backendAuthRequired && adapter.Authentication != nil {
 		if err := p.applyBackendAuthentication(req, adapter.Authentication); err != nil {
 			return fmt.Errorf("failed to apply backend authentication: %w", err)
+		}
+	}
+
+	// Apply GitHub authentication for GitHub adapters
+	if isGitHubAdapter {
+		if githubToken, exists := adapter.EnvironmentVariables["GITHUB_PAT"]; exists && githubToken != "" {
+			req.Header.Set("Authorization", "Bearer "+githubToken)
+			req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+		} else {
+			return fmt.Errorf("GitHub adapter requires GITHUB_PAT environment variable")
 		}
 	}
 
