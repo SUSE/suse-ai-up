@@ -18,21 +18,24 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s" \
     -o service ./cmd/service
 
-# Final stage - using optimized BCI base image
-FROM registry.suse.com/bci/bci-base:16.0
+# Final stage - using Ubuntu base image with Node.js and Python support
+FROM ubuntu:22.04
 
 ARG TARGETARCH
 
 # Install only essential runtime dependencies
-RUN zypper --non-interactive install --no-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     python3 \
     python3-pip \
+    python3-venv \
     curl \
     nodejs \
     npm \
-    && zypper clean --all \
-    && rm -rf /var/cache/zypp/* \
+    procps \
+    htop \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/*
 
 # Create Python virtual environment
@@ -41,6 +44,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Create non-root user
 RUN useradd -r -s /bin/bash -u 1000 mcpuser
+
+# Set default port range for MCP server deployment
+ENV LOCAL_DEPLOYMENT_MIN_PORT=8000
+ENV LOCAL_DEPLOYMENT_MAX_PORT=19999
+
+# Create isolated directories for MCP servers
+RUN mkdir -p /opt/mcp-servers /opt/mcp-servers/logs && chown -R mcpuser:mcpuser /opt/mcp-servers
 
 # Set working directory
 WORKDIR /home/mcpuser/
@@ -76,7 +86,7 @@ RUN zypper clean --all \
     && rm -rf /opt/venv/share/man
 
 # Change ownership to non-root user
-RUN chown -R mcpuser:mcpuser /home/mcpuser/ /opt/venv/
+RUN chown -R mcpuser:mcpuser /home/mcpuser/ /opt/venv/ /opt/mcp-servers/
 
 # Switch to non-root user
 USER 1000

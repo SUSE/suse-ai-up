@@ -294,9 +294,9 @@ func main() {
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
 	// Initialize local process deployment handler (replaces Kubernetes deployment)
-	deploymentHandler := handlers.NewLocalProcessDeploymentHandler(registryStore, cfg.LocalDeployment.MinPort, cfg.LocalDeployment.MaxPort)
+	deploymentHandler := handlers.NewLocalProcessDeploymentHandler(registryStore, cfg.LocalDeployment.MinPort, cfg.LocalDeployment.MaxPort, &cfg.Spawning)
 
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler, adapterStore)
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler, adapterStore, &cfg.Spawning)
 
 	// Initialize plugin service manager
 	serviceManager := plugins.NewServiceManager(cfg, registryManager)

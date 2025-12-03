@@ -8,12 +8,17 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"suse-ai-up/internal/config"
+	"suse-ai-up/pkg/models"
 )
 
 // PortAllocator manages dynamic port allocation
@@ -79,14 +84,16 @@ type LocalProcessDeploymentHandler struct {
 	portAllocator    *PortAllocator
 	mutex            sync.RWMutex
 	store            MCPServerStore
+	spawningConfig   *config.SpawningConfig
 }
 
 // NewLocalProcessDeploymentHandler creates a new local process deployment handler
-func NewLocalProcessDeploymentHandler(store MCPServerStore, minPort, maxPort int) *LocalProcessDeploymentHandler {
+func NewLocalProcessDeploymentHandler(store MCPServerStore, minPort, maxPort int, spawningConfig *config.SpawningConfig) *LocalProcessDeploymentHandler {
 	return &LocalProcessDeploymentHandler{
 		runningProcesses: make(map[string]*ProcessInfo),
 		portAllocator:    NewPortAllocator(minPort, maxPort),
 		store:            store,
+		spawningConfig:   spawningConfig,
 	}
 }
 
@@ -106,6 +113,18 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 	port, err := h.portAllocator.Allocate()
 	if err != nil {
 		return fmt.Errorf("failed to allocate port: %v", err)
+	}
+
+	// Perform security validation
+	if err := h.validateServerSecurity(server); err != nil {
+		h.portAllocator.Release(port)
+		return fmt.Errorf("security validation failed: %v", err)
+	}
+
+	// Handle dynamic dependencies for registry servers
+	if err := h.installServerDependencies(server); err != nil {
+		h.portAllocator.Release(port)
+		return fmt.Errorf("failed to install server dependencies: %v", err)
 	}
 
 	// Prepare tools configuration
@@ -145,25 +164,77 @@ func (h *LocalProcessDeploymentHandler) DeployMCPDirect(serverID string, envVars
 		env = append(env, fmt.Sprintf("%s=%s", key, value))
 	}
 
-	// Start the MCP server process
+	// Start the MCP server process with resource limits
 	cmd := exec.Command("npx", "tsx", "templates/virtualmcp-server.ts", "--transport", "http")
 	cmd.Env = env
 	cmd.Dir = "." // Run from current directory
 
-	// Capture output for logging
-	// Note: In production, you might want to redirect to files or a logging system
-	log.Printf("Starting MCP server process for %s on port %d", serverID, port)
-	log.Printf("Command: %s %s", cmd.Path, cmd.Args)
-	log.Printf("Environment: %v", env)
-	log.Printf("Working directory: %s", cmd.Dir)
-
-	if err := cmd.Start(); err != nil {
-		log.Printf("Failed to start MCP server process: %v", err)
-		h.portAllocator.Release(port)
-		return fmt.Errorf("failed to start MCP server process: %v", err)
+	// Set resource limits to prevent runaway processes
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true, // Create new process group for better control
 	}
 
-	log.Printf("Successfully started MCP server process with PID: %d", cmd.Process.Pid)
+	// Set environment variables for resource limits (Node.js specific)
+	if server.ConfigTemplate.ResourceLimits != nil && server.ConfigTemplate.ResourceLimits.Memory != "" {
+		// Parse memory limit (e.g., "256Mi" -> 256)
+		memoryLimit := h.parseMemoryLimit(server.ConfigTemplate.ResourceLimits.Memory)
+		if memoryLimit > 0 {
+			env = append(env, fmt.Sprintf("NODE_OPTIONS=--max-old-space-size=%d", memoryLimit))
+		} else {
+			// Fallback to default
+			env = append(env, "NODE_OPTIONS=--max-old-space-size=256")
+		}
+	} else {
+		// Use configured default
+		defaultMemoryMB := h.parseMemoryLimit(h.spawningConfig.DefaultMemory)
+		if defaultMemoryMB > 0 {
+			env = append(env, fmt.Sprintf("NODE_OPTIONS=--max-old-space-size=%d", defaultMemoryMB))
+		} else {
+			env = append(env, "NODE_OPTIONS=--max-old-space-size=256")
+		}
+	}
+	cmd.Env = env
+
+	// Capture output for logging - create log files for debugging
+	logDir := "/opt/mcp-servers/logs"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("Warning: Failed to create log directory: %v", err)
+	}
+
+	stdoutFile := fmt.Sprintf("%s/%s.stdout.log", logDir, serverID)
+	stderrFile := fmt.Sprintf("%s/%s.stderr.log", logDir, serverID)
+
+	if stdout, err := os.Create(stdoutFile); err == nil {
+		cmd.Stdout = stdout
+		defer stdout.Close()
+	}
+
+	if stderr, err := os.Create(stderrFile); err == nil {
+		cmd.Stderr = stderr
+		defer stderr.Close()
+	}
+
+	// Enhanced logging for debugging
+	log.Printf("Registry: Starting MCP server process for %s on port %d", serverID, port)
+	log.Printf("Registry: Command: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
+	log.Printf("Registry: Environment variables: %d total", len(env))
+	for _, envVar := range env {
+		if strings.Contains(envVar, "TOKEN") || strings.Contains(envVar, "SECRET") {
+			log.Printf("Registry:   %s=***", strings.Split(envVar, "=")[0])
+		} else {
+			log.Printf("Registry:   %s", envVar)
+		}
+	}
+	log.Printf("Registry: Working directory: %s", cmd.Dir)
+	log.Printf("Registry: Log files: stdout=%s, stderr=%s", stdoutFile, stderrFile)
+
+	if err := cmd.Start(); err != nil {
+		log.Printf("Registry: Failed to start MCP server process: %v", err)
+		h.portAllocator.Release(port)
+		return fmt.Errorf("failed to start MCP server process (check logs at %s): %v", stderrFile, err)
+	}
+
+	log.Printf("Registry: Successfully started MCP server process with PID: %d", cmd.Process.Pid)
 
 	// Wait a bit for the server to start up
 	time.Sleep(2 * time.Second)
@@ -270,6 +341,192 @@ func (h *LocalProcessDeploymentHandler) Shutdown() {
 	h.runningProcesses = make(map[string]*ProcessInfo)
 }
 
+// validateServerSecurity performs basic security validation on MCP server configuration
+func (h *LocalProcessDeploymentHandler) validateServerSecurity(server *models.MCPServer) error {
+	// Check for potentially dangerous commands in metadata
+	if server.Meta != nil {
+		if cmd, ok := server.Meta["command"]; ok {
+			if cmdStr, ok := cmd.(string); ok {
+				dangerousCommands := []string{"rm", "rmdir", "del", "format", "fdisk", "mkfs", "dd", "wget", "curl"}
+				for _, dangerous := range dangerousCommands {
+					if strings.Contains(strings.ToLower(cmdStr), dangerous) {
+						return fmt.Errorf("potentially dangerous command detected: %s", dangerous)
+					}
+				}
+			}
+		}
+
+		// Check for suspicious environment variables
+		if env, ok := server.Meta["env"]; ok {
+			if envMap, ok := env.(map[string]interface{}); ok {
+				for key, value := range envMap {
+					if _, ok := value.(string); ok {
+						// Check for suspicious environment variables
+						if strings.Contains(strings.ToLower(key), "password") ||
+							strings.Contains(strings.ToLower(key), "secret") ||
+							strings.Contains(strings.ToLower(key), "token") {
+							log.Printf("Registry: Warning - server %s has sensitive environment variable: %s", server.ID, key)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Validate package identifiers for suspicious content
+	if len(server.Packages) > 0 {
+		for _, pkg := range server.Packages {
+			// Check for suspicious package names
+			suspicious := []string{"malware", "virus", "trojan", "exploit", "hack", "attack"}
+			for _, susp := range suspicious {
+				if strings.Contains(strings.ToLower(pkg.Identifier), susp) {
+					return fmt.Errorf("suspicious package identifier detected: %s", pkg.Identifier)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// installServerDependencies installs dynamic dependencies for registry MCP servers
+func (h *LocalProcessDeploymentHandler) installServerDependencies(server *models.MCPServer) error {
+	// Check for Python requirements in server metadata
+	if server.Meta != nil {
+		if requirements, ok := server.Meta["requirements.txt"]; ok {
+			if reqText, ok := requirements.(string); ok {
+				log.Printf("Registry: Installing Python dependencies for server %s", server.ID)
+				if err := h.installPythonRequirements(server.ID, reqText); err != nil {
+					log.Printf("Registry: Failed to install Python requirements for server %s: %v", server.ID, err)
+					return fmt.Errorf("failed to install Python requirements: %v", err)
+				}
+			}
+		}
+
+		if packageJson, ok := server.Meta["package.json"]; ok {
+			if pkgText, ok := packageJson.(string); ok {
+				log.Printf("Registry: Installing Node.js dependencies for server %s", server.ID)
+				if err := h.installNodeDependencies(server.ID, pkgText); err != nil {
+					log.Printf("Registry: Failed to install Node.js dependencies for server %s: %v", server.ID, err)
+					return fmt.Errorf("failed to install Node.js dependencies: %v", err)
+				}
+			}
+		}
+	}
+
+	// Check packages for dependency information
+	if len(server.Packages) > 0 {
+		for _, pkg := range server.Packages {
+			// Handle Python packages
+			if pkg.RegistryType == "pypi" || strings.Contains(strings.ToLower(pkg.Identifier), "python") {
+				log.Printf("Registry: Detected Python package for server %s: %s", server.ID, pkg.Identifier)
+				// Extract package name and install
+				if err := h.installPythonPackage(server.ID, pkg.Identifier); err != nil {
+					log.Printf("Registry: Failed to install Python package %s: %v", pkg.Identifier, err)
+					return fmt.Errorf("failed to install Python package %s: %v", pkg.Identifier, err)
+				}
+			}
+
+			// Handle Node.js packages
+			if pkg.RegistryType == "npm" || strings.Contains(strings.ToLower(pkg.Identifier), "node") || strings.Contains(strings.ToLower(pkg.Identifier), "typescript") {
+				log.Printf("Registry: Detected Node.js package for server %s: %s", server.ID, pkg.Identifier)
+				if err := h.installNpmPackage(server.ID, pkg.Identifier); err != nil {
+					log.Printf("Registry: Failed to install npm package %s: %v", pkg.Identifier, err)
+					return fmt.Errorf("failed to install npm package %s: %v", pkg.Identifier, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// installPythonRequirements installs Python packages from a requirements.txt string
+func (h *LocalProcessDeploymentHandler) installPythonRequirements(serverID, requirementsTxt string) error {
+	// Create a temporary requirements file
+	tempDir := fmt.Sprintf("/tmp/mcp-%s", serverID)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	reqFile := fmt.Sprintf("%s/requirements.txt", tempDir)
+	if err := os.WriteFile(reqFile, []byte(requirementsTxt), 0644); err != nil {
+		return fmt.Errorf("failed to write requirements file: %v", err)
+	}
+
+	// Install requirements using pip
+	cmd := exec.Command("pip3", "install", "--quiet", "--no-cache-dir", "-r", reqFile)
+	cmd.Env = append(os.Environ(), "PYTHONPATH=/opt/venv/lib/python3.*/site-packages")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Registry: pip install output: %s", string(output))
+		return fmt.Errorf("pip install failed: %v", err)
+	}
+
+	log.Printf("Registry: Successfully installed Python requirements for server %s", serverID)
+	return nil
+}
+
+// installNodeDependencies installs Node.js dependencies from a package.json string
+func (h *LocalProcessDeploymentHandler) installNodeDependencies(serverID, packageJson string) error {
+	// Create a temporary directory for the package
+	tempDir := fmt.Sprintf("/tmp/mcp-node-%s", serverID)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Write package.json
+	packageFile := fmt.Sprintf("%s/package.json", tempDir)
+	if err := os.WriteFile(packageFile, []byte(packageJson), 0644); err != nil {
+		return fmt.Errorf("failed to write package.json: %v", err)
+	}
+
+	// Install dependencies using npm
+	cmd := exec.Command("npm", "install", "--silent")
+	cmd.Dir = tempDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Registry: npm install output: %s", string(output))
+		return fmt.Errorf("npm install failed: %v", err)
+	}
+
+	log.Printf("Registry: Successfully installed Node.js dependencies for server %s", serverID)
+	return nil
+}
+
+// installPythonPackage installs a single Python package
+func (h *LocalProcessDeploymentHandler) installPythonPackage(serverID, packageSpec string) error {
+	cmd := exec.Command("pip3", "install", "--quiet", "--no-cache-dir", packageSpec)
+	cmd.Env = append(os.Environ(), "PYTHONPATH=/opt/venv/lib/python3.*/site-packages")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Registry: pip install output for %s: %s", packageSpec, string(output))
+		return fmt.Errorf("failed to install Python package %s: %v", packageSpec, err)
+	}
+
+	log.Printf("Registry: Successfully installed Python package %s for server %s", packageSpec, serverID)
+	return nil
+}
+
+// installNpmPackage installs a single npm package
+func (h *LocalProcessDeploymentHandler) installNpmPackage(serverID, packageSpec string) error {
+	cmd := exec.Command("npm", "install", "-g", "--silent", packageSpec)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Registry: npm install output for %s: %s", packageSpec, string(output))
+		return fmt.Errorf("failed to install npm package %s: %v", packageSpec, err)
+	}
+
+	log.Printf("Registry: Successfully installed npm package %s for server %s", packageSpec, serverID)
+	return nil
+}
+
 // monitorProcess monitors a process and cleans up if it exits
 func (h *LocalProcessDeploymentHandler) monitorProcess(serverID string) {
 	process := h.runningProcesses[serverID]
@@ -350,6 +607,40 @@ func (h *LocalProcessDeploymentHandler) DeployMCP(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// parseMemoryLimit parses memory limit string (e.g., "256Mi", "1Gi") to MB
+func (h *LocalProcessDeploymentHandler) parseMemoryLimit(memoryStr string) int {
+	if memoryStr == "" {
+		return 0
+	}
+
+	// Handle different units
+	memoryStr = strings.ToLower(memoryStr)
+	var multiplier int
+
+	if strings.HasSuffix(memoryStr, "gi") {
+		multiplier = 1024 // Gi to Mi
+		memoryStr = strings.TrimSuffix(memoryStr, "gi")
+	} else if strings.HasSuffix(memoryStr, "mi") {
+		multiplier = 1 // Already in Mi
+		memoryStr = strings.TrimSuffix(memoryStr, "mi")
+	} else if strings.HasSuffix(memoryStr, "g") {
+		multiplier = 1024 // G to Mi
+		memoryStr = strings.TrimSuffix(memoryStr, "g")
+	} else if strings.HasSuffix(memoryStr, "m") {
+		multiplier = 1 // Already in M
+		memoryStr = strings.TrimSuffix(memoryStr, "m")
+	} else {
+		// Assume Mi if no unit
+		multiplier = 1
+	}
+
+	if value, err := strconv.Atoi(memoryStr); err == nil {
+		return value * multiplier
+	}
+
+	return 0
 }
 
 // GetMCPConfig returns the configuration template for a server (gin handler)

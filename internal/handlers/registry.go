@@ -14,9 +14,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
+)
+
+// ServerType represents the type of MCP server
+type ServerType string
+
+const (
+	ServerTypeLocalStdio ServerType = "localstdio"
+	ServerTypeVirtualMCP ServerType = "virtualmcp"
+	ServerTypeRemoteHTTP ServerType = "remotehttp"
 )
 
 // RegistryManagerInterface defines the interface for registry management
@@ -62,17 +72,159 @@ type RegistryHandler struct {
 	DeploymentHandler DeploymentHandlerInterface
 	AdapterStore      *clients.InMemoryAdapterStore
 	ToolDiscovery     *mcp.MCPToolDiscoveryService
+	Config            *config.SpawningConfig
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler DeploymentHandlerInterface, adapterStore *clients.InMemoryAdapterStore) *RegistryHandler {
-	return &RegistryHandler{
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, deploymentHandler DeploymentHandlerInterface, adapterStore *clients.InMemoryAdapterStore, spawningConfig *config.SpawningConfig) *RegistryHandler {
+	handler := &RegistryHandler{
 		Store:             store,
 		RegistryManager:   registryManager,
 		DeploymentHandler: deploymentHandler,
 		AdapterStore:      adapterStore,
 		ToolDiscovery:     mcp.NewMCPToolDiscoveryService(),
+		Config:            spawningConfig,
 	}
+
+	// Initialize with pre-loaded official MCP servers
+	handler.initializePreloadedServers()
+
+	return handler
+}
+
+// initializePreloadedServers adds official MCP servers to the registry
+func (h *RegistryHandler) initializePreloadedServers() {
+	officialServers := []struct {
+		id          string
+		name        string
+		description string
+		npmPackage  string
+		transport   string
+	}{
+		{
+			id:          "filesystem",
+			name:        "filesystem",
+			description: "Secure file operations with configurable access controls",
+			npmPackage:  "@modelcontextprotocol/server-filesystem",
+			transport:   "stdio",
+		},
+		{
+			id:          "git",
+			name:        "git",
+			description: "Tools to read, search, and manipulate Git repositories",
+			npmPackage:  "@modelcontextprotocol/server-git",
+			transport:   "stdio",
+		},
+		{
+			id:          "memory",
+			name:        "memory",
+			description: "Knowledge graph-based persistent memory system",
+			npmPackage:  "@modelcontextprotocol/server-memory",
+			transport:   "stdio",
+		},
+		{
+			id:          "sequential-thinking",
+			name:        "sequential-thinking",
+			description: "Dynamic and reflective problem-solving through thought sequences",
+			npmPackage:  "@modelcontextprotocol/server-sequential-thinking",
+			transport:   "stdio",
+		},
+		{
+			id:          "time",
+			name:        "time",
+			description: "Time and timezone conversion capabilities",
+			npmPackage:  "@modelcontextprotocol/server-time",
+			transport:   "stdio",
+		},
+		{
+			id:          "everything",
+			name:        "everything",
+			description: "Reference/test server with prompts, resources, and tools",
+			npmPackage:  "@modelcontextprotocol/server-everything",
+			transport:   "stdio",
+		},
+		{
+			id:          "fetch",
+			name:        "fetch",
+			description: "Web content fetching and conversion for efficient LLM usage",
+			npmPackage:  "@modelcontextprotocol/server-fetch",
+			transport:   "stdio",
+		},
+	}
+
+	for _, serverInfo := range officialServers {
+		// Check if server already exists
+		if existing, _ := h.Store.GetMCPServer(serverInfo.id); existing != nil {
+			continue // Skip if already exists
+		}
+
+		server := &models.MCPServer{
+			ID:               serverInfo.id,
+			Name:             serverInfo.name,
+			Description:      serverInfo.description,
+			Version:          "latest",
+			ValidationStatus: "approved",
+			DiscoveredAt:     time.Now(),
+			Packages: []models.Package{
+				{
+					RegistryType: "npm",
+					Identifier:   serverInfo.npmPackage,
+					Transport: models.Transport{
+						Type: serverInfo.transport,
+					},
+				},
+			},
+			Meta: map[string]interface{}{
+				"source": "official",
+			},
+		}
+
+		// Generate config template
+		server.ConfigTemplate = h.generateConfigTemplate(server, "official")
+
+		// Store the server
+		if err := h.Store.CreateMCPServer(server); err != nil {
+			log.Printf("Failed to create pre-loaded server %s: %v", serverInfo.id, err)
+		} else {
+			h.logWithContext("info", "Pre-loaded official MCP server: %s", serverInfo.id)
+		}
+	}
+}
+
+// DetectServerType determines the type of MCP server from registry metadata and package information
+func DetectServerType(server *models.MCPServer) ServerType {
+	// Check metadata source first
+	if server.Meta != nil {
+		if source, ok := server.Meta["source"].(string); ok {
+			switch strings.ToLower(source) {
+			case "virtualmcp", "virtual-mcp":
+				return ServerTypeVirtualMCP
+			case "localstdio", "stdio", "local":
+				return ServerTypeLocalStdio
+			case "remote", "remotehttp", "http":
+				return ServerTypeRemoteHTTP
+			}
+		}
+	}
+
+	// Check package transport information
+	if len(server.Packages) > 0 {
+		transport := server.Packages[0].Transport.Type
+		switch strings.ToLower(transport) {
+		case "stdio":
+			return ServerTypeLocalStdio
+		case "http", "sse", "websocket":
+			return ServerTypeRemoteHTTP
+		}
+	}
+
+	// Check legacy URL field for remote servers
+	if server.URL != "" {
+		return ServerTypeRemoteHTTP
+	}
+
+	// Default to virtualMCP for backward compatibility
+	return ServerTypeVirtualMCP
 }
 
 // GetMCPServer handles GET /registry/{id}
@@ -442,23 +594,148 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 	}
 	server.Meta["source"] = source
 
-	// Extract configuration template for Docker images
+	// Generate configuration template for spawning
+	server.ConfigTemplate = h.generateConfigTemplate(server, source)
+
+	return server
+}
+
+// generateConfigTemplate generates a configuration template for MCP server spawning
+func (h *RegistryHandler) generateConfigTemplate(server *models.MCPServer, source string) *models.MCPConfigTemplate {
+	template := &models.MCPConfigTemplate{
+		Transport: "stdio", // Default to stdio
+		Env:       make(map[string]string),
+		ResourceLimits: &models.ResourceLimits{
+			CPU:    h.Config.DefaultCpu,
+			Memory: h.Config.DefaultMemory,
+		},
+	}
+
+	// Handle Docker images
 	if source == "docker-mcp" {
-		// Find the Docker image from packages
 		for _, pkg := range server.Packages {
 			if pkg.RegistryType == "oci" && strings.HasPrefix(pkg.Identifier, "mcp/") {
-				configTemplate, err := h.extractDockerConfig(pkg.Identifier)
+				dockerConfig, err := h.extractDockerConfig(pkg.Identifier)
 				if err != nil {
 					log.Printf("Failed to extract config for %s: %v", pkg.Identifier, err)
+					// Fall back to basic Docker config
+					template.Command = "docker"
+					template.Args = []string{"run", "--rm", "-i", pkg.Identifier}
+					template.Image = pkg.Identifier
 				} else {
-					server.ConfigTemplate = configTemplate
+					template = dockerConfig
+				}
+				break
+			}
+		}
+		return template
+	}
+
+	// Handle official MCP servers from npm registry
+	if source == "official" && len(server.Packages) > 0 {
+		for _, pkg := range server.Packages {
+			if pkg.RegistryType == "npm" && strings.HasPrefix(pkg.Identifier, "@modelcontextprotocol/") {
+				// Extract server name from package identifier
+				// @modelcontextprotocol/server-filesystem -> filesystem
+				parts := strings.Split(pkg.Identifier, "/")
+				if len(parts) >= 2 {
+					serverName := strings.TrimPrefix(parts[len(parts)-1], "server-")
+					template.Command = "npx"
+					template.Args = []string{"-y", pkg.Identifier}
+					template.Image = "node:latest" // For containerized deployment
+
+					// Set transport based on server type
+					switch serverName {
+					case "filesystem":
+						template.Transport = "stdio"
+						// Add default allowed directory
+						template.Env["ALLOWED_DIRS"] = "/tmp"
+					case "git":
+						template.Transport = "stdio"
+					case "memory":
+						template.Transport = "stdio"
+					case "sequentialthinking", "sequential-thinking":
+						template.Transport = "stdio"
+					case "time":
+						template.Transport = "stdio"
+					case "everything":
+						template.Transport = "stdio"
+					case "fetch":
+						template.Transport = "stdio"
+					default:
+						template.Transport = "stdio"
+					}
 				}
 				break
 			}
 		}
 	}
 
-	return server
+	// For VirtualMCP servers, set up HTTP transport
+	if DetectServerType(server) == ServerTypeVirtualMCP {
+		template.Transport = "http"
+		template.Command = "tsx"
+		template.Args = []string{"templates/virtualmcp-server.ts", "--transport", "http"}
+		template.Image = "ghcr.io/alessandro-festa/suse-ai-up:latest"
+		template.Env["SERVER_NAME"] = server.Name
+		template.Env["PORT"] = "8080"
+		template.Env["TOOLS_CONFIG"] = "[]" // Will be updated with discovered tools
+	}
+
+	return template
+}
+
+// spawnWithRetry attempts to spawn an MCP server with retry logic
+func (h *RegistryHandler) spawnWithRetry(spawnFunc func() error, serverID string) error {
+	var lastErr error
+
+	for attempt := 1; attempt <= h.Config.RetryAttempts; attempt++ {
+		h.logWithContext("debug", "Spawning attempt %d/%d for server %s", attempt, h.Config.RetryAttempts, serverID)
+
+		if err := spawnFunc(); err != nil {
+			lastErr = err
+			h.logWithContext("warn", "Spawning attempt %d failed for server %s: %v", attempt, serverID, err)
+
+			// Don't retry on the last attempt
+			if attempt < h.Config.RetryAttempts {
+				backoffMs := time.Duration(h.Config.RetryBackoffMs * attempt) // Exponential backoff
+				h.logWithContext("debug", "Waiting %v before retry for server %s", backoffMs, serverID)
+				time.Sleep(backoffMs * time.Millisecond)
+			}
+		} else {
+			h.logWithContext("info", "Successfully spawned server %s on attempt %d", serverID, attempt)
+			return nil
+		}
+	}
+
+	h.logWithContext("error", "Failed to spawn server %s after %d attempts: %v", serverID, h.Config.RetryAttempts, lastErr)
+	return fmt.Errorf("failed to spawn server after %d attempts: %w", h.Config.RetryAttempts, lastErr)
+}
+
+// logWithContext provides configurable logging with context
+func (h *RegistryHandler) logWithContext(level, format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+
+	if h.Config.IncludeContext {
+		message = fmt.Sprintf("[SPAWNING] %s", message)
+	}
+
+	switch strings.ToLower(h.Config.LogLevel) {
+	case "debug":
+		log.Printf("[DEBUG] %s", message)
+	case "info":
+		if level == "info" || level == "warn" || level == "error" {
+			log.Printf("[%s] %s", strings.ToUpper(level), message)
+		}
+	case "warn":
+		if level == "warn" || level == "error" {
+			log.Printf("[%s] %s", strings.ToUpper(level), message)
+		}
+	case "error":
+		if level == "error" {
+			log.Printf("[%s] %s", strings.ToUpper(level), message)
+		}
+	}
 }
 
 // fetchDockerRegistry fetches from Docker Hub MCP namespace
@@ -821,22 +1098,30 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		return
 	}
 
-	// Check if this is a virtualMCP server
-	if server.Meta == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Server is not a virtualMCP server"})
-		return
-	}
+	// Determine server type
+	serverType := DetectServerType(server)
+	log.Printf("Registry: Detected server type: %s for server %s", serverType, server.ID)
 
-	source, ok := server.Meta["source"].(string)
-	if !ok || source != "virtualmcp" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Server is not a virtualMCP server"})
-		return
-	}
-
-	// Validate VirtualMCP tools configuration
-	if err := h.validateVirtualMCPTools(server.Tools); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid tool configuration: %v", err)})
-		return
+	// Validate server configuration based on type
+	switch serverType {
+	case ServerTypeVirtualMCP:
+		// Validate VirtualMCP tools configuration
+		if err := h.validateVirtualMCPTools(server.Tools); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid tool configuration: %v", err)})
+			return
+		}
+	case ServerTypeLocalStdio:
+		// Validate that we have package information for stdio
+		if len(server.Packages) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "LocalStdio server must have package configuration"})
+			return
+		}
+	case ServerTypeRemoteHTTP:
+		// Validate that we have a URL for remote servers
+		if server.URL == "" && len(server.Packages) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Remote HTTP server must have URL or package configuration"})
+			return
+		}
 	}
 
 	// Parse request body for additional configuration
@@ -845,6 +1130,21 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		req = CreateAdapterFromRegistryRequest{} // Use defaults
 	}
 
+	// Route to appropriate creation function based on server type
+	switch serverType {
+	case ServerTypeVirtualMCP:
+		h.createVirtualMCPAdapter(c, server, req)
+	case ServerTypeLocalStdio:
+		h.createLocalStdioAdapter(c, server, req)
+	case ServerTypeRemoteHTTP:
+		h.createRemoteHTTPAdapter(c, server, req)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported server type: %s", serverType)})
+	}
+}
+
+// createVirtualMCPAdapter creates a VirtualMCP adapter with deployment
+func (h *RegistryHandler) createVirtualMCPAdapter(c *gin.Context, server *models.MCPServer, req CreateAdapterFromRegistryRequest) {
 	// Generate authentication token
 	tokenBytes := make([]byte, 32)
 	if _, err := crand.Read(tokenBytes); err != nil {
@@ -853,9 +1153,6 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 	}
 	tokenStr := base64.URLEncoding.EncodeToString(tokenBytes)
 	expiresAt := time.Now().Add(24 * time.Hour)
-
-	// For VirtualMCP adapters, we deploy the virtualmcp-server.ts as a streamable HTTP server
-	// and create a StreamableHttp adapter that connects to it
 
 	// Generate adapter name
 	adapterName := fmt.Sprintf("virtualmcp-%s", strings.ReplaceAll(server.ID, "/", "-"))
@@ -872,6 +1169,10 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		},
 		Transport: "http",
 		Image:     "ghcr.io/alessandro-festa/suse-ai-up:latest",
+		ResourceLimits: &models.ResourceLimits{
+			CPU:    h.Config.DefaultCpu,
+			Memory: h.Config.DefaultMemory,
+		},
 	}
 
 	// Add environment variables from request
@@ -887,9 +1188,13 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		return
 	}
 
-	// Deploy the server
-	if err := h.DeploymentHandler.DeployMCPDirect(server.ID, req.EnvironmentVariables, req.ReplicaCount); err != nil {
-		log.Printf("Failed to deploy VirtualMCP server: %v", err)
+	// Deploy the server with retry logic
+	spawnFunc := func() error {
+		return h.DeploymentHandler.DeployMCPDirect(server.ID, req.EnvironmentVariables, req.ReplicaCount)
+	}
+
+	if err := h.spawnWithRetry(spawnFunc, server.ID); err != nil {
+		h.logWithContext("error", "Failed to deploy VirtualMCP server %s: %v", server.ID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to deploy server: %v", err)})
 		return
 	}
@@ -1003,6 +1308,131 @@ func (h *RegistryHandler) CreateAdapterFromRegistry(c *gin.Context) {
 		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
 		TokenInfo:   tokenInfo,
 		Note:        "VirtualMCP server is now running and ready to use",
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// createLocalStdioAdapter creates a LocalStdio adapter without deployment
+func (h *RegistryHandler) createLocalStdioAdapter(c *gin.Context, server *models.MCPServer, req CreateAdapterFromRegistryRequest) {
+	// Generate adapter name
+	adapterName := fmt.Sprintf("localstdio-%s", strings.ReplaceAll(server.ID, "/", "-"))
+
+	// Extract command and args from package configuration
+	if len(server.Packages) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No package configuration found for LocalStdio server"})
+		return
+	}
+
+	pkg := server.Packages[0]
+	command := pkg.Identifier
+	args := []string{}
+
+	// If the identifier contains arguments, split them
+	if strings.Contains(command, " ") {
+		parts := strings.Fields(command)
+		command = parts[0]
+		args = parts[1:]
+	}
+
+	// Create LocalStdio adapter
+	adapterData := &models.AdapterData{
+		Name:           adapterName,
+		Protocol:       models.ServerProtocolMCP,
+		ConnectionType: models.ConnectionTypeLocalStdio,
+		ReplicaCount:   1, // Local stdio doesn't use replicas
+		Description:    fmt.Sprintf("LocalStdio adapter for %s", server.Name),
+		Command:        command,
+		Args:           args,
+		// Add environment variables from package
+		EnvironmentVariables: make(map[string]string),
+	}
+
+	// Add environment variables from package configuration
+	for _, envVar := range pkg.EnvironmentVariables {
+		adapterData.EnvironmentVariables[envVar.Name] = envVar.Default
+	}
+
+	// Add environment variables from request
+	if req.EnvironmentVariables != nil {
+		for k, v := range req.EnvironmentVariables {
+			adapterData.EnvironmentVariables[k] = v
+		}
+	}
+
+	// Create adapter resource
+	adapter := &models.AdapterResource{}
+	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store the adapter
+	if err := h.AdapterStore.Create(adapter); err != nil {
+		log.Printf("Failed to store LocalStdio adapter: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
+		return
+	}
+
+	response := CreateAdapterFromRegistryResponse{
+		Message:     "LocalStdio adapter created successfully",
+		Adapter:     adapter,
+		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+		Note:        "LocalStdio server will be spawned on-demand when accessed",
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// createRemoteHTTPAdapter creates a RemoteHTTP adapter for routing to remote endpoints
+func (h *RegistryHandler) createRemoteHTTPAdapter(c *gin.Context, server *models.MCPServer, req CreateAdapterFromRegistryRequest) {
+	// Generate adapter name
+	adapterName := fmt.Sprintf("remote-%s", strings.ReplaceAll(server.ID, "/", "-"))
+
+	// Determine remote URL
+	remoteURL := server.URL
+	if remoteURL == "" && len(server.Packages) > 0 {
+		// Try to construct URL from package identifier
+		remoteURL = server.Packages[0].Identifier
+	}
+
+	if remoteURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No remote URL found for RemoteHTTP server"})
+		return
+	}
+
+	// Create RemoteHTTP adapter
+	adapterData := &models.AdapterData{
+		Name:           adapterName,
+		Protocol:       models.ServerProtocolMCP,
+		ConnectionType: models.ConnectionTypeRemoteHttp,
+		ReplicaCount:   1, // Remote HTTP doesn't use replicas
+		Description:    fmt.Sprintf("Remote HTTP adapter for %s", server.Name),
+		RemoteUrl:      remoteURL,
+		// Add environment variables from request
+		EnvironmentVariables: make(map[string]string),
+	}
+
+	// Add environment variables from request
+	if req.EnvironmentVariables != nil {
+		for k, v := range req.EnvironmentVariables {
+			adapterData.EnvironmentVariables[k] = v
+		}
+	}
+
+	// Create adapter resource
+	adapter := &models.AdapterResource{}
+	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store the adapter
+	if err := h.AdapterStore.Create(adapter); err != nil {
+		log.Printf("Failed to store RemoteHTTP adapter: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
+		return
+	}
+
+	response := CreateAdapterFromRegistryResponse{
+		Message:     "Remote HTTP adapter created successfully",
+		Adapter:     adapter,
+		McpEndpoint: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+		Note:        "Remote HTTP server will route requests to the configured endpoint",
 	}
 
 	c.JSON(http.StatusCreated, response)

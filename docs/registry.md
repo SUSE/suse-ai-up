@@ -170,6 +170,149 @@ Remove an MCP server from the registry.
 DELETE /registry/{id}
 ```
 
+## Server Spawning
+
+The registry includes automatic MCP server spawning capabilities, allowing you to create and deploy MCP servers from registry entries as running processes with proper resource management and error handling.
+
+### Spawning from Registry
+
+Create an adapter from any registry server, which automatically spawns the MCP server as a running process.
+
+```http
+POST /registry/{id}/create-adapter
+Content-Type: application/json
+
+{
+  "replicaCount": 1,
+  "environmentVariables": {
+    "API_KEY": "your-api-key",
+    "DATABASE_URL": "postgresql://..."
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "message": "VirtualMCP adapter created and deployed successfully",
+  "adapter": {
+    "id": "virtualmcp-filesystem-123",
+    "name": "virtualmcp-filesystem",
+    "connectionType": "StreamableHttp",
+    "description": "VirtualMCP adapter for filesystem"
+  },
+  "mcp_endpoint": "http://localhost:8911/api/v1/adapters/virtualmcp-filesystem-123/mcp",
+  "token_info": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "tokenType": "Bearer",
+    "expiresAt": "2024-12-04T10:00:00Z"
+  },
+  "note": "VirtualMCP server is now running and ready to use"
+}
+```
+
+### Spawning Behavior
+
+- **Automatic Deployment**: Registry entries are automatically spawned as running processes when adapters are created
+- **Type Detection**: Automatically determines server type (VirtualMCP, LocalStdio, RemoteHTTP) and applies appropriate spawning logic
+- **Resource Limits**: Configurable CPU and memory limits prevent resource exhaustion
+- **Retry Logic**: Failed spawns are retried with exponential backoff
+- **Error Handling**: Spawning failures are logged but don't create adapters (fail-fast approach)
+- **Tool Discovery**: Tools are discovered at runtime, not pre-defined in registry
+
+### Server Types
+
+#### VirtualMCP Servers
+- **Deployment**: Spawned as local HTTP processes with authentication
+- **Transport**: HTTP with Bearer token authentication
+- **Use Case**: Custom MCP servers with tool definitions
+- **Example**: Official MCP servers like filesystem, git, memory
+
+#### LocalStdio Servers
+- **Deployment**: Spawned on-demand as subprocesses
+- **Transport**: Standard input/output communication
+- **Use Case**: CLI tools and utilities
+- **Example**: npm-based MCP servers
+
+#### RemoteHTTP Servers
+- **Deployment**: Proxy to remote HTTP endpoints
+- **Transport**: HTTP with optional authentication
+- **Use Case**: Externally hosted MCP servers
+
+### Configuration
+
+Spawning behavior is controlled by environment variables:
+
+```bash
+# Retry configuration
+SPAWNING_RETRY_ATTEMPTS=3
+SPAWNING_RETRY_BACKOFF_MS=2000
+
+# Resource limits (defaults)
+SPAWNING_DEFAULT_CPU=500m
+SPAWNING_DEFAULT_MEMORY=256Mi
+SPAWNING_MAX_CPU=1000m
+SPAWNING_MAX_MEMORY=1Gi
+
+# Logging
+SPAWNING_LOG_LEVEL=debug
+SPAWNING_INCLUDE_CONTEXT=true
+```
+
+### Pre-loaded Servers
+
+The system includes pre-loaded official MCP servers that are immediately available:
+
+- **filesystem**: Secure file operations
+- **git**: Git repository tools
+- **memory**: Knowledge graph memory
+- **sequential-thinking**: Problem-solving tools
+- **time**: Timezone conversion
+- **everything**: Reference implementation
+- **fetch**: Web content fetching
+
+### Spawning Examples
+
+#### Spawn Official Filesystem Server
+
+```bash
+# Create adapter (automatically spawns server)
+curl -X POST http://localhost:8911/api/v1/registry/filesystem/create-adapter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentVariables": {
+      "ALLOWED_DIRS": "/tmp,/home/user"
+    }
+  }'
+```
+
+#### Spawn with Custom Environment
+
+```bash
+curl -X POST http://localhost:8911/api/v1/registry/memory/create-adapter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "replicaCount": 1,
+    "environmentVariables": {
+      "MAX_MEMORY_ITEMS": "1000",
+      "PERSISTENCE_FILE": "/data/memory.json"
+    }
+  }'
+```
+
+#### Check Spawning Status
+
+```bash
+# List all registry servers
+curl http://localhost:8911/api/v1/registry/browse
+
+# Get server details including config template
+curl http://localhost:8911/api/v1/registry/filesystem
+
+# Check running processes (if exposed via API)
+curl http://localhost:8911/api/v1/deployment/processes
+```
+
 ## Deployment Endpoints
 
 The registry includes deployment capabilities for MCP servers, allowing you to deploy Docker-based MCP servers directly to Kubernetes clusters.
@@ -483,6 +626,244 @@ curl -s http://localhost:8911/api/v1/registry/browse | jq 'group_by(._meta.sourc
 # Validate server configuration
 curl http://localhost:8911/api/v1/registry/{id} | jq .
 ```
+
+## UI Development Guide
+
+This section provides information needed to build user interfaces around the MCP server registry and spawning functionality.
+
+### Registry Browser UI
+
+#### Server List Display
+
+**API Endpoint**: `GET /registry/browse`
+
+**Response Structure**:
+```json
+[
+  {
+    "id": "filesystem",
+    "name": "filesystem",
+    "description": "Secure file operations with configurable access controls",
+    "version": "latest",
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-filesystem",
+        "transport": {"type": "stdio"}
+      }
+    ],
+    "validation_status": "approved",
+    "discovered_at": "2024-12-03T00:00:00Z",
+    "_meta": {
+      "source": "official"
+    },
+    "config_template": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "transport": "stdio",
+      "resource_limits": {
+        "cpu": "500m",
+        "memory": "256Mi"
+      }
+    }
+  }
+]
+```
+
+**UI Elements to Display**:
+- Server name and description
+- Source badge (official, docker-mcp, custom)
+- Transport type icon (stdio, http, sse)
+- Validation status indicator
+- Spawn button (if spawnable)
+
+#### Server Detail View
+
+**API Endpoint**: `GET /registry/{id}`
+
+**UI Components**:
+- Server metadata (name, description, version)
+- Package information with installation commands
+- Configuration template with environment variables
+- Spawn form with environment variable inputs
+- Resource limit display
+- Tool discovery status
+
+### Spawning UI
+
+#### Spawn Form
+
+**API Endpoint**: `POST /registry/{id}/create-adapter`
+
+**Form Fields**:
+```json
+{
+  "replicaCount": 1,
+  "environmentVariables": {
+    "ENV_VAR_NAME": "value"
+  }
+}
+```
+
+**Dynamic Form Generation**:
+- Extract required environment variables from `config_template.env`
+- Show resource limits from `config_template.resource_limits`
+- Display tool count (if available) or "Runtime Discovery" indicator
+
+#### Spawn Status Display
+
+**Success Response**:
+```json
+{
+  "message": "VirtualMCP adapter created and deployed successfully",
+  "adapter": {
+    "id": "adapter-id",
+    "name": "adapter-name",
+    "connectionType": "StreamableHttp"
+  },
+  "mcp_endpoint": "http://localhost:8911/api/v1/adapters/{id}/mcp",
+  "token_info": {
+    "token": "jwt-token",
+    "tokenType": "Bearer",
+    "expiresAt": "2024-12-04T10:00:00Z"
+  }
+}
+```
+
+**UI Status Indicators**:
+- Spawning progress bar
+- Success/error messages
+- MCP endpoint for testing
+- Authentication token display (with copy button)
+- Adapter management links
+
+### Error Handling UI
+
+#### Spawning Failures
+
+**Error Response**:
+```json
+{
+  "error": "Failed to deploy server: failed to spawn server after 3 attempts"
+}
+```
+
+**UI Error States**:
+- Retry button (if applicable)
+- Detailed error logs display
+- Troubleshooting suggestions
+- Alternative server recommendations
+
+### Configuration UI
+
+#### Spawning Settings
+
+**Environment Variables**:
+- `SPAWNING_RETRY_ATTEMPTS`: Number input (1-10)
+- `SPAWNING_RETRY_BACKOFF_MS`: Number input (500-10000)
+- `SPAWNING_DEFAULT_CPU`: Text input (e.g., "500m")
+- `SPAWNING_DEFAULT_MEMORY`: Text input (e.g., "256Mi")
+- `SPAWNING_LOG_LEVEL`: Select (debug, info, warn, error)
+
+**Validation Rules**:
+- CPU: Valid Kubernetes CPU units (m, empty for cores)
+- Memory: Valid Kubernetes memory units (Mi, Gi, etc.)
+- Retry attempts: Positive integer
+- Backoff: Positive integer in milliseconds
+
+### Real-time Updates
+
+#### WebSocket/SSE Integration
+
+For real-time spawning status updates:
+
+```javascript
+// Connect to spawning status endpoint
+const eventSource = new EventSource('/api/v1/spawning/status');
+
+// Listen for spawning events
+eventSource.addEventListener('spawning', (event) => {
+  const data = JSON.parse(event.data);
+  // Update UI with spawning progress
+  updateSpawningStatus(data.serverId, data.status, data.progress);
+});
+```
+
+#### Server Health Monitoring
+
+**Process Status API** (if implemented):
+```json
+{
+  "serverId": "filesystem",
+  "status": "running",
+  "port": 8080,
+  "cpuUsage": "45m",
+  "memoryUsage": "120Mi",
+  "uptime": "300s"
+}
+```
+
+### UI Component Specifications
+
+#### Server Card Component
+
+```jsx
+<ServerCard
+  server={server}
+  onSpawn={(serverId, config) => spawnServer(serverId, config)}
+  isSpawning={spawningServers.includes(server.id)}
+/>
+```
+
+**Props**:
+- `server`: Server object from API
+- `onSpawn`: Callback function for spawning
+- `isSpawning`: Boolean for loading state
+
+#### Spawn Configuration Modal
+
+```jsx
+<SpawnModal
+  server={selectedServer}
+  onSubmit={(config) => handleSpawn(config)}
+  onCancel={() => setShowModal(false)}
+/>
+```
+
+**Features**:
+- Dynamic environment variable inputs
+- Resource limit display
+- Validation feedback
+- Loading states
+
+#### Status Notification System
+
+```jsx
+<NotificationSystem>
+  <Notification
+    type="success"
+    message="Server spawned successfully"
+    details={{
+      endpoint: mcpEndpoint,
+      token: authToken
+    }}
+  />
+</NotificationSystem>
+```
+
+### Accessibility Considerations
+
+- Keyboard navigation for all spawning controls
+- Screen reader support for server descriptions
+- High contrast mode support for status indicators
+- Error messages with actionable guidance
+
+### Performance Optimization
+
+- Virtual scrolling for large server lists
+- Lazy loading of server details
+- Debounced search input
+- Caching of frequently accessed server data
 
 ## Contributing
 

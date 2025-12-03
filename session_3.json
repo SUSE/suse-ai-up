@@ -1,1 +1,0 @@
-{"jsonrpc":"2.0","id":3,"result":{"capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":true}},"protocolVersion":"2024-11-05","serverInfo":{"name":"MCP Example Server","version":"1.19.0"}}}

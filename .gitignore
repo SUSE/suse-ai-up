@@ -17,3 +17,10 @@ service.log
 build/service-amd64
 build/service-arm64
 server
+requirements.txt
+result1.json
+result2.json
+result3.json
+service.log
+session_1.json
+proxy.log

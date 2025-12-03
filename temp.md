@@ -5,7 +5,7 @@ Here's a working example of curl commands to create a VirtualMCP adapter with to
 ## Step 1: Upload VirtualMCP Server with Tools
 
 ```bash
-curl -X POST http://localhost:8911/api/v1/registry/upload \
+curl -X POST http://192.168.64.17:8911/api/v1/registry/upload \
   -H "Content-Type: application/json" \
   -d '{
     "id": "weather-calculator-server",
@@ -72,7 +72,7 @@ curl -X POST http://localhost:8911/api/v1/registry/upload \
 ## Step 2: Create Adapter from the Server
 
 ```bash
-curl -X POST http://localhost:8911/api/v1/registry/weather-calculator-server/create-adapter \
+curl -X POST http://192.168.64.17:8911/api/v1/registry/weather-calculator-server/create-adapter \
   -H "Content-Type: application/json" \
   -d '{
     "replicaCount": 1,

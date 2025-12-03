@@ -147,6 +147,15 @@ type MCPConfigTemplate struct {
 	Env       map[string]string `json:"env,omitempty"`   // environment variables
 	Transport string            `json:"transport"`       // stdio, http, sse, websocket
 	Image     string            `json:"image,omitempty"` // Docker image if applicable
+
+	// Resource limits
+	ResourceLimits *ResourceLimits `json:"resource_limits,omitempty"`
+}
+
+// ResourceLimits represents resource constraints for spawned processes
+type ResourceLimits struct {
+	CPU    string `json:"cpu,omitempty"`    // CPU limit (e.g., "500m", "1")
+	Memory string `json:"memory,omitempty"` // Memory limit (e.g., "256Mi", "1Gi")
 }
 
 // MCPServer represents an MCP server entry (enhanced to match MCP registry schema)
