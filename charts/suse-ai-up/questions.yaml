@@ -1,0 +1,228 @@
+# SUSE AI Universal Proxy Helm Chart Questions
+# This file provides an interactive UI for Helm chart installation
+
+# Installation Type Selection
+- variable: installType
+  default: "quickstart"
+  description: "Choose installation type - Quick Start uses recommended defaults, Custom allows detailed configuration"
+  type: enum
+  label: "Installation Type"
+  group: "Installation"
+  options:
+  - label: "Quick Start (recommended)"
+    value: "quickstart"
+  - label: "Custom Configuration"
+    value: "custom"
+  required: true
+
+# Basic Configuration
+- variable: global.image.tag
+  default: "latest"
+  description: "Container image version to deploy"
+  type: string
+  label: "SUSE AI Universal Proxy Version"
+  group: "Basic Configuration"
+
+- variable: ingress.enabled
+  default: false
+  description: "Enable external access via ingress (required for production use)"
+  type: boolean
+  label: "Enable External Access"
+  group: "Basic Configuration"
+  show_subquestion_if: true
+  subquestions:
+  - variable: ingress.hosts[0].host
+    default: "suse-ai-up.local"
+    description: "Domain name for accessing the proxy (e.g., proxy.company.com)"
+    type: string
+    label: "Domain Name"
+    required: true
+
+- variable: tls.enabled
+  default: true
+  description: "Enable TLS encryption for secure communication (recommended for production)"
+  type: boolean
+  label: "Enable TLS Security"
+  group: "Basic Configuration"
+
+# Authentication Configuration
+- variable: auth.method
+  default: "oauth"
+  description: "Choose how users will authenticate with the proxy"
+  type: enum
+  label: "Authentication Method"
+  group: "Authentication"
+  options:
+  - label: "OAuth 2.0 (recommended for production)"
+    value: "oauth"
+  - label: "API Key"
+    value: "apikey"
+  - label: "Bearer Token"
+    value: "bearer"
+  - label: "No Authentication (development only)"
+    value: "none"
+  required: true
+  show_subquestion_if: "oauth"
+  subquestions:
+  - variable: auth.oauth.clientId
+    default: ""
+    description: "OAuth 2.0 Client ID from your identity provider"
+    type: string
+    label: "OAuth Client ID"
+    required: true
+  - variable: auth.oauth.clientSecret
+    default: ""
+    description: "OAuth 2.0 Client Secret from your identity provider"
+    type: string
+    label: "OAuth Client Secret"
+    required: true
+  - variable: auth.oauth.authorizationUrl
+    default: ""
+    description: "OAuth authorization endpoint URL"
+    type: string
+    label: "Authorization URL"
+    required: true
+  - variable: auth.oauth.tokenUrl
+    default: ""
+    description: "OAuth token endpoint URL"
+    type: string
+    label: "Token URL"
+    required: true
+
+# Service Resource Configuration
+- variable: serviceResources
+  default: "standard"
+  description: "Choose resource allocation profile for all services"
+  type: enum
+  label: "Resource Profile"
+  group: "Service Configuration"
+  show_if: "installType=custom"
+  options:
+  - label: "Light (512MB RAM, 0.5 CPU per service)"
+    value: "light"
+  - label: "Standard (1GB RAM, 1 CPU per service)"
+    value: "standard"
+  - label: "Heavy (2GB RAM, 2 CPU per service)"
+    value: "heavy"
+  - label: "Custom Resources"
+    value: "custom"
+  show_subquestion_if: "custom"
+  subquestions:
+  - variable: services.proxy.resources.requests.memory
+    default: "1Gi"
+    description: "Memory allocation for proxy service"
+    type: string
+    label: "Proxy Memory"
+  - variable: services.proxy.resources.requests.cpu
+    default: "500m"
+    description: "CPU allocation for proxy service"
+    type: string
+    label: "Proxy CPU"
+  - variable: services.registry.resources.requests.memory
+    default: "512Mi"
+    description: "Memory allocation for registry service"
+    type: string
+    label: "Registry Memory"
+  - variable: services.registry.resources.requests.cpu
+    default: "200m"
+    description: "CPU allocation for registry service"
+    type: string
+    label: "Registry CPU"
+  - variable: services.discovery.resources.requests.memory
+    default: "512Mi"
+    description: "Memory allocation for discovery service"
+    type: string
+    label: "Discovery Memory"
+  - variable: services.discovery.resources.requests.cpu
+    default: "200m"
+    description: "CPU allocation for discovery service"
+    type: string
+    label: "Discovery CPU"
+  - variable: services.plugins.resources.requests.memory
+    default: "512Mi"
+    description: "Memory allocation for plugins service"
+    type: string
+    label: "Plugins Memory"
+  - variable: services.plugins.resources.requests.cpu
+    default: "200m"
+    description: "CPU allocation for plugins service"
+    type: string
+    label: "Plugins CPU"
+
+# Monitoring Configuration
+- variable: monitoring.enabled
+  default: false
+  description: "Enable metrics collection and monitoring integration"
+  type: boolean
+  label: "Enable Monitoring"
+  group: "Monitoring"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: monitoring.prometheus.enabled
+    default: true
+    description: "Enable Prometheus metrics endpoint for monitoring"
+    type: boolean
+    label: "Prometheus Metrics"
+  - variable: monitoring.grafana.enabled
+    default: false
+    description: "Create Grafana dashboard configuration"
+    type: boolean
+    label: "Grafana Dashboard"
+
+# Advanced Options
+- variable: autoscaling.enabled
+  default: false
+  description: "Automatically scale services based on CPU/memory usage"
+  type: boolean
+  label: "Enable Autoscaling"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: autoscaling.minReplicas
+    default: 1
+    description: "Minimum number of replicas per service"
+    type: int
+    label: "Minimum Replicas"
+    min: 1
+    max: 10
+  - variable: autoscaling.maxReplicas
+    default: 5
+    description: "Maximum number of replicas per service"
+    type: int
+    label: "Maximum Replicas"
+    min: 1
+    max: 50
+
+- variable: persistence.enabled
+  default: false
+  description: "Enable persistent storage for service data"
+  type: boolean
+  label: "Enable Persistence"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: persistence.size
+    default: "10Gi"
+    description: "Storage size for persistent volumes"
+    type: string
+    label: "Storage Size"
+
+- variable: logging.level
+  default: "info"
+  description: "Set the logging level for all services"
+  type: enum
+  label: "Log Level"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  options:
+  - label: "Error (minimal logging)"
+    value: "error"
+  - label: "Warning"
+    value: "warn"
+  - label: "Info (recommended)"
+    value: "info"
+  - label: "Debug (verbose)"
+    value: "debug"
