@@ -62,9 +62,9 @@ func main() {
 
 func runProxy() {
 	config := &proxy.Config{
-		Port:    8080,  // Default, can be overridden by flags
-		TLSPort: 38080, // HTTPS port
-		AutoTLS: true,  // Enable auto-generated TLS certificates
+		Port:    8911, // Default, can be overridden by flags
+		TLSPort: 3911, // HTTPS port
+		AutoTLS: true, // Enable auto-generated TLS certificates
 	}
 	service := proxy.NewService(config)
 	if err := service.Start(); err != nil {
@@ -182,11 +182,11 @@ func runAllServices() {
 	}
 
 	fmt.Println("All services started successfully!")
-	fmt.Println("Proxy: http://localhost:8080 (HTTPS: https://localhost:38080)")
+	fmt.Println("Proxy: http://localhost:8911 (HTTPS: https://localhost:3911)")
 	fmt.Println("Discovery: http://localhost:8912 (HTTPS: https://localhost:38912)")
 	fmt.Println("Registry: http://localhost:8913 (HTTPS: https://localhost:38913)")
 	fmt.Println("Plugins: http://localhost:8914 (HTTPS: https://localhost:38914)")
-	fmt.Println("Unified Health Check: http://localhost:8911/health")
+	fmt.Println("Health Check: http://localhost:8911/health")
 	fmt.Println("API Documentation: http://localhost:8911/docs (or https://localhost:3911/docs)")
 	fmt.Println("")
 	fmt.Println("Press Ctrl+C to stop all services")

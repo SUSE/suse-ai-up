@@ -40,10 +40,10 @@ USER 1000
 
 # Health check - check if the proxy port is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD nc -z localhost 8080 || exit 1
+    CMD nc -z localhost 8911 || exit 1
 
-# Expose all service ports (removed health ports 8911/3911 since docs are now served from proxy)
-EXPOSE 8080 8912-8914 38080 38912-38914
+# Expose all service ports (proxy now uses 8911/3911, removed old 8080/38080)
+EXPOSE 8911 8912-8914 3911 38912-38914
 
 # Run the binary
 CMD ["./suse-ai-up", "all"]

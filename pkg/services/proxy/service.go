@@ -254,7 +254,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
       "email": "ai@suse.com"
     }
   },
-  "host": "localhost:8080",
+  "host": "localhost:8911",
   "basePath": "/",
   "schemes": ["http", "https"],
   "consumes": ["application/json"],

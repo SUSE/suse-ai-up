@@ -66,8 +66,8 @@ services:
   # Primary proxy service (always enabled)
   proxy:
     enabled: true
-    port: 8080
-    tlsPort: 38080
+    port: 8911
+    tlsPort: 3911
     resources:
       requests:
         cpu: 100m
@@ -214,8 +214,8 @@ service:
   # Individual service ports
   ports:
     proxy:
-      http: 8080
-      https: 38080
+      http: 8911
+      https: 3911
     registry:
       http: 8913
       https: 38913
