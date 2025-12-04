@@ -123,10 +123,13 @@ func runPlugins() {
 
 func runHealthServer() {
 	// Start only the health check server
-	if err := startHealthCheckServer(make(chan error, 1)); err != nil {
+	if err := startHealthCheckServer(nil); err != nil {
 		fmt.Printf("Failed to start health server: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Keep the process running
+	select {}
 }
 
 func runAllServices() {
@@ -242,54 +245,21 @@ func startHealthCheckServer(errors chan<- error) error {
 
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		// Simple health response for the docs server
 		healthStatus := map[string]interface{}{
-			"status":    "checking",
+			"status":    "healthy",
 			"timestamp": time.Now(),
-			"services":  make(map[string]string),
-		}
-
-		// Check each service
-		services := []struct {
-			name string
-			url  string
-		}{
-			{"proxy", "http://localhost:8080/health"},
-			{"discovery", "http://localhost:8912/health"},
-			{"registry", "http://localhost:8913/health"},
-			{"plugins", "http://localhost:8914/health"},
-		}
-
-		allHealthy := true
-		for _, svc := range services {
-			status := checkServiceHealth(svc.url)
-			healthStatus["services"].(map[string]string)[svc.name] = status
-			if status != "healthy" {
-				allHealthy = false
-			}
-		}
-
-		if allHealthy {
-			healthStatus["status"] = "healthy"
-			w.WriteHeader(http.StatusOK)
-		} else {
-			healthStatus["status"] = "degraded"
-			w.WriteHeader(http.StatusServiceUnavailable)
+			"service":   "docs",
+			"message":   "API documentation server is running",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"%s","timestamp":"%s","services":{`,
-			healthStatus["status"], healthStatus["timestamp"].(time.Time).Format(time.RFC3339))
-
-		servicesMap := healthStatus["services"].(map[string]string)
-		first := true
-		for name, status := range servicesMap {
-			if !first {
-				fmt.Fprint(w, ",")
-			}
-			fmt.Fprintf(w, `"%s":"%s"`, name, status)
-			first = false
-		}
-		fmt.Fprint(w, "}}")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"status":"%s","timestamp":"%s","service":"%s","message":"%s"}`,
+			healthStatus["status"],
+			healthStatus["timestamp"].(time.Time).Format(time.RFC3339),
+			healthStatus["service"],
+			healthStatus["message"])
 	})
 
 	// Swagger UI endpoint
@@ -335,7 +305,164 @@ func startHealthCheckServer(errors chan<- error) error {
 	// Swagger JSON endpoint
 	mux.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		http.ServeFile(w, r, "docs/swagger.json")
+		swaggerJSON := `{
+  "swagger": "2.0",
+  "info": {
+    "title": "SUSE AI Universal Proxy API",
+    "description": "API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SUSE AI Team",
+      "email": "ai@suse.com"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check the health status of all proxy services",
+        "responses": {
+          "200": {
+            "description": "All services are healthy",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "healthy"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "services": {
+                  "type": "object",
+                  "properties": {
+                    "proxy": {"type": "string"},
+                    "registry": {"type": "string"},
+                    "discovery": {"type": "string"},
+                    "plugins": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "summary": "MCP JSON-RPC Endpoint",
+        "description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "JSON-RPC 2.0 request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jsonrpc": {"type": "string", "example": "2.0"},
+                "id": {"type": "integer", "example": 1},
+                "method": {"type": "string", "example": "tools/call"},
+                "params": {"type": "object"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful MCP response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jsonrpc": {"type": "string"},
+                "id": {"type": "integer"},
+                "result": {"type": "object"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/tools": {
+      "get": {
+        "summary": "List Available Tools",
+        "description": "Get a list of all available MCP tools",
+        "responses": {
+          "200": {
+            "description": "List of tools",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "inputSchema": {"type": "object"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/resources": {
+      "get": {
+        "summary": "List Available Resources",
+        "description": "Get a list of all available MCP resources",
+        "responses": {
+          "200": {
+            "description": "List of resources",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "uri": {"type": "string"},
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "mimeType": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {},
+  "securityDefinitions": {
+    "bearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer token authentication (e.g., 'Bearer <token>')"
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}`
+		w.Write([]byte(swaggerJSON))
 	})
 
 	// Start HTTP server

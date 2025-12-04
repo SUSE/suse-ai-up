@@ -67,16 +67,6 @@ spec:
     {{- end }}
     {{- end }}
 
-    {{- /* Health check and docs ports */}}
-    - name: health-http
-      port: 8911
-      targetPort: health-http
-      protocol: TCP
-    {{- if .Values.tls.enabled }}
-    - name: health-https
-      port: 3911
-      targetPort: health-https
-      protocol: TCP
-    {{- end }}
+
   selector:
     {{- include "suse-ai-up.selectorLabels" . | nindent 4 }}

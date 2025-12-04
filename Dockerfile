@@ -38,12 +38,12 @@ RUN chown -R mcpuser:mcpuser suse-ai-up docs
 # Switch to non-root user
 USER 1000
 
-# Health check
+# Health check - check if the proxy port is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ./suse-ai-up health || exit 1
+    CMD nc -z localhost 8080 || exit 1
 
-# Expose all service ports
-EXPOSE 8080 8911-8914 38080 38912-38913 3911
+# Expose all service ports (removed health ports 8911/3911 since docs are now served from proxy)
+EXPOSE 8080 8912-8914 38080 38912-38914
 
 # Run the binary
 CMD ["./suse-ai-up", "all"]

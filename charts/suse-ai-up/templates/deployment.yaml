@@ -262,42 +262,6 @@ spec:
             {{- end }}
         {{- end }}
 
-        {{- /* Health check and docs sidecar */}}
-        - name: health
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - "/home/mcpuser/suse-ai-up"
-            - "health"
-          ports:
-            - name: health-http
-              containerPort: 8911
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: health-https
-              containerPort: 3911
-              protocol: TCP
-            {{- end }}
-          env:
-            - name: HEALTH_PORT
-              value: "8911"
-            {{- if .Values.tls.enabled }}
-            - name: HEALTH_TLS_PORT
-              value: "3911"
-            - name: AUTO_TLS
-              value: {{ .Values.tls.autoGenerate | quote }}
-            {{- end }}
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 50m
-              memory: 64Mi
-
-
         {{- /* Additional containers */}}
         {{- with .Values.extraContainers }}
         {{- toYaml . | nindent 8 }}

@@ -69,6 +69,8 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/mcp/resources", handler.HandleResourcesList)
 	mux.HandleFunc("/mcp/resources/", handler.HandleResourceRead)
 	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/docs", s.handleDocs)
+	mux.HandleFunc("/swagger.json", s.handleSwaggerJSON)
 
 	// Start HTTP server
 	httpServer := &http.Server{
@@ -197,4 +199,207 @@ func (s *Service) generateSelfSignedCert() (*tls.Certificate, error) {
 	}
 
 	return cert, nil
+}
+
+// handleDocs serves the Swagger UI
+func (s *Service) handleDocs(w http.ResponseWriter, r *http.Request) {
+	swaggerHTML := `<!DOCTYPE html>
+<html>
+<head>
+    <title>SUSE AI Universal Proxy API Documentation</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui.css" />
+    <style>
+        html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+        *, *:before, *:after { box-sizing: inherit; }
+        body { margin:0; background: #fafafa; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
+                url: '/swagger.json',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+</body>
+</html>`
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(swaggerHTML))
+}
+
+// handleSwaggerJSON serves the Swagger JSON specification
+func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
+	swaggerJSON := `{
+  "swagger": "2.0",
+  "info": {
+    "title": "SUSE AI Universal Proxy API",
+    "description": "API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SUSE AI Team",
+      "email": "ai@suse.com"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check the health status of all proxy services",
+        "responses": {
+          "200": {
+            "description": "All services are healthy",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "healthy"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "services": {
+                  "type": "object",
+                  "properties": {
+                    "proxy": {"type": "string"},
+                    "registry": {"type": "string"},
+                    "discovery": {"type": "string"},
+                    "plugins": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "summary": "MCP JSON-RPC Endpoint",
+        "description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "JSON-RPC 2.0 request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jsonrpc": {"type": "string", "example": "2.0"},
+                "id": {"type": "integer", "example": 1},
+                "method": {"type": "string", "example": "tools/call"},
+                "params": {"type": "object"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful MCP response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jsonrpc": {"type": "string"},
+                "id": {"type": "integer"},
+                "result": {"type": "object"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/tools": {
+      "get": {
+        "summary": "List Available Tools",
+        "description": "Get a list of all available MCP tools",
+        "responses": {
+          "200": {
+            "description": "List of tools",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "inputSchema": {"type": "object"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp/resources": {
+      "get": {
+        "summary": "List Available Resources",
+        "description": "Get a list of all available MCP resources",
+        "responses": {
+          "200": {
+            "description": "List of resources",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "uri": {"type": "string"},
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "mimeType": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {},
+  "securityDefinitions": {
+    "bearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer token authentication (e.g., 'Bearer <token>')"
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}`
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(swaggerJSON))
 }
