@@ -62,106 +62,69 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-OTEL Collector ConfigMap name
+Return the proper image name
 */}}
-{{- define "suse-ai-up.otelConfigName" -}}
-{{- printf "%s-otel-config" (include "suse-ai-up.fullname" .) }}
-{{- end }}
-
-{{/*
-OTEL resource attributes as comma-separated string
-*/}}
-{{- define "suse-ai-up.otelResourceAttributes" -}}
-{{- $attrs := list -}}
-{{- range .Values.otel.resourceAttributes -}}
-{{- $attr := printf "%s=%s" .key .value -}}
-{{- $attrs = append $attrs $attr -}}
-{{- end -}}
-{{- join "," $attrs -}}
-{{- end }}
-
-{{/*
-OTEL environment variables
-*/}}
-{{- define "suse-ai-up.otelEnv" -}}
-- name: OTEL_SERVICE_NAME
-  value: {{ .Values.otel.serviceName | quote }}
-- name: OTEL_SERVICE_VERSION
-  value: {{ .Values.otel.serviceVersion | quote }}
-- name: OTEL_TRACES_EXPORTER
-  value: {{ .Values.otel.core.tracesExporter | quote }}
-- name: OTEL_METRICS_EXPORTER
-  value: {{ .Values.otel.core.metricsExporter | quote }}
-- name: OTEL_LOGS_EXPORTER
-  value: {{ .Values.otel.core.logsExporter | quote }}
-- name: OTEL_EXPORTER_OTLP_ENDPOINT
-  value: {{ .Values.otel.core.otlpEndpoint | quote }}
-- name: OTEL_EXPORTER_OTLP_PROTOCOL
-  value: {{ .Values.otel.core.otlpProtocol | quote }}
-- name: OTEL_EXPORTER_OTLP_INSECURE
-  value: {{ .Values.otel.core.insecure | quote }}
-- name: OTEL_RESOURCE_ATTRIBUTES
-  value: {{ include "suse-ai-up.otelResourceAttributes" . | quote }}
-- name: OTEL_TRACES_SAMPLER
-  value: {{ .Values.otel.sampling.traces.sampler | quote }}
-- name: OTEL_TRACES_SAMPLER_ARG
-  value: {{ .Values.otel.sampling.traces.ratio | quote }}
-{{- if .Values.otel.exporters.jaeger.enabled }}
-- name: OTEL_EXPORTER_JAEGER_ENDPOINT
-  value: {{ .Values.otel.exporters.jaeger.endpoint | quote }}
+{{- define "suse-ai-up.image" -}}
+{{- $registry := default .Values.image.registry .Values.global.imageRegistry }}
+{{- $repository := .Values.image.repository }}
+{{- $tag := default .Chart.AppVersion .Values.image.tag }}
+{{- if $registry }}
+{{- printf "%s/%s:%s" $registry $repository $tag }}
+{{- else }}
+{{- printf "%s:%s" $repository $tag }}
 {{- end }}
 {{- end }}
 
 {{/*
-Main application environment variables
-*/}}
-{{- define "suse-ai-up.appEnv" -}}
-- name: PORT
-  value: {{ .Values.env.port | quote }}
-- name: HOST
-  value: {{ .Values.env.host | quote }}
-- name: AUTH_MODE
-  value: {{ .Values.env.authMode | quote }}
-- name: REGISTRY_ENABLED
-  value: {{ .Values.env.registryEnabled | quote }}
-- name: SMARTAGENTS_ENABLED
-  value: {{ .Values.env.smartAgentsEnabled | quote }}
-
-# OpenTelemetry configuration
-- name: OTEL_ENABLED
-  value: {{ .Values.otel.app.enabled | quote }}
-- name: OTEL_ENDPOINT
-  value: {{ .Values.otel.app.endpoint | quote }}
-- name: OTEL_PROTOCOL
-  value: {{ .Values.otel.app.protocol | quote }}
-# GitHub configuration
-{{- if .Values.env.github.pat }}
-- name: GITHUB_PAT
-  value: {{ .Values.env.github.pat | quote }}
-{{- end }}
-{{- end }}
-
-{{/*
-Image pull policy
+Return the proper image pull policy
 */}}
 {{- define "suse-ai-up.imagePullPolicy" -}}
 {{- .Values.image.pullPolicy | default "IfNotPresent" }}
 {{- end }}
 
 {{/*
-Main container image
+Create a default fully qualified configmap name.
 */}}
-{{- define "suse-ai-up.image" -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
-{{- if .Values.image.architectureTagSuffix }}
-{{- $tag = printf "%s%s" $tag .Values.image.architectureTagSuffix }}
-{{- end }}
-{{- printf "%s:%s" .Values.image.repository $tag }}
+{{- define "suse-ai-up.configmapName" -}}
+{{- printf "%s-config" (include "suse-ai-up.fullname" .) }}
 {{- end }}
 
 {{/*
-OTEL collector image
+Create a default fully qualified secret name.
 */}}
-{{- define "suse-ai-up.otelImage" -}}
-{{- .Values.otel.collector.image }}
+{{- define "suse-ai-up.secretName" -}}
+{{- printf "%s-secret" (include "suse-ai-up.fullname" .) }}
+{{- end }}
+
+{{/*
+Create a default fully qualified service name.
+*/}}
+{{- define "suse-ai-up.serviceName" -}}
+{{- printf "%s-service" (include "suse-ai-up.fullname" .) }}
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "suse-ai-up.annotations" -}}
+{{- with .Values.commonAnnotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the proper Docker Image Registry Secret Names
+*/}}
+{{- define "suse-ai-up.imagePullSecrets" -}}
+{{- $pullSecrets := list }}
+{{- $defaultSecretName := include "suse-ai-up.fullname" . }}
+{{- $defaultSecretName = printf "%s-registry" $defaultSecretName }}
+{{- $pullSecrets = append $pullSecrets $defaultSecretName }}
+{{- range .Values.imagePullSecrets }}
+{{- $pullSecrets = append $pullSecrets . }}
+{{- end }}
+{{- range .Values.global.imagePullSecrets }}
+{{- $pullSecrets = append $pullSecrets . }}
+{{- end }}
+{{- $pullSecrets | uniq | toYaml }}
 {{- end }}

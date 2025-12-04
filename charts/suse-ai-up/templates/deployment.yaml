@@ -4,29 +4,26 @@ metadata:
   name: {{ include "suse-ai-up.fullname" . }}
   labels:
     {{- include "suse-ai-up.labels" . | nindent 4 }}
-    {{- with .Values.podLabels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- with .Values.podAnnotations }}
+  {{- with .Values.deploymentAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "suse-ai-up.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      labels:
-        {{- include "suse-ai-up.selectorLabels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      labels:
+        {{- include "suse-ai-up.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -35,131 +32,309 @@ spec:
       serviceAccountName: {{ include "suse-ai-up.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      containers:
-        # Main application container
-        - name: suse-ai-up
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ include "suse-ai-up.imagePullPolicy" . }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
-          env:
-            {{- include "suse-ai-up.appEnv" . | nindent 12 }}
-            {{- if .Values.otel.enabled }}
-            {{- include "suse-ai-up.otelEnv" . | nindent 12 }}
-            {{- end }}
-            {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          {{- if .Values.healthCheck.enabled }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.healthCheck.path }}
-              port: {{ .Values.healthCheck.port }}
-            initialDelaySeconds: {{ .Values.healthCheck.initialDelaySeconds }}
-            periodSeconds: {{ .Values.healthCheck.periodSeconds }}
-            timeoutSeconds: {{ .Values.healthCheck.timeoutSeconds }}
-            failureThreshold: {{ .Values.healthCheck.failureThreshold }}
-            successThreshold: {{ .Values.healthCheck.successThreshold }}
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.healthCheck.path }}
-              port: {{ .Values.healthCheck.port }}
-            initialDelaySeconds: {{ .Values.healthCheck.initialDelaySeconds }}
-            periodSeconds: {{ .Values.healthCheck.periodSeconds }}
-            timeoutSeconds: {{ .Values.healthCheck.timeoutSeconds }}
-            failureThreshold: {{ .Values.healthCheck.failureThreshold }}
-            successThreshold: {{ .Values.healthCheck.successThreshold }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.extraVolumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-        # OTEL Collector sidecar container
-        {{- if .Values.otel.enabled }}
-        - name: otel-collector
-          image: {{ include "suse-ai-up.otelImage" . }}
-          imagePullPolicy: {{ .Values.otel.collector.imagePullPolicy }}
-          ports:
-            - name: otlp-grpc
-              containerPort: 4318
-              protocol: TCP
-            - name: otlp-http
-              containerPort: 4319
-              protocol: TCP
-            {{- if .Values.otel.exporters.prometheus.enabled }}
-            - name: prometheus
-              containerPort: 8889
-              protocol: TCP
-            {{- end }}
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: otel-config
-              mountPath: /etc/otel/config.yaml
-              subPath: config.yaml
-          resources:
-            {{- toYaml .Values.otel.collector.resources | nindent 12 }}
-        {{- end }}
-
-        # Additional sidecar containers
-        {{- with .Values.sidecarContainers }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-
-      {{- with .Values.initContainers }}
-      initContainers:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-
-      volumes:
-        # OTEL Collector configuration volume
-        {{- if .Values.otel.enabled }}
-        - name: otel-config
-          configMap:
-            name: {{ include "suse-ai-up.otelConfigName" . }}
-        {{- end }}
-
-        # Additional volumes
-        {{- with .Values.extraVolumes }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-
-      # Node affinity configuration
-      {{- $affinity := dict }}
-      {{- if .Values.architecture }}
-        {{- $matchExpression := dict "key" "kubernetes.io/arch" "operator" "In" "values" (list .Values.architecture) }}
-        {{- $nodeSelectorTerm := dict "matchExpressions" (list $matchExpression) }}
-        {{- $nodeAffinity := dict "nodeAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list $nodeSelectorTerm))) }}
-        {{- $affinity = merge $affinity $nodeAffinity }}
-      {{- end }}
-      {{- if .Values.affinity }}
-        {{- $affinity = merge $affinity .Values.affinity }}
-      {{- end }}
-      {{- if $affinity }}
+      {{- with .Values.affinity }}
       affinity:
-        {{- toYaml $affinity | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
-
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- /* Main proxy container - starts first */}}
+        {{- if .Values.services.proxy.enabled }}
+        - name: proxy
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "./suse-ai-up"
+            - "proxy"
+          ports:
+            - name: proxy-http
+              containerPort: {{ .Values.services.proxy.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: proxy-https
+              containerPort: {{ .Values.services.proxy.tlsPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: PROXY_PORT
+              value: {{ .Values.services.proxy.port | quote }}
+            {{- if .Values.tls.enabled }}
+            - name: TLS_PORT
+              value: {{ .Values.services.proxy.tlsPort | quote }}
+            - name: AUTO_TLS
+              value: {{ .Values.tls.autoGenerate | quote }}
+            {{- if .Values.tls.certFile }}
+            - name: TLS_CERT_FILE
+              value: {{ .Values.tls.certFile | quote }}
+            {{- end }}
+            {{- if .Values.tls.keyFile }}
+            - name: TLS_KEY_FILE
+              value: {{ .Values.tls.keyFile | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.services.proxy.resources | nindent 12 }}
+          {{- if .Values.probes.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: proxy-http
+            initialDelaySeconds: {{ .Values.probes.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: proxy-http
+            initialDelaySeconds: {{ .Values.probes.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: proxy-http
+            initialDelaySeconds: {{ .Values.probes.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readinessProbe.failureThreshold }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.tls.certFile }}
+            - name: tls-cert
+              mountPath: /etc/ssl/certs/
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- end }}
+
+        {{- /* Registry sidecar - starts second */}}
+        {{- if .Values.services.registry.enabled }}
+        - name: registry
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "./suse-ai-up"
+            - "registry"
+          ports:
+            - name: registry-http
+              containerPort: {{ .Values.services.registry.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: registry-https
+              containerPort: {{ .Values.services.registry.tlsPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: REGISTRY_PORT
+              value: {{ .Values.services.registry.port | quote }}
+            {{- if .Values.tls.enabled }}
+            - name: TLS_PORT
+              value: {{ .Values.services.registry.tlsPort | quote }}
+            - name: AUTO_TLS
+              value: {{ .Values.tls.autoGenerate | quote }}
+            {{- end }}
+            - name: ENABLE_OFFICIAL
+              value: {{ .Values.services.registry.enableOfficial | quote }}
+            - name: ENABLE_DOCKER
+              value: {{ .Values.services.registry.enableDocker | quote }}
+            - name: SYNC_INTERVAL
+              value: {{ .Values.services.registry.syncInterval | quote }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.services.registry.resources | nindent 12 }}
+          volumeMounts:
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- end }}
+
+        {{- /* Discovery sidecar - starts third */}}
+        {{- if .Values.services.discovery.enabled }}
+        - name: discovery
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "./suse-ai-up"
+            - "discovery"
+          ports:
+            - name: discovery-http
+              containerPort: {{ .Values.services.discovery.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: discovery-https
+              containerPort: {{ .Values.services.discovery.tlsPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: DISCOVERY_PORT
+              value: {{ .Values.services.discovery.port | quote }}
+            {{- if .Values.tls.enabled }}
+            - name: TLS_PORT
+              value: {{ .Values.services.discovery.tlsPort | quote }}
+            - name: AUTO_TLS
+              value: {{ .Values.tls.autoGenerate | quote }}
+            {{- end }}
+            - name: DEFAULT_TIMEOUT
+              value: {{ .Values.services.discovery.defaultTimeout | quote }}
+            - name: MAX_CONCURRENCY
+              value: {{ .Values.services.discovery.maxConcurrency | quote }}
+            - name: EXCLUDE_PROXY
+              value: {{ .Values.services.discovery.excludeProxy | quote }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.services.discovery.resources | nindent 12 }}
+          volumeMounts:
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- end }}
+
+        {{- /* Plugins sidecar - starts last */}}
+        {{- if .Values.services.plugins.enabled }}
+        - name: plugins
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "./suse-ai-up"
+            - "plugins"
+          ports:
+            - name: plugins-http
+              containerPort: {{ .Values.services.plugins.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: plugins-https
+              containerPort: {{ .Values.services.plugins.tlsPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: PLUGINS_PORT
+              value: {{ .Values.services.plugins.port | quote }}
+            {{- if .Values.tls.enabled }}
+            - name: TLS_PORT
+              value: {{ .Values.services.plugins.tlsPort | quote }}
+            - name: AUTO_TLS
+              value: {{ .Values.tls.autoGenerate | quote }}
+            {{- end }}
+            - name: HEALTH_INTERVAL
+              value: {{ .Values.services.plugins.healthInterval | quote }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.services.plugins.resources | nindent 12 }}
+          volumeMounts:
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- end }}
+
+        {{- /* Health check and docs sidecar */}}
+        - name: health
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "sh"
+            - "-c"
+            - |
+              # Copy swagger files to a location the health server can serve
+              mkdir -p /tmp/docs
+              cp /app/docs/swagger.json /tmp/docs/ 2>/dev/null || echo '{}' > /tmp/docs/swagger.json
+              cp /app/docs/swagger.yaml /tmp/docs/ 2>/dev/null || echo 'swagger: "2.0"' > /tmp/docs/swagger.yaml
+
+              # Start health check server
+              ./suse-ai-up health
+          ports:
+            - name: health-http
+              containerPort: 8911
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: health-https
+              containerPort: 3911
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: HEALTH_PORT
+              value: "8911"
+            {{- if .Values.tls.enabled }}
+            - name: HEALTH_TLS_PORT
+              value: "3911"
+            - name: AUTO_TLS
+              value: {{ .Values.tls.autoGenerate | quote }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - name: docs
+              mountPath: /tmp/docs
+              readOnly: true
+
+        {{- /* Additional containers */}}
+        {{- with .Values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+      volumes:
+        {{- /* TLS certificate volume */}}
+        {{- if .Values.tls.certFile }}
+        - name: tls-cert
+          secret:
+            secretName: {{ .Values.tls.secretName }}
+        {{- end }}
+
+        {{- /* Documentation volume */}}
+        - name: docs
+          configMap:
+            name: {{ include "suse-ai-up.fullname" . }}-docs
+
+        {{- /* Extra volumes */}}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+      {{- with .Values.lifecycle }}
+      lifecycle:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}

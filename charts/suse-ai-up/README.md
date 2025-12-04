@@ -1,360 +1,291 @@
-# SUSE AI Universal Proxy - Helm Chart
+# SUSE AI Universal Proxy
 
-![SUSE Logo](https://apps.rancher.io/logos/suse-ai-deployer.png)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities and MCP server registry management.
+A comprehensive, modular MCP (Model Context Protocol) proxy system that enables secure, scalable, and extensible AI model integrations.
 
-**Certified for SUSE Rancher** | **OpenTelemetry Enabled** | **Multi-Architecture Support**
+## TL;DR
+
+```bash
+helm repo add suse https://charts.suse.com
+helm repo update
+helm install suse-ai-up suse/suse-ai-up
+```
 
 ## Prerequisites
 
 - Kubernetes 1.19+
 - Helm 3.0+
-- (Optional) Jaeger for distributed tracing
-- (Optional) Prometheus for metrics collection
 
-## Installation
+## Installing the Chart
 
-### SUSE Rancher Manager UI Installation (Recommended)
-
-1. **Add the SUSE AI Repository** (if not already available):
-   - Navigate to **Apps & Marketplace** → **Charts**
-   - Search for "SUSE AI Universal Proxy"
-   - Click **Install**
-
-2. **Configure via UI Form**:
-   - Use the intuitive form to configure your deployment
-   - All major settings are available through the categorized interface
-   - Advanced options are available in the "Advanced Configuration" section
-
-3. **Deploy**:
-   - Review your configuration
-   - Click **Install** to deploy to your cluster
-
-### Command Line Installation
-
-### Add Helm Repository (if applicable)
+To install the chart with the release name `suse-ai-up`:
 
 ```bash
-# Add the repository containing this chart
-helm repo add suse-ai-up https://charts.suse.com/ai-up
-helm repo update
+helm install suse-ai-up suse/suse-ai-up
 ```
 
-### Install the Chart
+## Uninstalling the Chart
+
+To uninstall/delete the `suse-ai-up` deployment:
 
 ```bash
-# Install with default values
-helm install suse-ai-up ./charts/suse-ai-up
-
-# Install with custom values
-helm install suse-ai-up ./charts/suse-ai-up -f my-values.yaml
-
-# Install in a specific namespace
-helm install suse-ai-up ./charts/suse-ai-up -n ai-up --create-namespace
+helm uninstall suse-ai-up
 ```
 
 ## Configuration
 
-> 💡 **Tip**: When using SUSE Rancher Manager, most configuration options are available through the intuitive UI form. The table below shows all available parameters for advanced CLI usage.
+The following table lists the configurable parameters of the SUSE AI Universal Proxy chart and their default values.
 
-### Core Service Configuration
+### Global Parameters
 
-| Parameter | Description | Default | Rancher UI Category |
-|-----------|-------------|---------|-------------------|
-| `image.repository` | Container image repository | `ghcr.io/alessandro-festa/suse-ai-up` | Basic Configuration |
-| `image.tag` | Container image tag | `latest` | Basic Configuration |
-| `service.port` | Service port | `8911` | Service Configuration |
-| `replicaCount` | Number of replicas | `1` | Basic Configuration |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| global.imageRegistry | string | `""` | Global Docker image registry |
+| global.imagePullSecrets | list | `[]` | Global Docker registry secret names |
+| global.storageClass | string | `""` | Global storage class for persistent volumes |
 
-### OpenTelemetry Configuration
+### Common Parameters
 
-| Parameter | Description | Default | Rancher UI Category |
-|-----------|-------------|---------|-------------------|
-| `otel.enabled` | Enable OpenTelemetry collector sidecar | `false` | OpenTelemetry (OTEL) |
-| `otel.serviceName` | Service name for OTEL | `suse-ai-up` | OpenTelemetry (OTEL) |
-| `otel.serviceLabels.genai.system.suseai-up` | System identifier label | `true` | OpenTelemetry (OTEL) |
-| `otel.exporters.jaeger.enabled` | Enable Jaeger exporter | `true` | OpenTelemetry (OTEL) |
-| `otel.exporters.prometheus.enabled` | Enable Prometheus exporter | `true` | OpenTelemetry (OTEL) |
-| `otel.app.enabled` | Enable application OTEL instrumentation | `false` | OpenTelemetry (OTEL) |
-| `otel.app.endpoint` | OTEL collector endpoint | `http://localhost:4318` | OpenTelemetry (OTEL) |
-| `otel.app.protocol` | OTEL protocol (grpc/http) | `grpc` | OpenTelemetry (OTEL) |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| image.registry | string | `"suse"` | SUSE AI Universal Proxy image registry |
+| image.repository | string | `"suse-ai-up"` | SUSE AI Universal Proxy image repository |
+| image.tag | string | `""` | SUSE AI Universal Proxy image tag (defaults to appVersion) |
+| image.pullPolicy | string | `"IfNotPresent"` | SUSE AI Universal Proxy image pull policy |
+| image.architecture | list | `["amd64", "arm64"]` | Supported architectures |
 
-### Runtime Support
+### Service Configuration
 
-| Parameter | Description | Default | Rancher UI Category |
-|-----------|-------------|---------|-------------------|
-| `env.python.enabled` | Enable Python runtime | `true` | Runtime Support |
-| `env.nodejs.enabled` | Enable Node.js runtime | `true` | Runtime Support |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| services.proxy.enabled | bool | `true` | Enable MCP proxy service |
+| services.proxy.port | int | `8080` | HTTP port for proxy service |
+| services.proxy.tlsPort | int | `38080` | HTTPS port for proxy service |
+| services.registry.enabled | bool | `true` | Enable MCP registry service |
+| services.registry.port | int | `8913` | HTTP port for registry service |
+| services.registry.tlsPort | int | `38913` | HTTPS port for registry service |
+| services.discovery.enabled | bool | `true` | Enable network discovery service |
+| services.discovery.port | int | `8912` | HTTP port for discovery service |
+| services.discovery.tlsPort | int | `38912` | HTTPS port for discovery service |
+| services.plugins.enabled | bool | `true` | Enable plugin management service |
+| services.plugins.port | int | `8914` | HTTP port for plugins service |
+| services.plugins.tlsPort | int | `38914` | HTTPS port for plugins service |
 
+### TLS Configuration
 
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| tls.enabled | bool | `true` | Enable TLS encryption |
+| tls.autoGenerate | bool | `true` | Auto-generate self-signed certificates |
+| tls.certFile | string | `""` | Path to custom TLS certificate |
+| tls.keyFile | string | `""` | Path to custom TLS private key |
+| tls.secretName | string | `""` | Name of existing TLS secret |
 
-### Multi-Architecture Support
+### Authentication Configuration
 
-This chart supports deployment on both x86_64 (amd64) and ARM64 architectures.
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| auth.method | string | `"oauth"` | Authentication method (oauth, bearer, apikey, basic, none) |
+| auth.oauth.enabled | bool | `false` | Enable OAuth 2.0 authentication |
+| auth.oauth.clientId | string | `""` | OAuth client ID |
+| auth.oauth.clientSecret | string | `""` | OAuth client secret |
+| auth.apikey.enabled | bool | `false` | Enable API key authentication |
+| auth.apikey.header | string | `"X-API-Key"` | API key header name |
+| auth.bearer.enabled | bool | `false` | Enable Bearer token authentication |
 
-| Parameter | Description | Default | Rancher UI Category |
-|-----------|-------------|---------|-------------------|
-| `image.architectureTagSuffix` | Architecture-specific tag suffix (e.g., "-amd64", "-arm64") | `""` | Multi-Architecture |
-| `architecture` | Target architecture for node affinity ("amd64" or "arm64") | `""` | Multi-Architecture |
+### Monitoring Configuration
 
-### Example Values Override
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| monitoring.enabled | bool | `false` | Enable monitoring stack |
+| monitoring.prometheus.enabled | bool | `false` | Deploy Prometheus |
+| monitoring.prometheus.existingService | string | `""` | Use existing Prometheus service |
+| monitoring.grafana.enabled | bool | `false` | Deploy Grafana |
+| monitoring.grafana.existingService | string | `""` | Use existing Grafana service |
+
+### Resource Configuration
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| services.proxy.resources.requests.cpu | string | `"100m"` | Proxy CPU request |
+| services.proxy.resources.requests.memory | string | `"128Mi"` | Proxy memory request |
+| services.proxy.resources.limits.cpu | string | `"500m"` | Proxy CPU limit |
+| services.proxy.resources.limits.memory | string | `"512Mi"` | Proxy memory limit |
+
+*(Similar resource configurations exist for registry, discovery, and plugins services)*
+
+### Ingress Configuration
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| ingress.enabled | bool | `false` | Enable ingress |
+| ingress.className | string | `""` | Ingress class name |
+| ingress.hosts | list | `[]` | List of ingress hosts |
+
+### Service Account Configuration
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| serviceAccount.create | bool | `true` | Create service account |
+| serviceAccount.annotations | object | `{}` | Service account annotations |
+| serviceAccount.name | string | `""` | Service account name |
+
+## Examples
+
+### Basic Installation
+
+```bash
+helm install suse-ai-up suse/suse-ai-up \
+  --set services.proxy.enabled=true \
+  --set services.registry.enabled=true \
+  --set tls.enabled=true
+```
+
+### Custom TLS Certificates
+
+```bash
+helm install suse-ai-up suse/suse-ai-up \
+  --set tls.certFile=/path/to/cert.pem \
+  --set tls.keyFile=/path/to/key.pem \
+  --set tls.secretName=my-tls-secret
+```
+
+### With Monitoring
+
+```bash
+helm install suse-ai-up suse/suse-ai-up \
+  --set monitoring.enabled=true \
+  --set monitoring.prometheus.enabled=true \
+  --set monitoring.grafana.enabled=true
+```
+
+### High Availability Setup
 
 ```yaml
-# values.yaml
-image:
-  tag: "v1.0.0"
-
 replicaCount: 3
-
-otel:
-  exporters:
-    jaeger:
-      endpoint: "jaeger-collector.monitoring:14268/api/traces"
-
-ingress:
-  enabled: true
-  hosts:
-    - host: ai-up.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
+services:
+  proxy:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+  registry:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
 ```
 
-### Multi-Architecture Deployment Examples
+## Service Ports
 
-```yaml
-# Deploy on x86_64 nodes only
-image:
-  architectureTagSuffix: "-amd64"
-architecture: "amd64"
+After installation, the services will be available on the following ports:
 
-# Deploy on ARM64 nodes only
-image:
-  architectureTagSuffix: "-arm64"
-architecture: "arm64"
+| Service | HTTP Port | HTTPS Port | Description |
+|---------|-----------|------------|-------------|
+| Proxy | 8080 | 38080 | MCP protocol proxy |
+| Registry | 8913 | 38913 | Server catalog management |
+| Discovery | 8912 | 38912 | Network scanning service |
+| Plugins | 8914 | 38914 | Plugin management |
+| Health/Docs | 8911 | 3911 | Health checks and API docs |
 
-# Deploy multi-arch image (no suffix, uses manifest)
-image:
-  architectureTagSuffix: ""  # Empty for multi-arch
-architecture: ""  # No affinity constraint
-```
+## Accessing Services
 
-## Rancher UI Integration
-
-This Helm chart includes a comprehensive `questions.yaml` file that provides an intuitive form-based interface in SUSE Rancher Manager. The form is organized into logical categories:
-
-- **Basic Configuration**: Image settings, replicas, and core parameters
-- **Service Configuration**: Networking and service type options
-- **OpenTelemetry (OTEL)**: Collector sidecar and application instrumentation
-- **Runtime Support**: Python and Node.js runtime toggles
-- **MCP Server Spawning**: Resource limits, retry logic, and spawning configuration
-- **Authentication & Security**: Auth modes and service accounts
-- **Networking**: Ingress and external access configuration
-- **Resources**: CPU and memory allocation
-- **Health Checks**: Readiness and liveness probe configuration
-- **Multi-Architecture**: Architecture-specific deployment options
-- **Advanced Configuration**: Registry, smart agents, and custom settings
-
-The form includes validation, helpful descriptions, and conditional fields that appear based on your selections.
-
-## Features
-
-### 🏢 SUSE Enterprise Ready
-
-- **Certified for SUSE Rancher**: Official SUSE partner certification
-- **Enterprise Support**: Backed by SUSE enterprise support
-- **Security Hardened**: SUSE security standards and best practices
-- **Multi-Architecture**: Support for x86_64 and ARM64 platforms
-
-### 📊 OpenTelemetry Integration
-
-- **Distributed Tracing**: Automatic trace collection with Jaeger export
-- **Metrics Collection**: Application and system metrics with Prometheus export
-- **Structured Logging**: OTEL-compatible log collection
-- **Resource Detection**: Automatic Kubernetes pod metadata detection
-- **Application Instrumentation**: Optional in-process OTEL instrumentation
-- **Collector Sidecar**: Optional OTEL collector for advanced processing
-
-### 🐍 Runtime Support
-
-- **Python MCP Servers**: Full Python 3.11+ support with pip and common MCP libraries
-- **Node.js MCP Servers**: Node.js 18+ with npm for JavaScript/TypeScript MCP servers
-- **Container Security**: Non-root execution with minimal attack surface
-
-
-
-### ☸️ Kubernetes Native
-
-- **Health Checks**: Readiness and liveness probes
-- **Resource Management**: Configurable CPU/memory limits and requests
-- **Service Discovery**: Automatic service registration
-- **Security Context**: Pod security contexts and RBAC
-
-## Usage
-
-### Accessing the Service
-
+### API Documentation
 ```bash
-# Port forward to access locally
-kubectl port-forward svc/suse-ai-up 8911:8911
-
-# Access the API
-curl http://localhost:8911/health
-curl http://localhost:8911/api/v1/adapters
+# Open Swagger UI
+open http://your-cluster-ip:8911/docs
 ```
 
-### Monitoring
-
+### Health Checks
 ```bash
-# Access OTEL collector metrics
-kubectl port-forward svc/suse-ai-up-otel 8889:8889
+# Check all services
+curl http://your-cluster-ip:8911/health
 
-# Access Prometheus metrics
-curl http://localhost:8889/metrics
+# Individual service checks
+curl http://your-cluster-ip:8080/health  # Proxy
+curl http://your-cluster-ip:8913/health  # Registry
+curl http://your-cluster-ip:8912/health  # Discovery
+curl http://your-cluster-ip:8914/health  # Plugins
 ```
-
-### Creating MCP Adapters
-
-```bash
-# Create a Python MCP server adapter
-curl -X POST http://localhost:8911/api/v1/adapters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "python-mcp-server",
-    "protocol": "MCP",
-    "connectionType": "LocalStdio",
-    "command": "python3",
-    "args": ["server.py"],
-    "environmentVariables": {
-      "PYTHONPATH": "/app"
-    }
-  }'
-```
-
-
 
 ## Troubleshooting
 
-### Check Pod Status
+### Common Issues
 
+**Pods not starting:**
 ```bash
 kubectl get pods -l app.kubernetes.io/name=suse-ai-up
 kubectl describe pod <pod-name>
-kubectl logs <pod-name> --container=suse-ai-up
-kubectl logs <pod-name> --container=otel-collector
+kubectl logs <pod-name>
 ```
 
-### Common Issues
+**Service unavailable:**
+```bash
+kubectl get services -l app.kubernetes.io/name=suse-ai-up
+kubectl describe service <service-name>
+```
 
-1. **OTEL Collector Not Starting**: Check ConfigMap syntax and resource limits
-2. **MCP Server Spawn Failures**: Verify Python/Node.js installations and permissions
-3. **Network Issues**: Check service accounts and network policies
-4. **Architecture Mismatch**: Ensure image architecture matches node architecture
-5. **Multi-Arch Image Issues**: Verify Docker buildx setup and QEMU installation
+**TLS certificate issues:**
+```bash
+# Check certificate validity
+kubectl get secrets -l app.kubernetes.io/name=suse-ai-up
+kubectl describe secret <tls-secret-name>
+```
 
-### Debug Commands
+### Logs and Debugging
 
 ```bash
-# Check OTEL collector configuration
-kubectl get configmap suse-ai-up-otel-config -o yaml
+# View all pod logs
+kubectl logs -l app.kubernetes.io/name=suse-ai-up --all-containers
 
-# Test OTEL collector connectivity
-kubectl exec -it <pod-name> -- curl http://localhost:4318/v1/traces
+# View specific service logs
+kubectl logs -l app.kubernetes.io/name=suse-ai-up -c proxy
 
-# Check service endpoints
-kubectl get endpoints suse-ai-up
+# Debug with temporary pod
+kubectl run debug --image=busybox --rm -it -- sh
 ```
 
 ## Upgrading
 
-```bash
-# Upgrade with new values
-helm upgrade suse-ai-up ./charts/suse-ai-up -f new-values.yaml
-
-# Rollback if needed
-helm rollback suse-ai-up
-```
-
-## Uninstalling
+To upgrade the chart:
 
 ```bash
-# Uninstall the chart
-helm uninstall suse-ai-up
-
-# Clean up PVCs if any
-kubectl delete pvc -l app.kubernetes.io/name=suse-ai-up
+helm upgrade suse-ai-up suse/suse-ai-up
 ```
 
-## Development
-
-### Local Testing
+To upgrade with new values:
 
 ```bash
-# Lint the chart
-helm lint ./charts/suse-ai-up
-
-# Template the chart
-helm template test-release ./charts/suse-ai-up
-
-# Install with debug
-helm install test-release ./charts/suse-ai-up --debug --dry-run
+helm upgrade suse-ai-up suse/suse-ai-up -f new-values.yaml
 ```
 
-### Building Custom Images
+## Backup and Restore
 
-#### Single Architecture Build
-
-```bash
-# Build the application
-go build -o service ./cmd/service
-
-# Build the Docker image
-docker build -t ghcr.io/alessandro-festa/suse-ai-up:latest .
-```
-
-#### Multi-Architecture Build
-
-```bash
-# Build Go binaries for both architectures
-./scripts/build-multiarch.sh
-
-# Build and push multi-architecture Docker images
-./scripts/build-multiarch-docker.sh --push
-
-# Or build specific architecture
-./scripts/build-multiarch-docker.sh -t amd64 --push
-./scripts/build-multiarch-docker.sh -t arm64 --push
-```
-
-#### Manual Docker Buildx
-
-```bash
-# Set up buildx builder
-docker buildx create --name multiarch-builder --use
-
-# Build and push multi-arch image
-docker buildx build --platform linux/amd64,linux/arm64 \
-  --tag ghcr.io/alessandro-festa/suse-ai-up:latest \
-  --push .
-```
+*(Currently not implemented - handled externally)*
 
 ## Security Considerations
 
-- Run as non-root user (UID 1000)
-- Minimal base image (Alpine Linux)
-- Network policies recommended
-- RBAC for Kubernetes API access
-- TLS encryption for production deployments
+- TLS encryption enabled by default
+- Self-signed certificates for development
+- Configurable authentication methods
+- Pod security contexts applied
+- Network policies can be added
 
-## Contributing
+## Support
 
-Please see the main project [CONTRIBUTING.md](../CONTRIBUTING.md) for development guidelines.
+- **Documentation**: [SUSE AI Universal Proxy Docs](https://github.com/suse/suse-ai-up/tree/main/docs)
+- **Issues**: [GitHub Issues](https://github.com/suse/suse-ai-up/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/suse/suse-ai-up/discussions)
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/suse/suse-ai-up/blob/main/LICENSE) for details.

@@ -1,29 +1,41 @@
 apiVersion: v2
 name: suse-ai-up
-description: SUSE AI Universal Proxy - A comprehensive platform for managing and proxying Model Context Protocol (MCP) servers with automatic spawning capabilities
+description: SUSE AI Universal Proxy - A comprehensive MCP proxy system with discovery, registry, and plugin management
 type: application
-version: 0.2.0
-appVersion: "1.1.0"
-icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+version: 1.0.0
+appVersion: "1.0.0"
+
 keywords:
-  - ai
   - mcp
+  - ai
   - proxy
+  - model-context-protocol
   - kubernetes
-  - opentelemetry
-  - suse
+
 home: https://github.com/suse/suse-ai-up
 sources:
   - https://github.com/suse/suse-ai-up
+
 maintainers:
   - name: SUSE AI Team
     email: ai@suse.com
+
+dependencies:
+  # Optional monitoring stack
+  - name: prometheus
+    version: "25.x.x"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.prometheus.enabled
+  - name: grafana
+    version: "7.x.x"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: monitoring.grafana.enabled
+
 annotations:
-  catalog.cattle.io/certified: suse
-  catalog.cattle.io/namespace: suse-ai-up
-  catalog.cattle.io/release-name: suse-ai-up
-  catalog.cattle.io/display-name: "SUSE AI Universal Proxy"
-  catalog.cattle.io/description: "Comprehensive platform for managing MCP servers with OpenTelemetry observability"
-  catalog.cattle.io/ui-component: suse-ai-up
-  catalog.cattle.io/upstream-version: "1.0.0"
-dependencies: []
+  artifacthub.io/category: "ai-ml"
+  artifacthub.io/license: "Apache-2.0"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/suse/suse-ai-up/tree/main/docs
+    - name: Source Code
+      url: https://github.com/suse/suse-ai-up

@@ -1,258 +1,323 @@
-# Default values for suse-ai-up Helm chart
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# SUSE AI Universal Proxy Helm Chart Values
+# This file contains all configurable values for the SUSE AI Universal Proxy
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+  # Node selector, tolerations, and affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 # Image configuration
 image:
-  repository: ghcr.io/alessandro-festa/suse-ai-up
+  registry: suse
+  repository: suse-ai-up
   tag: "latest"
-  # Architecture-specific tag suffix (e.g., "-amd64", "-arm64", or "" for multi-arch)
-  # Leave empty for multi-architecture images, or set to "-amd64"/"-arm64" for architecture-specific
-  architectureTagSuffix: ""
   pullPolicy: IfNotPresent
 
-# Service configuration
-service:
-  type: ClusterIP
-  port: 8911
-  annotations: {}
-  # Example annotations for Prometheus
-  # annotations:
-  #   prometheus.io/scrape: "true"
-  #   prometheus.io/port: "8911"
-  #   prometheus.io/path: "/metrics"
+  # Multi-architecture support
+  architecture:
+    - amd64
+    - arm64
 
-# Deployment configuration
-replicaCount: 1
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "100m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
-
-# Pod configuration
-podAnnotations: {}
-podLabels: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}
-# Architecture-specific node affinity (optional)
-# Set architecture to "amd64" or "arm64" to ensure pods run on nodes with matching architecture
-architecture: ""
-
-# Environment variables
-env:
-  # Core service configuration
-  authMode: "development"
-  registryEnabled: true
-  smartAgentsEnabled: true
-  port: "8911"
-  host: "0.0.0.0"
-
-  # MCP server runtime support
-  python:
+# Service enablement and configuration
+services:
+  # Primary proxy service (always enabled)
+  proxy:
     enabled: true
-    version: "3.11"
-  nodejs:
-    enabled: true
-    version: "18"
-
-
-
-  # GitHub integration
-  github:
-    pat: ""  # GitHub Personal Access Token for MCP server access
-
-# OpenTelemetry Configuration
-otel:
-  enabled: false
-  serviceName: "suse-ai-up"
-  serviceVersion: "1.0.0"
-
-  # Additional labels for OTEL service
-  serviceLabels:
-    genai.system.suseai-up: "true"
-
-  # OTEL Collector Configuration
-  collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    imagePullPolicy: IfNotPresent
+    port: 8080
+    tlsPort: 38080
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
+        cpu: 100m
+        memory: 128Mi
       limits:
-        memory: "256Mi"
-        cpu: "200m"
+        cpu: 500m
+        memory: 512Mi
 
-  # OTEL Core Configuration
-  core:
-    tracesExporter: "otlp"
-    metricsExporter: "otlp"
-    logsExporter: "otlp"
-    otlpEndpoint: "http://localhost:4318"
-    otlpProtocol: "grpc"
-    insecure: "true"
+  # Registry service (starts after proxy)
+  registry:
+    enabled: true
+    port: 8913
+    tlsPort: 38913
+    syncInterval: 24h  # How often to sync external registries
+    enableOfficial: true  # Sync official MCP registry
+    enableDocker: true    # Sync Docker MCP images
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
 
-  # Application OTEL Configuration
-  app:
+  # Discovery service (starts after registry)
+  discovery:
+    enabled: true
+    port: 8912
+    tlsPort: 38912
+    defaultTimeout: 30s
+    maxConcurrency: 10
+    excludeProxy: true  # Don't scan proxy ports
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # Plugins service (starts last)
+  plugins:
+    enabled: true
+    port: 8914
+    tlsPort: 38914
+    healthInterval: 30s
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# TLS Configuration
+tls:
+  enabled: true
+  autoGenerate: true  # Generate self-signed certificates
+
+  # Custom certificate configuration
+  certFile: ""  # Path to certificate file
+  keyFile: ""   # Path to private key file
+
+  # Certificate secret name (if using external certs)
+  secretName: "suse-ai-up-tls"
+
+# Authentication Configuration
+auth:
+  method: "oauth"  # oauth, bearer, apikey, basic, none
+
+  # OAuth 2.0 configuration
+  oauth:
     enabled: false
-    endpoint: "http://localhost:4318"
-    protocol: "grpc"
+    clientId: ""
+    clientSecret: ""
+    authorizationUrl: ""
+    tokenUrl: ""
+    redirectUrl: ""
 
-  # OTEL Resource Attributes
-  resourceAttributes:
-    - key: "service.instance.id"
-      value: "{{ include \"suse-ai-up.fullname\" . }}"
-    - key: "k8s.namespace.name"
-      value: "{{ .Release.Namespace }}"
-    - key: "k8s.pod.name"
-      value: "{{ include \"suse-ai-up.fullname\" . }}"
+  # API Key configuration
+  apikey:
+    enabled: false
+    header: "X-API-Key"
+    secretName: ""
 
-  # OTEL Sampling
-  sampling:
-    traces:
-      sampler: "parentbased_always_on"
-      ratio: 1.0
+  # Bearer token configuration
+  bearer:
+    enabled: false
+    token: ""
 
-  # OTEL Exporters
-  exporters:
-    jaeger:
-      enabled: true
-      endpoint: "jaeger-collector:14268/api/traces"
-      insecure: true
-    prometheus:
-      enabled: true
-      endpoint: "0.0.0.0:8889"
-    logging:
-      enabled: true
-      verbosity: "detailed"
-
-# Health check configuration
-healthCheck:
+# Monitoring Configuration
+monitoring:
   enabled: false
-  path: "/health"
-  port: 8911
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-  successThreshold: 1
 
-# Ingress configuration
+  # Prometheus configuration
+  prometheus:
+    enabled: false
+    existingService: ""  # Use existing Prometheus service
+    namespace: "monitoring"
+
+    # ServiceMonitor configuration
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+
+  # Grafana configuration
+  grafana:
+    enabled: false
+    existingService: ""  # Use existing Grafana service
+    namespace: "monitoring"
+
+    # Grafana dashboard configuration
+    dashboard:
+      enabled: true
+      title: "SUSE AI Universal Proxy"
+      tags: ["ai", "mcp", "proxy"]
+
+# Ingress Configuration
 ingress:
   enabled: false
   className: ""
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
     - host: suse-ai-up.local
       paths:
         - path: /
           pathType: Prefix
-  tls: []
-  #  - secretName: suse-ai-up-tls
-  #    hosts:
-  #      - suse-ai-up.local
+  tls:
+    - secretName: suse-ai-up-tls
+      hosts:
+        - suse-ai-up.local
+
+# Service Configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+  # Individual service ports
+  ports:
+    proxy:
+      http: 8080
+      https: 38080
+    registry:
+      http: 8913
+      https: 38913
+    discovery:
+      http: 8912
+      https: 38912
+    plugins:
+      http: 8914
+      https: 38914
+    health:
+      http: 8911
+      https: 3911
+
+# Pod Security Context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+# Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  capabilities:
+    drop:
+      - ALL
+
+# Network Policies
+networkPolicy:
+  enabled: false
+  allowExternal: true
+
+# Persistence Configuration
+persistence:
+  enabled: false
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  storageClass: ""
+
+# Logging Configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json, text
+  outputs:
+    - stdout
+    - file
+
+# Metrics Configuration
+metrics:
+  enabled: true
+  path: "/metrics"
+  port: 9090
+
+# Probes Configuration
+probes:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
 
 # Horizontal Pod Autoscaler
-hpa:
+autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
 
-# Pod Disruption Budget
-pdb:
+# Resource quotas and limits
+quotas:
   enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"
 
-# Service Account
+# Custom environment variables
+extraEnvVars: []
+
+# Custom volumes
+extraVolumes: []
+
+# Custom volume mounts
+extraVolumeMounts: []
+
+# Additional containers
+extraContainers: []
+
+# Init containers
+initContainers: []
+
+# Lifecycle hooks
+lifecycle: {}
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# Priority class
+priorityClassName: ""
+
+# Service account
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
-# Security Context
-podSecurityContext: {}
-  # fsGroup: 2000
+# RBAC configuration
+rbac:
+  create: true
+  rules: []
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+# Pod annotations
+podAnnotations: {}
 
-# Network Policies
-networkPolicy:
-  enabled: false
-  # Allow traffic from specific namespaces
-  allowedNamespaces: []
-  # Allow traffic from specific pods
-  allowedPods: []
+# Deployment annotations
+deploymentAnnotations: {}
 
-# ConfigMaps for additional configuration
-extraConfigMaps: {}
-# extraConfigMaps:
-#   my-config:
-#     data:
-#       config.yaml: |
-#         key: value
-
-# Secrets for sensitive configuration
-extraSecrets: {}
-# extraSecrets:
-#   my-secret:
-#     data:
-#       api-key: <base64-encoded-value>
-
-# Additional volumes
-extraVolumes: []
-# extraVolumes:
-# - name: my-volume
-#   configMap:
-#     name: my-config
-
-# Additional volume mounts
-extraVolumeMounts: []
-# extraVolumeMounts:
-# - name: my-volume
-#   mountPath: /etc/my-config
-#   readOnly: true
-
-# Additional environment variables from ConfigMaps/Secrets
-extraEnvVars: []
-# extraEnvVars:
-# - name: MY_VAR
-#   valueFrom:
-#     configMapKeyRef:
-#       name: my-config
-#       key: my-key
-# - name: MY_SECRET
-#   valueFrom:
-#     secretKeyRef:
-#       name: my-secret
-#       key: my-key
-
-# Init containers
-initContainers: []
-# initContainers:
-# - name: init-myservice
-#   image: busybox:1.35
-#   command: ['sh', '-c', 'echo "init complete"']
-
-# Sidecar containers
-sidecarContainers: []
-# sidecarContainers:
-# - name: my-sidecar
-#   image: nginx:1.21
-#   ports:
-#   - containerPort: 80
+# Service annotations
+serviceAnnotations: {}

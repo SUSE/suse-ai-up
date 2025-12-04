@@ -1,73 +1,11 @@
-{{- if .Values.otel.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "suse-ai-up.otelConfigName" . }}
+  name: {{ include "suse-ai-up.fullname" . }}-docs
   labels:
     {{- include "suse-ai-up.labels" . | nindent 4 }}
-    app.kubernetes.io/component: otel-collector
 data:
-  config.yaml: |
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:4318
-          http:
-            endpoint: 0.0.0.0:4319
-
-    processors:
-      batch:
-        timeout: 1s
-        send_batch_size: 1024
-      resource:
-        attributes:
-        {{- range .Values.otel.resourceAttributes }}
-        - key: {{ .key }}
-          value: {{ .value | quote }}
-          action: insert
-        {{- end }}
-
-    exporters:
-      {{- if .Values.otel.exporters.logging.enabled }}
-      logging:
-        verbosity: {{ .Values.otel.exporters.logging.verbosity | quote }}
-      {{- end }}
-      {{- if .Values.otel.exporters.jaeger.enabled }}
-      jaeger:
-        endpoint: {{ .Values.otel.exporters.jaeger.endpoint | quote }}
-        tls:
-          insecure: {{ .Values.otel.exporters.jaeger.insecure }}
-      {{- end }}
-      {{- if .Values.otel.exporters.prometheus.enabled }}
-      prometheus:
-        endpoint: {{ .Values.otel.exporters.prometheus.endpoint | quote }}
-      {{- end }}
-
-    service:
-      pipelines:
-        traces:
-          receivers: [otlp]
-          processors: [batch, resource]
-          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}{{- if and .Values.otel.exporters.logging.enabled .Values.otel.exporters.jaeger.enabled }}, {{ end }}{{- if .Values.otel.exporters.jaeger.enabled }}"jaeger"{{- end }}]
-        metrics:
-          receivers: [otlp]
-          processors: [batch, resource]
-          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}{{- if and .Values.otel.exporters.logging.enabled .Values.otel.exporters.prometheus.enabled }}, {{ end }}{{- if .Values.otel.exporters.prometheus.enabled }}"prometheus"{{- end }}]
-        logs:
-          receivers: [otlp]
-          processors: [batch, resource]
-          exporters: [{{- if .Values.otel.exporters.logging.enabled }}"logging"{{- end }}]
-{{- end }}
-
-{{- range $name, $config := .Values.extraConfigMaps }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "suse-ai-up.fullname" $ }}-{{ $name }}
-  labels:
-    {{- include "suse-ai-up.labels" $ | nindent 4 }}
-data:
-  {{- toYaml $config.data | nindent 2 }}
-{{- end }}
+  swagger.json: |
+{{ .Files.Get "docs/swagger.json" | indent 4 }}
+  swagger.yaml: |
+{{ .Files.Get "docs/swagger.yaml" | indent 4 }}
