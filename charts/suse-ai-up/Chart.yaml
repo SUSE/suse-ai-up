@@ -6,8 +6,10 @@ version: 0.0.1
 appVersion: "0.0.1"
 icon: https://apps.rancher.io/logos/suse-ai-deployer.png
 maintainers:
-  - url: https://www.suse.com/
-    name: SUSE LLC
+  - name: SUSE LLC
+    url: https://www.suse.com/
+  - name: SUSE AI Team
+    email: ai@suse.com
 
 keywords:
   - mcp
@@ -19,10 +21,6 @@ keywords:
 home: https://github.com/suse/suse-ai-up
 sources:
   - https://github.com/suse/suse-ai-up
-
-maintainers:
-  - name: SUSE AI Team
-    email: ai@suse.com
 
 dependencies:
   # Optional monitoring stack

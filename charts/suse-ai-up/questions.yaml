@@ -16,7 +16,7 @@
   required: true
 
 # Basic Configuration
-- variable: global.image.tag
+- variable: image.tag
   default: "latest"
   description: "Container image version to deploy"
   type: string

@@ -1,6 +1,12 @@
 # SUSE AI Universal Proxy Helm Chart Values
 # This file contains all configurable values for the SUSE AI Universal Proxy
 
+# Installation type (used by questions.yaml for UI logic)
+installType: "quickstart"  # quickstart or custom
+
+# Service resource profile (used by questions.yaml for UI logic)
+serviceResources: "standard"  # light, standard, heavy, or custom
+
 # Global configuration
 global:
   imageRegistry: ""
