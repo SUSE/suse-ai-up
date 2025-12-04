@@ -133,32 +133,33 @@ auth:
     token: ""
 
 # Monitoring Configuration
+# Note: This chart does not install Prometheus/Grafana.
+# Install them separately and configure connections below.
 monitoring:
   enabled: false
 
-  # Prometheus configuration
+  # Prometheus configuration (connects to existing Prometheus)
   prometheus:
     enabled: false
-    existingService: ""  # Use existing Prometheus service
+    existingService: ""  # Name of existing Prometheus service
     namespace: "monitoring"
 
-    # ServiceMonitor configuration
+    # ServiceMonitor configuration for Prometheus Operator
     serviceMonitor:
       enabled: true
       interval: 30s
       scrapeTimeout: 10s
       labels: {}
 
-  # Grafana configuration
+  # Grafana configuration (connects to existing Grafana)
   grafana:
     enabled: false
-    existingService: ""  # Use existing Grafana service
+    existingService: ""  # Name of existing Grafana service
     namespace: "monitoring"
 
     # Grafana dashboard configuration
     dashboard:
       enabled: true
-      title: "SUSE AI Universal Proxy"
       tags: ["ai", "mcp", "proxy"]
 
 # Ingress Configuration

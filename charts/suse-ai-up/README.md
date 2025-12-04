@@ -100,11 +100,11 @@ The following table lists the configurable parameters of the SUSE AI Universal P
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| monitoring.enabled | bool | `false` | Enable monitoring stack |
-| monitoring.prometheus.enabled | bool | `false` | Deploy Prometheus |
-| monitoring.prometheus.existingService | string | `""` | Use existing Prometheus service |
-| monitoring.grafana.enabled | bool | `false` | Deploy Grafana |
-| monitoring.grafana.existingService | string | `""` | Use existing Grafana service |
+| monitoring.enabled | bool | `false` | Enable monitoring integration |
+| monitoring.prometheus.enabled | bool | `false` | Connect to existing Prometheus |
+| monitoring.prometheus.existingService | string | `""` | Name of existing Prometheus service |
+| monitoring.grafana.enabled | bool | `false` | Create dashboard for existing Grafana |
+| monitoring.grafana.existingService | string | `""` | Name of existing Grafana service |
 
 ### Resource Configuration
 
@@ -154,6 +154,20 @@ helm install suse-ai-up suse/suse-ai-up \
 ```
 
 ### With Monitoring
+
+First, install Prometheus and Grafana separately:
+
+```bash
+# Install Prometheus Operator (includes Prometheus)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/kube-prometheus-stack
+
+# Install Grafana (optional)
+helm repo add grafana https://grafana.github.io/helm-charts
+helm install grafana grafana/grafana
+```
+
+Then install SUSE AI Universal Proxy with monitoring:
 
 ```bash
 helm install suse-ai-up suse/suse-ai-up \

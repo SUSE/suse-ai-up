@@ -157,7 +157,7 @@ questions:
 # Monitoring Configuration
 - variable: monitoring.enabled
   label: "Enable Monitoring"
-  description: "Enable metrics collection and monitoring integration"
+  description: "Enable metrics collection and integration with existing monitoring stack (Prometheus/Grafana must be installed separately)"
   type: boolean
   default: false
   group: "Monitoring"
@@ -165,13 +165,13 @@ questions:
   show_subquestion_if: true
   subquestions:
   - variable: monitoring.prometheus.enabled
-    label: "Prometheus Metrics"
-    description: "Enable Prometheus metrics endpoint for monitoring"
+    label: "Connect to Prometheus"
+    description: "Enable Prometheus metrics endpoint and ServiceMonitor (requires existing Prometheus Operator)"
     type: boolean
     default: true
   - variable: monitoring.grafana.enabled
-    label: "Grafana Dashboard"
-    description: "Create Grafana dashboard configuration"
+    label: "Create Grafana Dashboard"
+    description: "Create dashboard configuration for existing Grafana (requires existing Grafana)"
     type: boolean
     default: false
 

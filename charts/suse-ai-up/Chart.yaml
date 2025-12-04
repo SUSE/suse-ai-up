@@ -22,17 +22,6 @@ home: https://github.com/suse/suse-ai-up
 sources:
   - https://github.com/suse/suse-ai-up
 
-dependencies:
-  # Optional monitoring stack
-  - name: prometheus
-    version: "25.x.x"
-    repository: "https://prometheus-community.github.io/helm-charts"
-    condition: monitoring.prometheus.enabled
-  - name: grafana
-    version: "7.x.x"
-    repository: "https://grafana.github.io/helm-charts"
-    condition: monitoring.grafana.enabled
-
 annotations:
   artifacthub.io/category: "ai-ml"
   artifacthub.io/license: "Apache-2.0"
