@@ -247,7 +247,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
   "swagger": "2.0",
   "info": {
     "title": "SUSE AI Universal Proxy API",
-    "description": "API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system",
+    "description": "Complete API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system with registry, discovery, and plugin management",
     "version": "1.0.0",
     "contact": {
       "name": "SUSE AI Team",
@@ -259,34 +259,28 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
   "schemes": ["http", "https"],
   "consumes": ["application/json"],
   "produces": ["application/json"],
+  "tags": [
+    {"name": "Proxy", "description": "MCP proxy endpoints"},
+    {"name": "Registry", "description": "MCP server registry management"},
+    {"name": "Discovery", "description": "Network discovery and server scanning"},
+    {"name": "Plugins", "description": "Plugin management and registration"},
+    {"name": "Health", "description": "Health check endpoints"}
+  ],
   "paths": {
     "/health": {
       "get": {
-        "summary": "Health Check",
-        "description": "Check the health status of all proxy services",
+        "tags": ["Health"],
+        "summary": "Proxy Health Check",
+        "description": "Check the health status of the proxy service",
         "responses": {
           "200": {
-            "description": "All services are healthy",
+            "description": "Service is healthy",
             "schema": {
               "type": "object",
               "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "healthy"
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "services": {
-                  "type": "object",
-                  "properties": {
-                    "proxy": {"type": "string"},
-                    "registry": {"type": "string"},
-                    "discovery": {"type": "string"},
-                    "plugins": {"type": "string"}
-                  }
-                }
+                "service": {"type": "string", "example": "proxy"},
+                "status": {"type": "string", "example": "healthy"},
+                "timestamp": {"type": "string", "format": "date-time"}
               }
             }
           }
@@ -295,6 +289,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
     },
     "/mcp": {
       "post": {
+        "tags": ["Proxy"],
         "summary": "MCP JSON-RPC Endpoint",
         "description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
         "parameters": [
@@ -331,6 +326,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
     },
     "/mcp/tools": {
       "get": {
+        "tags": ["Proxy"],
         "summary": "List Available Tools",
         "description": "Get a list of all available MCP tools",
         "responses": {
@@ -358,6 +354,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
     },
     "/mcp/resources": {
       "get": {
+        "tags": ["Proxy"],
         "summary": "List Available Resources",
         "description": "Get a list of all available MCP resources",
         "responses": {
@@ -380,6 +377,381 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/registry/browse": {
+      "get": {
+        "tags": ["Registry"],
+        "summary": "Browse Registry",
+        "description": "Browse available MCP servers in the registry",
+        "responses": {
+          "200": {
+            "description": "Registry browse results",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {"type": "string"},
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "endpoint": {"type": "string"},
+                      "capabilities": {"type": "array", "items": {"type": "string"}}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registry/{id}": {
+      "get": {
+        "tags": ["Registry"],
+        "summary": "Get Registry Server",
+        "description": "Get details of a specific MCP server from the registry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Server ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "endpoint": {"type": "string"},
+                "capabilities": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          },
+          "404": {
+            "description": "Server not found"
+          }
+        }
+      }
+    },
+    "/api/v1/registry/upload": {
+      "post": {
+        "tags": ["Registry"],
+        "summary": "Upload Server to Registry",
+        "description": "Upload a new MCP server configuration to the registry",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "server",
+            "description": "Server configuration",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "endpoint": {"type": "string"},
+                "capabilities": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Server uploaded successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/registry/upload/bulk": {
+      "post": {
+        "tags": ["Registry"],
+        "summary": "Bulk Upload Servers",
+        "description": "Upload multiple MCP server configurations to the registry",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "servers",
+            "description": "Array of server configurations",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "description": {"type": "string"},
+                  "endpoint": {"type": "string"},
+                  "capabilities": {"type": "array", "items": {"type": "string"}}
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Servers uploaded successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/registry/sync/official": {
+      "post": {
+        "tags": ["Registry"],
+        "summary": "Sync Official Registry",
+        "description": "Synchronize with the official MCP server registry",
+        "responses": {
+          "200": {
+            "description": "Sync completed successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/registry/sync/docker": {
+      "post": {
+        "tags": ["Registry"],
+        "summary": "Sync Docker Registry",
+        "description": "Synchronize with Docker MCP images registry",
+        "responses": {
+          "200": {
+            "description": "Sync completed successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/scan": {
+      "post": {
+        "tags": ["Discovery"],
+        "summary": "Start Network Scan",
+        "description": "Start a network scan to discover MCP servers",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "config",
+            "description": "Scan configuration",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "cidr": {"type": "string", "example": "192.168.1.0/24"},
+                "ports": {"type": "array", "items": {"type": "integer"}, "example": [8080, 8911]},
+                "timeout": {"type": "string", "example": "30s"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Scan started",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "scan_id": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scan/{id}": {
+      "get": {
+        "tags": ["Discovery"],
+        "summary": "Get Scan Status",
+        "description": "Get the status of a running or completed scan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Scan ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scan status",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "status": {"type": "string", "enum": ["running", "completed", "failed"]},
+                "progress": {"type": "number"},
+                "results": {"type": "array", "items": {"type": "object"}}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers": {
+      "get": {
+        "tags": ["Discovery"],
+        "summary": "List Discovered Servers",
+        "description": "Get a list of all discovered MCP servers",
+        "responses": {
+          "200": {
+            "description": "List of discovered servers",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": {"type": "string"},
+                  "port": {"type": "integer"},
+                  "server_type": {"type": "string"},
+                  "last_seen": {"type": "string", "format": "date-time"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plugins": {
+      "get": {
+        "tags": ["Plugins"],
+        "summary": "List Plugins",
+        "description": "Get a list of all registered plugins",
+        "responses": {
+          "200": {
+            "description": "List of plugins",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "string"},
+                  "name": {"type": "string"},
+                  "description": {"type": "string"},
+                  "endpoint": {"type": "string"},
+                  "capabilities": {"type": "array", "items": {"type": "string"}},
+                  "status": {"type": "string", "enum": ["active", "inactive", "error"]}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Plugins"],
+        "summary": "Register Plugin",
+        "description": "Register a new plugin with the system",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "plugin",
+            "description": "Plugin configuration",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "endpoint": {"type": "string"},
+                "capabilities": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Plugin registered successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/plugins/{id}": {
+      "get": {
+        "tags": ["Plugins"],
+        "summary": "Get Plugin",
+        "description": "Get details of a specific plugin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Plugin ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plugin details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "endpoint": {"type": "string"},
+                "capabilities": {"type": "array", "items": {"type": "string"}},
+                "status": {"type": "string"}
+              }
+            }
+          },
+          "404": {
+            "description": "Plugin not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Plugins"],
+        "summary": "Unregister Plugin",
+        "description": "Remove a plugin from the system",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Plugin ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Plugin unregistered successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/health/{id}": {
+      "get": {
+        "tags": ["Plugins"],
+        "summary": "Plugin Health Check",
+        "description": "Check the health status of a specific plugin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Plugin ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plugin is healthy",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "string", "example": "healthy"},
+                "timestamp": {"type": "string", "format": "date-time"}
+              }
+            }
+          },
+          "503": {
+            "description": "Plugin is unhealthy"
           }
         }
       }
