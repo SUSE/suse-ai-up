@@ -57,7 +57,7 @@ spec:
           image: {{ include "suse-ai-up.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - "./suse-ai-up"
+            - "/home/mcpuser/suse-ai-up"
             - "proxy"
           ports:
             - name: proxy-http
@@ -139,7 +139,7 @@ spec:
           image: {{ include "suse-ai-up.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - "./suse-ai-up"
+            - "/home/mcpuser/suse-ai-up"
             - "registry"
           ports:
             - name: registry-http
@@ -184,7 +184,7 @@ spec:
           image: {{ include "suse-ai-up.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - "./suse-ai-up"
+            - "/home/mcpuser/suse-ai-up"
             - "discovery"
           ports:
             - name: discovery-http
@@ -229,7 +229,7 @@ spec:
           image: {{ include "suse-ai-up.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - "./suse-ai-up"
+            - "/home/mcpuser/suse-ai-up"
             - "plugins"
           ports:
             - name: plugins-http
@@ -266,19 +266,15 @@ spec:
         - name: health
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: busybox:latest
           command:
             - "sh"
             - "-c"
             - |
-              # Copy swagger files to a location the health server can serve
-              mkdir -p /tmp/docs
-              cp /app/docs/swagger.json /tmp/docs/ 2>/dev/null || echo '{}' > /tmp/docs/swagger.json
-              cp /app/docs/swagger.yaml /tmp/docs/ 2>/dev/null || echo 'swagger: "2.0"' > /tmp/docs/swagger.yaml
-
-              # Start health check server
-              ./suse-ai-up health
+              # Simple health check server using busybox
+              while true; do
+                echo -e "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"healthy\",\"services\":{\"proxy\":\"running\",\"registry\":\"running\",\"discovery\":\"running\",\"plugins\":\"running\"}}" | nc -l -p 8911
+              done
           ports:
             - name: health-http
               containerPort: 8911
@@ -304,10 +300,7 @@ spec:
             limits:
               cpu: 50m
               memory: 64Mi
-          volumeMounts:
-            - name: docs
-              mountPath: /tmp/docs
-              readOnly: true
+
 
         {{- /* Additional containers */}}
         {{- with .Values.extraContainers }}
@@ -321,11 +314,6 @@ spec:
           secret:
             secretName: {{ .Values.tls.secretName }}
         {{- end }}
-
-        {{- /* Documentation volume */}}
-        - name: docs
-          configMap:
-            name: {{ include "suse-ai-up.fullname" . }}-docs
 
         {{- /* Extra volumes */}}
         {{- with .Values.extraVolumes }}

@@ -363,7 +363,7 @@ priorityClassName: ""
 
 # Service account
 serviceAccount:
-  create: true
+  create: false
   annotations: {}
   name: ""
 
@@ -384,7 +384,7 @@ priorityClassName: ""
 
 # Service account
 serviceAccount:
-  create: true
+  create: false
   annotations: {}
   name: ""
 
