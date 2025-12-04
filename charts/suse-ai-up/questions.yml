@@ -1,21 +1,36 @@
 # SUSE AI Universal Proxy - Rancher Questions
-# Configuration questions for Helm chart installation in Rancher
+# Comprehensive configuration questions for Helm chart installation in Rancher
 
 categories:
 - name: "SUSE AI Universal Proxy"
   class: "default"
 
 questions:
+# Installation Type Selection
+- variable: installType
+  label: "Installation Type"
+  description: "Choose installation type - Quick Start uses recommended defaults, Custom allows detailed configuration"
+  type: enum
+  default: "quickstart"
+  group: "Installation"
+  options:
+  - label: "Quick Start (recommended)"
+    value: "quickstart"
+  - label: "Custom Configuration"
+    value: "custom"
+  required: true
+
+# Basic Configuration
 - variable: image.tag
-  label: "Image Version"
+  label: "SUSE AI Universal Proxy Version"
   description: "Container image version to deploy"
   type: string
   default: "latest"
   group: "Basic Configuration"
 
 - variable: ingress.enabled
-  label: "Enable Ingress"
-  description: "Enable external access via ingress"
+  label: "Enable External Access"
+  description: "Enable external access via ingress (required for production use)"
   type: boolean
   default: false
   group: "Basic Configuration"
@@ -23,17 +38,19 @@ questions:
   subquestions:
   - variable: ingress.hosts[0].host
     label: "Domain Name"
-    description: "Domain name for accessing the proxy"
+    description: "Domain name for accessing the proxy (e.g., proxy.company.com)"
     type: string
     default: "suse-ai-up.local"
+    required: true
 
 - variable: tls.enabled
-  label: "Enable TLS"
-  description: "Enable TLS encryption for secure communication"
+  label: "Enable TLS Security"
+  description: "Enable TLS encryption for secure communication (recommended for production)"
   type: boolean
   default: true
   group: "Basic Configuration"
 
+# Authentication Configuration
 - variable: auth.method
   label: "Authentication Method"
   description: "Choose how users will authenticate with the proxy"
@@ -41,14 +58,15 @@ questions:
   default: "oauth"
   group: "Authentication"
   options:
-  - label: "OAuth 2.0 (recommended)"
+  - label: "OAuth 2.0 (recommended for production)"
     value: "oauth"
   - label: "API Key"
     value: "apikey"
   - label: "Bearer Token"
     value: "bearer"
-  - label: "No Authentication"
+  - label: "No Authentication (development only)"
     value: "none"
+  required: true
   show_subquestion_if: "oauth"
   subquestions:
   - variable: auth.oauth.clientId
@@ -56,32 +74,160 @@ questions:
     description: "OAuth 2.0 Client ID from your identity provider"
     type: string
     default: ""
+    required: true
   - variable: auth.oauth.clientSecret
     label: "OAuth Client Secret"
     description: "OAuth 2.0 Client Secret from your identity provider"
     type: string
     default: ""
+    required: true
   - variable: auth.oauth.authorizationUrl
     label: "Authorization URL"
     description: "OAuth authorization endpoint URL"
     type: string
     default: ""
+    required: true
   - variable: auth.oauth.tokenUrl
     label: "Token URL"
     description: "OAuth token endpoint URL"
     type: string
     default: ""
+    required: true
 
+# Service Resource Configuration
+- variable: serviceResources
+  label: "Resource Profile"
+  description: "Choose resource allocation profile for all services"
+  type: enum
+  default: "standard"
+  group: "Service Configuration"
+  show_if: "installType=custom"
+  options:
+  - label: "Light (512MB RAM, 0.5 CPU per service)"
+    value: "light"
+  - label: "Standard (1GB RAM, 1 CPU per service)"
+    value: "standard"
+  - label: "Heavy (2GB RAM, 2 CPU per service)"
+    value: "heavy"
+  - label: "Custom Resources"
+    value: "custom"
+  show_subquestion_if: "custom"
+  subquestions:
+  - variable: services.proxy.resources.requests.memory
+    label: "Proxy Memory"
+    description: "Memory allocation for proxy service"
+    type: string
+    default: "1Gi"
+  - variable: services.proxy.resources.requests.cpu
+    label: "Proxy CPU"
+    description: "CPU allocation for proxy service"
+    type: string
+    default: "500m"
+  - variable: services.registry.resources.requests.memory
+    label: "Registry Memory"
+    description: "Memory allocation for registry service"
+    type: string
+    default: "512Mi"
+  - variable: services.registry.resources.requests.cpu
+    label: "Registry CPU"
+    description: "CPU allocation for registry service"
+    type: string
+    default: "200m"
+  - variable: services.discovery.resources.requests.memory
+    label: "Discovery Memory"
+    description: "Memory allocation for discovery service"
+    type: string
+    default: "512Mi"
+  - variable: services.discovery.resources.requests.cpu
+    label: "Discovery CPU"
+    description: "CPU allocation for discovery service"
+    type: string
+    default: "200m"
+  - variable: services.plugins.resources.requests.memory
+    label: "Plugins Memory"
+    description: "Memory allocation for plugins service"
+    type: string
+    default: "512Mi"
+  - variable: services.plugins.resources.requests.cpu
+    label: "Plugins CPU"
+    description: "CPU allocation for plugins service"
+    type: string
+    default: "200m"
+
+# Monitoring Configuration
 - variable: monitoring.enabled
   label: "Enable Monitoring"
-  description: "Enable monitoring and metrics collection"
+  description: "Enable metrics collection and monitoring integration"
   type: boolean
   default: false
-  group: "Advanced Features"
+  group: "Monitoring"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: monitoring.prometheus.enabled
+    label: "Prometheus Metrics"
+    description: "Enable Prometheus metrics endpoint for monitoring"
+    type: boolean
+    default: true
+  - variable: monitoring.grafana.enabled
+    label: "Grafana Dashboard"
+    description: "Create Grafana dashboard configuration"
+    type: boolean
+    default: false
 
+# Advanced Options
 - variable: autoscaling.enabled
   label: "Enable Autoscaling"
-  description: "Enable automatic scaling based on resource usage"
+  description: "Automatically scale services based on CPU/memory usage"
   type: boolean
   default: false
-  group: "Advanced Features"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: autoscaling.minReplicas
+    label: "Minimum Replicas"
+    description: "Minimum number of replicas per service"
+    type: int
+    default: 1
+    min: 1
+    max: 10
+  - variable: autoscaling.maxReplicas
+    label: "Maximum Replicas"
+    description: "Maximum number of replicas per service"
+    type: int
+    default: 5
+    min: 1
+    max: 50
+
+- variable: persistence.enabled
+  label: "Enable Persistence"
+  description: "Enable persistent storage for service data"
+  type: boolean
+  default: false
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: persistence.size
+    label: "Storage Size"
+    description: "Storage size for persistent volumes"
+    type: string
+    default: "10Gi"
+
+- variable: logging.level
+  label: "Log Level"
+  description: "Set the logging level for all services"
+  type: enum
+  default: "info"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  options:
+  - label: "Error (minimal logging)"
+    value: "error"
+  - label: "Warning"
+    value: "warn"
+  - label: "Info (recommended)"
+    value: "info"
+  - label: "Debug (verbose)"
+    value: "debug"
