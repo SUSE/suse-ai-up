@@ -7,6 +7,21 @@ installType: "quickstart"  # quickstart or custom
 # Service resource profile (used by questions.yaml for UI logic)
 serviceResources: "standard"  # light, standard, heavy, or custom
 
+# Deployment configuration
+replicaCount: 1
+
+# Image configuration
+image:
+  registry: ghcr.io
+  repository: alessandro-festa/suse-ai-up
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+  # Multi-architecture support
+  architecture:
+    - amd64
+    - arm64
+
 # Global configuration
 global:
   imageRegistry: ""
@@ -34,6 +49,17 @@ image:
   architecture:
     - amd64
     - arm64
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+# Deployment annotations
+deploymentAnnotations: {}
+
+# Pod annotations
+podAnnotations: {}
 
 # Service enablement and configuration
 services:
@@ -99,7 +125,10 @@ services:
 # TLS Configuration
 tls:
   enabled: true
-  autoGenerate: true  # Generate self-signed certificates
+  autoGenerate: true
+  certFile: ""
+  keyFile: ""
+  secretName: "suse-ai-up-tls"  # Generate self-signed certificates
 
   # Custom certificate configuration
   certFile: ""  # Path to certificate file
@@ -218,6 +247,29 @@ securityContext:
     drop:
       - ALL
 
+# Probes Configuration
+probes:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
 # Network Policies
 networkPolicy:
   enabled: false
@@ -293,6 +345,27 @@ extraVolumes: []
 
 # Custom volume mounts
 extraVolumeMounts: []
+
+# Additional containers
+extraContainers: []
+
+# Init containers
+initContainers: []
+
+# Lifecycle hooks
+lifecycle: {}
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# Priority class
+priorityClassName: ""
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
 
 # Additional containers
 extraContainers: []
