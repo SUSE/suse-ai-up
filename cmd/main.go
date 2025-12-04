@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -61,9 +62,24 @@ func main() {
 }
 
 func runProxy() {
+	port := 8911    // Default port
+	tlsPort := 3911 // Default TLS port
+
+	// Read environment variables if set
+	if envPort := os.Getenv("PROXY_PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+	if envTLSPort := os.Getenv("TLS_PORT"); envTLSPort != "" {
+		if p, err := strconv.Atoi(envTLSPort); err == nil {
+			tlsPort = p
+		}
+	}
+
 	config := &proxy.Config{
-		Port:    8911, // Default, can be overridden by flags
-		TLSPort: 3911, // HTTPS port
+		Port:    port,
+		TLSPort: tlsPort,
 		AutoTLS: true, // Enable auto-generated TLS certificates
 	}
 	service := proxy.NewService(config)
