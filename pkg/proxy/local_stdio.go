@@ -179,8 +179,23 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 
 	p.processes[adapter.Name] = proc
 
-	// Start a goroutine to monitor the process
+	// Start a goroutine to monitor the process and filter security warnings
 	go func() {
+		// Start a goroutine to filter stderr output
+		go func() {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				line := scanner.Text()
+				// Filter out FastMCP security warnings that are expected in development
+				if !strings.Contains(line, "Request filter disabled") &&
+					!strings.Contains(line, "vulnerable to XSRF attacks") &&
+					!strings.Contains(line, "CSRF") &&
+					!strings.Contains(line, "XSRF") {
+					fmt.Printf("[MCP %s] %s\n", adapter.Name, line)
+				}
+			}
+		}()
+
 		err := cmd.Wait()
 		if err != nil {
 			fmt.Printf("Subprocess for adapter %s exited with error: %v\n", adapter.Name, err)

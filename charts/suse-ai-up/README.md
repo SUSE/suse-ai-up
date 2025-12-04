@@ -9,9 +9,7 @@ A comprehensive, modular MCP (Model Context Protocol) proxy system that enables 
 ## TL;DR
 
 ```bash
-helm repo add suse https://charts.suse.com
-helm repo update
-helm install suse-ai-up suse/suse-ai-up
+helm install suse-ai-up ./charts/suse-ai-up
 ```
 
 ## Prerequisites
@@ -24,7 +22,13 @@ helm install suse-ai-up suse/suse-ai-up
 To install the chart with the release name `suse-ai-up`:
 
 ```bash
-helm install suse-ai-up suse/suse-ai-up
+helm install suse-ai-up ./charts/suse-ai-up
+```
+
+Alternatively, if you have the chart packaged:
+
+```bash
+helm install suse-ai-up suse-ai-up-0.0.1.tgz
 ```
 
 ## Uninstalling the Chart
@@ -51,8 +55,8 @@ The following table lists the configurable parameters of the SUSE AI Universal P
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| image.registry | string | `"suse"` | SUSE AI Universal Proxy image registry |
-| image.repository | string | `"suse-ai-up"` | SUSE AI Universal Proxy image repository |
+| image.registry | string | `"ghcr.io"` | SUSE AI Universal Proxy image registry |
+| image.repository | string | `"alessandro-festa/suse-ai-up"` | SUSE AI Universal Proxy image repository |
 | image.tag | string | `""` | SUSE AI Universal Proxy image tag (defaults to appVersion) |
 | image.pullPolicy | string | `"IfNotPresent"` | SUSE AI Universal Proxy image pull policy |
 | image.architecture | list | `["amd64", "arm64"]` | Supported architectures |
