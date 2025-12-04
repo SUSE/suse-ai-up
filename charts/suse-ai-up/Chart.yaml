@@ -2,8 +2,8 @@ apiVersion: v2
 name: suse-ai-up
 description: SUSE AI Universal Proxy - A comprehensive MCP proxy system with discovery, registry, and plugin management
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 0.0.1
+appVersion: "0.0.1"
 
 keywords:
   - mcp
