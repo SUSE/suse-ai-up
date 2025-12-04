@@ -1,0 +1,87 @@
+# SUSE AI Universal Proxy - Rancher Questions
+# Configuration questions for Helm chart installation in Rancher
+
+categories:
+- name: "SUSE AI Universal Proxy"
+  class: "default"
+
+questions:
+- variable: image.tag
+  label: "Image Version"
+  description: "Container image version to deploy"
+  type: string
+  default: "latest"
+  group: "Basic Configuration"
+
+- variable: ingress.enabled
+  label: "Enable Ingress"
+  description: "Enable external access via ingress"
+  type: boolean
+  default: false
+  group: "Basic Configuration"
+  show_subquestion_if: true
+  subquestions:
+  - variable: ingress.hosts[0].host
+    label: "Domain Name"
+    description: "Domain name for accessing the proxy"
+    type: string
+    default: "suse-ai-up.local"
+
+- variable: tls.enabled
+  label: "Enable TLS"
+  description: "Enable TLS encryption for secure communication"
+  type: boolean
+  default: true
+  group: "Basic Configuration"
+
+- variable: auth.method
+  label: "Authentication Method"
+  description: "Choose how users will authenticate with the proxy"
+  type: enum
+  default: "oauth"
+  group: "Authentication"
+  options:
+  - label: "OAuth 2.0 (recommended)"
+    value: "oauth"
+  - label: "API Key"
+    value: "apikey"
+  - label: "Bearer Token"
+    value: "bearer"
+  - label: "No Authentication"
+    value: "none"
+  show_subquestion_if: "oauth"
+  subquestions:
+  - variable: auth.oauth.clientId
+    label: "OAuth Client ID"
+    description: "OAuth 2.0 Client ID from your identity provider"
+    type: string
+    default: ""
+  - variable: auth.oauth.clientSecret
+    label: "OAuth Client Secret"
+    description: "OAuth 2.0 Client Secret from your identity provider"
+    type: string
+    default: ""
+  - variable: auth.oauth.authorizationUrl
+    label: "Authorization URL"
+    description: "OAuth authorization endpoint URL"
+    type: string
+    default: ""
+  - variable: auth.oauth.tokenUrl
+    label: "Token URL"
+    description: "OAuth token endpoint URL"
+    type: string
+    default: ""
+
+- variable: monitoring.enabled
+  label: "Enable Monitoring"
+  description: "Enable monitoring and metrics collection"
+  type: boolean
+  default: false
+  group: "Advanced Features"
+
+- variable: autoscaling.enabled
+  label: "Enable Autoscaling"
+  description: "Enable automatic scaling based on resource usage"
+  type: boolean
+  default: false
+  group: "Advanced Features"
