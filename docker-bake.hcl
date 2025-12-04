@@ -6,7 +6,7 @@ variable "REGISTRY" {
 }
 
 variable "REPO_NAME" {
-  default = "alessandro-festa/suse-ai-up"
+  default = "your-username/suse-ai-up"
 }
 
 variable "TAG" {

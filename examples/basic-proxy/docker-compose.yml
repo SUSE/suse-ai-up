@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  proxy:
+    image: suse/suse-ai-up:latest
+    ports:
+      - "8080:8080"      # HTTP
+      - "38080:38080"    # HTTPS
+    environment:
+      - AUTH_MODE=development
+      - AUTO_TLS=true
+      - LOG_LEVEL=info
+    command: ["./suse-ai-up", "proxy"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Optional: Example MCP server for testing
+  mcp-server:
+    image: suse/suse-ai-up:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MCP_SERVER_PORT=3000
+      - MCP_SERVER_NAME=example-server
+    command: ["./suse-ai-up", "mcp-server"]
+    profiles:
+      - with-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

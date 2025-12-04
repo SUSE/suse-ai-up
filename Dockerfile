@@ -2,7 +2,7 @@
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 ARG TARGETARCH
-ARG BUILDKIT_INLINE_CACHE=1
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH}
 
 WORKDIR /app
 
@@ -14,89 +14,35 @@ RUN go mod download
 COPY . .
 
 # Build the binary for the target architecture
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
-    -ldflags="-w -s" \
-    -o service ./cmd/service
+RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd
 
-# Final stage - using Ubuntu base image with Node.js and Python support
-FROM ubuntu:22.04
-
-ARG TARGETARCH
+# Final stage - minimal runtime image
+FROM alpine:latest
 
 # Install only essential runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    python3 \
-    python3-pip \
-    python3-venv \
-    curl \
-    nodejs \
-    npm \
-    procps \
-    htop \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/*
-
-# Create Python virtual environment
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+RUN apk --no-cache add ca-certificates tzdata
 
 # Create non-root user
-RUN useradd -r -s /bin/bash -u 1000 mcpuser
-
-# Set default port range for MCP server deployment
-ENV LOCAL_DEPLOYMENT_MIN_PORT=8000
-ENV LOCAL_DEPLOYMENT_MAX_PORT=19999
-
-# Create isolated directories for MCP servers
-RUN mkdir -p /opt/mcp-servers /opt/mcp-servers/logs && chown -R mcpuser:mcpuser /opt/mcp-servers
+RUN adduser -D -s /bin/sh -u 1000 mcpuser
 
 # Set working directory
 WORKDIR /home/mcpuser/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/service .
-
-# Copy swagger files
-COPY ./docs/swagger.json ./swagger.json
-COPY ./docs/index.html ./swagger.html
-
-# Install Python dependencies in virtual environment
-COPY examples/local-mcp/requirements.txt ./requirements.txt
-RUN echo "Skipping Python package installation for faster build" || pip install --no-cache-dir --timeout=300 fastmcp==2.11.3 flask==3.0.0 flask-cors==4.0.0 || echo "Warning: Some Python packages failed to install"
-
-# Install Node.js dependencies for virtualMCP template
-COPY templates/package.json templates/package-lock.json* ./templates/
-RUN cd templates && npm ci --only=production && npm cache clean --force && cd ..
-RUN npm install -g tsx
-
-# Copy virtualMCP template
-COPY templates/virtualmcp-server.ts ./templates/
-
-# Comprehensive cleanup
-RUN zypper clean --all \
-    && rm -rf /var/cache/zypp/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/log/* \
-    && find /usr -name "*.pyc" -delete 2>/dev/null || true \
-    && find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true \
-    && rm -rf /root/.cache \
-    && rm -rf /opt/venv/share/doc \
-    && rm -rf /opt/venv/share/man
+COPY --from=builder /app/suse-ai-up .
 
 # Change ownership to non-root user
-RUN chown -R mcpuser:mcpuser /home/mcpuser/ /opt/venv/ /opt/mcp-servers/
+RUN chown mcpuser:mcpuser suse-ai-up
 
 # Switch to non-root user
 USER 1000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8911/health || exit 1
+    CMD ./suse-ai-up health || exit 1
 
-# Expose main service port
-EXPOSE 8911
+# Expose all service ports
+EXPOSE 8080 8911-8914 38080 38912-38913 3911
 
 # Run the binary
-CMD ["./service"]
+CMD ["./suse-ai-up", "all"]
