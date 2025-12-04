@@ -50,6 +50,20 @@ questions:
   default: true
   group: "Basic Configuration"
 
+- variable: service.type
+  label: "Service Type"
+  description: "How to expose the services externally"
+  type: enum
+  default: "ClusterIP"
+  group: "Basic Configuration"
+  options:
+  - label: "ClusterIP (internal access only)"
+    value: "ClusterIP"
+  - label: "LoadBalancer (cloud provider load balancer)"
+    value: "LoadBalancer"
+  - label: "NodePort (expose on node IPs)"
+    value: "NodePort"
+
 # Authentication Configuration
 - variable: auth.method
   label: "Authentication Method"

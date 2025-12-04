@@ -65,6 +65,8 @@ The following table lists the configurable parameters of the SUSE AI Universal P
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| service.type | string | `"ClusterIP"` | Service type (ClusterIP, LoadBalancer, NodePort) |
+| service.annotations | object | `{}` | Additional service annotations |
 | services.proxy.enabled | bool | `true` | Enable MCP proxy service |
 | services.proxy.port | int | `8080` | HTTP port for proxy service |
 | services.proxy.tlsPort | int | `38080` | HTTPS port for proxy service |
@@ -154,7 +156,27 @@ helm install suse-ai-up suse/suse-ai-up \
 helm install suse-ai-up suse/suse-ai-up \
   --set tls.certFile=/path/to/cert.pem \
   --set tls.keyFile=/path/to/key.pem \
-  --set tls.secretName=my-tls-secret
+   --set tls.secretName=my-tls-secret
+```
+
+### Different Service Types
+
+#### LoadBalancer (for cloud environments)
+```bash
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set service.type=LoadBalancer
+```
+
+#### NodePort (for on-premises)
+```bash
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set service.type=NodePort
+```
+
+#### ClusterIP (default, for internal access)
+```bash
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set service.type=ClusterIP
 ```
 
 ### With Monitoring
