@@ -266,15 +266,11 @@ spec:
         - name: health
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: busybox:latest
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - "sh"
-            - "-c"
-            - |
-              # Simple health check server using busybox
-              while true; do
-                echo -e "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"healthy\",\"services\":{\"proxy\":\"running\",\"registry\":\"running\",\"discovery\":\"running\",\"plugins\":\"running\"}}" | nc -l -p 8911
-              done
+            - "/home/mcpuser/suse-ai-up"
+            - "health"
           ports:
             - name: health-http
               containerPort: 8911

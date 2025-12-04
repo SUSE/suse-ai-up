@@ -46,6 +46,8 @@ func main() {
 	case "plugins":
 		os.Args = append(os.Args[:1], os.Args[2:]...)
 		runPlugins()
+	case "health":
+		runHealthServer()
 	case "all":
 		runAllServices()
 	case "help", "-h", "--help":
@@ -115,6 +117,14 @@ func runPlugins() {
 	service := plugins.NewService(config)
 	if err := service.Start(); err != nil {
 		fmt.Printf("Failed to start plugins service: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runHealthServer() {
+	// Start only the health check server
+	if err := startHealthCheckServer(make(chan error, 1)); err != nil {
+		fmt.Printf("Failed to start health server: %v\n", err)
 		os.Exit(1)
 	}
 }

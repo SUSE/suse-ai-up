@@ -28,11 +28,12 @@ RUN adduser -D -s /bin/sh -u 1000 mcpuser
 # Set working directory
 WORKDIR /home/mcpuser/
 
-# Copy the binary from builder stage
+# Copy the binary and docs from builder stage
 COPY --from=builder /app/suse-ai-up .
+COPY --from=builder /app/docs ./docs
 
 # Change ownership to non-root user
-RUN chown mcpuser:mcpuser suse-ai-up
+RUN chown -R mcpuser:mcpuser suse-ai-up docs
 
 # Switch to non-root user
 USER 1000
