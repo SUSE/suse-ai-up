@@ -4,6 +4,10 @@ description: SUSE AI Universal Proxy - A comprehensive MCP proxy system with dis
 type: application
 version: 0.0.1
 appVersion: "0.0.1"
+icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+maintainers:
+  - url: https://www.suse.com/
+    name: SUSE LLC
 
 keywords:
   - mcp
