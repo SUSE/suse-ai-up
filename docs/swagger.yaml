@@ -1,64 +1,5 @@
 basePath: /
 definitions:
-  internal_handlers.AuthTokenInfo:
-    properties:
-      expiresAt:
-        type: string
-      token:
-        type: string
-      tokenType:
-        type: string
-    type: object
-  internal_handlers.CreateAdapterFromRegistryRequest:
-    properties:
-      environmentVariables:
-        additionalProperties:
-          type: string
-        type: object
-      replicaCount:
-        type: integer
-    type: object
-  internal_handlers.CreateAdapterFromRegistryResponse:
-    properties:
-      adapter:
-        $ref: '#/definitions/suse-ai-up_pkg_models.AdapterResource'
-      mcp_endpoint:
-        type: string
-      message:
-        type: string
-      note:
-        type: string
-      token_info:
-        $ref: '#/definitions/internal_handlers.AuthTokenInfo'
-    type: object
-  internal_handlers.DeployRequest:
-    properties:
-      env_vars:
-        additionalProperties:
-          type: string
-        type: object
-      replicas:
-        type: integer
-      resources:
-        $ref: '#/definitions/internal_handlers.ResourceLimits'
-      server_id:
-        type: string
-    required:
-    - server_id
-    type: object
-  internal_handlers.DeployResponse:
-    properties:
-      deployment_id:
-        type: string
-      manifests:
-        additionalProperties:
-          type: string
-        type: object
-      server_id:
-        type: string
-      status:
-        type: string
-    type: object
   internal_handlers.ErrorResponse:
     properties:
       error:
@@ -115,13 +56,6 @@ definitions:
       message:
         type: string
       service_id:
-        type: string
-    type: object
-  internal_handlers.ResourceLimits:
-    properties:
-      cpu:
-        type: string
-      memory:
         type: string
     type: object
   internal_handlers.SyncResult:
@@ -495,6 +429,21 @@ definitions:
       name:
         type: string
     type: object
+  suse-ai-up_pkg_models.GitHubConfig:
+    properties:
+      api_endpoint:
+        description: GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)
+        type: string
+      owner:
+        description: Repository owner (for repo-specific servers)
+        type: string
+      repo:
+        description: Repository name (for repo-specific servers)
+        type: string
+      token:
+        description: GitHub Personal Access Token
+        type: string
+    type: object
   suse-ai-up_pkg_models.MCPArgument:
     properties:
       description:
@@ -510,28 +459,6 @@ definitions:
         additionalProperties:
           $ref: '#/definitions/suse-ai-up_pkg_models.MCPServerConfig'
         type: object
-    type: object
-  suse-ai-up_pkg_models.MCPConfigTemplate:
-    properties:
-      args:
-        description: command arguments
-        items:
-          type: string
-        type: array
-      command:
-        description: docker, node, python, etc.
-        type: string
-      env:
-        additionalProperties:
-          type: string
-        description: environment variables
-        type: object
-      image:
-        description: Docker image if applicable
-        type: string
-      transport:
-        description: stdio, http, sse, websocket
-        type: string
     type: object
   suse-ai-up_pkg_models.MCPFunctionality:
     properties:
@@ -578,16 +505,13 @@ definitions:
     properties:
       _meta:
         additionalProperties: true
-        description: Registry metadata
         type: object
-      config_template:
-        allOf:
-        - $ref: '#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate'
-        description: Docker/K8s deployment config
       description:
         type: string
       discovered_at:
         type: string
+      github_config:
+        $ref: '#/definitions/suse-ai-up_pkg_models.GitHubConfig'
       id:
         type: string
       name:
@@ -596,8 +520,6 @@ definitions:
         items:
           $ref: '#/definitions/suse-ai-up_pkg_models.Package'
         type: array
-      protocol:
-        type: string
       repository:
         $ref: '#/definitions/suse-ai-up_pkg_models.Repository'
       tools:
@@ -605,10 +527,9 @@ definitions:
           $ref: '#/definitions/suse-ai-up_pkg_models.MCPTool'
         type: array
       url:
-        description: Legacy fields for backward compatibility
+        description: Legacy URL field for remote servers
         type: string
       validation_status:
-        description: new, approved, certified
         type: string
       version:
         type: string
@@ -947,11 +868,23 @@ definitions:
     - 1000000000
     - 60000000000
     - 3600000000000
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
     format: int64
     type: integer
     x-enum-varnames:
     - minDuration
     - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
     - Nanosecond
     - Microsecond
     - Millisecond
@@ -1507,55 +1440,6 @@ paths:
       tags:
       - adapters
       - authentication
-  /api/v1/deployment/config/{serverId}:
-    get:
-      description: Retrieve the configuration template for deploying an MCP server
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: serverId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate'
-        "404":
-          description: Server not found
-          schema:
-            type: string
-      summary: Get MCP server configuration template
-      tags:
-      - deployment
-  /api/v1/deployment/deploy:
-    post:
-      consumes:
-      - application/json
-      description: Deploy an MCP server to Kubernetes with provided configuration
-      parameters:
-      - description: Deployment configuration
-        in: body
-        name: deployment
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handlers.DeployRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_handlers.DeployResponse'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Deploy an MCP server
-      tags:
-      - deployment
   /api/v1/discovery/register:
     post:
       consumes:
@@ -1958,43 +1842,6 @@ paths:
       summary: Update an MCP server
       tags:
       - registry
-  /api/v1/registry/{id}/create-adapter:
-    post:
-      consumes:
-      - application/json
-      description: Creates an adapter from an MCP server in the registry, specifically
-        for virtualMCP servers
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Adapter creation configuration
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handlers.CreateAdapterFromRegistryRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/internal_handlers.CreateAdapterFromRegistryResponse'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "404":
-          description: Server not found
-          schema:
-            type: string
-      summary: Create an adapter from an MCP registry entry
-      tags:
-      - registry
-      - adapters
   /api/v1/registry/browse:
     get:
       description: Search and filter MCP servers from all configured sources

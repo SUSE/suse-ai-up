@@ -821,81 +821,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/deployment/config/{serverId}": {
-            "get": {
-                "description": "Retrieve the configuration template for deploying an MCP server",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "deployment"
-                ],
-                "summary": "Get MCP server configuration template",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP Server ID",
-                        "name": "serverId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate"
-                        }
-                    },
-                    "404": {
-                        "description": "Server not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/deployment/deploy": {
-            "post": {
-                "description": "Deploy an MCP server to Kubernetes with provided configuration",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "deployment"
-                ],
-                "summary": "Deploy an MCP server",
-                "parameters": [
-                    {
-                        "description": "Deployment configuration",
-                        "name": "deployment",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.DeployRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.DeployResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/discovery/register": {
             "post": {
                 "description": "Register a discovered MCP server as an adapter",
@@ -1771,60 +1696,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/registry/{id}/create-adapter": {
-            "post": {
-                "description": "Creates an adapter from an MCP server in the registry, specifically for virtualMCP servers",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry",
-                    "adapters"
-                ],
-                "summary": "Create an adapter from an MCP registry entry",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "MCP Server ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Adapter creation configuration",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.CreateAdapterFromRegistryRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.CreateAdapterFromRegistryResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Server not found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/plugins/register": {
             "post": {
                 "description": "Register a plugin service with the proxy",
@@ -2027,97 +1898,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_handlers.AuthTokenInfo": {
-            "type": "object",
-            "properties": {
-                "expiresAt": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                },
-                "tokenType": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handlers.CreateAdapterFromRegistryRequest": {
-            "type": "object",
-            "properties": {
-                "environmentVariables": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "replicaCount": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_handlers.CreateAdapterFromRegistryResponse": {
-            "type": "object",
-            "properties": {
-                "adapter": {
-                    "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
-                },
-                "mcp_endpoint": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "note": {
-                    "type": "string"
-                },
-                "token_info": {
-                    "$ref": "#/definitions/internal_handlers.AuthTokenInfo"
-                }
-            }
-        },
-        "internal_handlers.DeployRequest": {
-            "type": "object",
-            "required": [
-                "server_id"
-            ],
-            "properties": {
-                "env_vars": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "replicas": {
-                    "type": "integer"
-                },
-                "resources": {
-                    "$ref": "#/definitions/internal_handlers.ResourceLimits"
-                },
-                "server_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handlers.DeployResponse": {
-            "type": "object",
-            "properties": {
-                "deployment_id": {
-                    "type": "string"
-                },
-                "manifests": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "server_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "internal_handlers.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -2203,17 +1983,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "service_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handlers.ResourceLimits": {
-            "type": "object",
-            "properties": {
-                "cpu": {
-                    "type": "string"
-                },
-                "memory": {
                     "type": "string"
                 }
             }
@@ -2780,6 +2549,27 @@ const docTemplate = `{
                 }
             }
         },
+        "suse-ai-up_pkg_models.GitHubConfig": {
+            "type": "object",
+            "properties": {
+                "api_endpoint": {
+                    "description": "GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)",
+                    "type": "string"
+                },
+                "owner": {
+                    "description": "Repository owner (for repo-specific servers)",
+                    "type": "string"
+                },
+                "repo": {
+                    "description": "Repository name (for repo-specific servers)",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "GitHub Personal Access Token",
+                    "type": "string"
+                }
+            }
+        },
         "suse-ai-up_pkg_models.MCPArgument": {
             "type": "object",
             "properties": {
@@ -2802,37 +2592,6 @@ const docTemplate = `{
                     "additionalProperties": {
                         "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServerConfig"
                     }
-                }
-            }
-        },
-        "suse-ai-up_pkg_models.MCPConfigTemplate": {
-            "type": "object",
-            "properties": {
-                "args": {
-                    "description": "command arguments",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "command": {
-                    "description": "docker, node, python, etc.",
-                    "type": "string"
-                },
-                "env": {
-                    "description": "environment variables",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "image": {
-                    "description": "Docker image if applicable",
-                    "type": "string"
-                },
-                "transport": {
-                    "description": "stdio, http, sse, websocket",
-                    "type": "string"
                 }
             }
         },
@@ -2903,23 +2662,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "_meta": {
-                    "description": "Registry metadata",
                     "type": "object",
                     "additionalProperties": true
-                },
-                "config_template": {
-                    "description": "Docker/K8s deployment config",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPConfigTemplate"
-                        }
-                    ]
                 },
                 "description": {
                     "type": "string"
                 },
                 "discovered_at": {
                     "type": "string"
+                },
+                "github_config": {
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.GitHubConfig"
                 },
                 "id": {
                     "type": "string"
@@ -2933,9 +2686,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/suse-ai-up_pkg_models.Package"
                     }
                 },
-                "protocol": {
-                    "type": "string"
-                },
                 "repository": {
                     "$ref": "#/definitions/suse-ai-up_pkg_models.Repository"
                 },
@@ -2946,11 +2696,10 @@ const docTemplate = `{
                     }
                 },
                 "url": {
-                    "description": "Legacy fields for backward compatibility",
+                    "description": "Legacy URL field for remote servers",
                     "type": "string"
                 },
                 "validation_status": {
-                    "description": "new, approved, certified",
                     "type": "string"
                 },
                 "version": {
@@ -3444,11 +3193,23 @@ const docTemplate = `{
                 1000000,
                 1000000000,
                 60000000000,
+                3600000000000,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
                 3600000000000
             ],
             "x-enum-varnames": [
                 "minDuration",
                 "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour",
                 "Nanosecond",
                 "Microsecond",
                 "Millisecond",

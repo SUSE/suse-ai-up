@@ -33,7 +33,6 @@ graph TD
     subgraph B [Plugin Service Framework]
         C[SmartAgents Service]
         D[Registry Service]
-        E[VirtualMCP Service]
     end
     F[Dynamic Router & Load Balancer]
     G[Service Discovery & Health Monitor]
@@ -65,10 +64,8 @@ graph LR
     B --> C[SmartAgents Service<br/>AI Orchestrator<br/>• Local Model acts on behalf<br/>of Remote LLM for security]
     B --> D[MCP Registry Service<br/>Server Management<br/>• Discovery<br/>• Upload<br/>• Search<br/>• Bulk Operations]
     D --> E[Network Scan<br/>Auto-Discovery<br/>• CIDR Scanning<br/>• Port Scanning<br/>• Health Checks<br/>• Auto-Registration]
-    D --> F[VirtualMCP Service<br/>Legacy Integration<br/>• OpenAPI Schema<br/>• Database Integration<br/>• Code-free Generation<br/>• Legacy API Consumption]
     C --> G[Local Model<br/>Worker<br/>• Private Data Control]
     G --> H[Remote LLM<br/>Supervisor<br/>• Cloud AI Power]
-    F --> I[MCP Servers<br/>Generated from APIs<br/>• Standardized Endpoints]
 
     classDef userClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -78,7 +75,7 @@ graph LR
 
     class A userClass
     class B proxyClass
-    class C,D,E,F serviceClass
+    class C,D,E serviceClass
     class G,H aiClass
     class I outputClass
 ```
@@ -103,7 +100,7 @@ AI orchestrator to enable a local model to act on behalf of a remote LLM to prov
 ### 🔧 Virtual MCP Service
 Virtual MCP allow the creation of an MCP Server starting from openapi schemas and databases without having to write code. Virtual MCP standardize the way endpoints are presented and allow legacy applications to be consumed by the LLM.
 
-*Note: VirtualMCP has been moved to a separate repository for independent development.*
+
 
 ### 📚 MCP Registry
 Comprehensive MCP server registry with discovery, deployment, and management capabilities.

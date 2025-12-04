@@ -170,26 +170,7 @@ Remove an MCP server from the registry.
 DELETE /registry/{id}
 ```
 
-## Server Spawning
 
-The registry includes automatic MCP server spawning capabilities, allowing you to create and deploy MCP servers from registry entries as running processes with proper resource management and error handling.
-
-### Spawning from Registry
-
-Create an adapter from any registry server, which automatically spawns the MCP server as a running process.
-
-```http
-POST /registry/{id}/create-adapter
-Content-Type: application/json
-
-{
-  "replicaCount": 1,
-  "environmentVariables": {
-    "API_KEY": "your-api-key",
-    "DATABASE_URL": "postgresql://..."
-  }
-}
-```
 
 **Response**:
 ```json
@@ -313,17 +294,7 @@ curl http://localhost:8911/api/v1/registry/filesystem
 curl http://localhost:8911/api/v1/deployment/processes
 ```
 
-## Deployment Endpoints
 
-The registry includes deployment capabilities for MCP servers, allowing you to deploy Docker-based MCP servers directly to Kubernetes clusters.
-
-### Get Configuration Template
-
-Retrieve the deployment configuration template for an MCP server, including required environment variables and transport settings.
-
-```http
-GET /deployment/config/{serverId}
-```
 
 **Response**:
 ```json
@@ -675,7 +646,7 @@ This section provides information needed to build user interfaces around the MCP
 - Source badge (official, docker-mcp, custom)
 - Transport type icon (stdio, http, sse)
 - Validation status indicator
-- Spawn button (if spawnable)
+
 
 #### Server Detail View
 
@@ -689,70 +660,11 @@ This section provides information needed to build user interfaces around the MCP
 - Resource limit display
 - Tool discovery status
 
-### Spawning UI
 
-#### Spawn Form
-
-**API Endpoint**: `POST /registry/{id}/create-adapter`
-
-**Form Fields**:
-```json
-{
-  "replicaCount": 1,
-  "environmentVariables": {
-    "ENV_VAR_NAME": "value"
-  }
-}
-```
-
-**Dynamic Form Generation**:
-- Extract required environment variables from `config_template.env`
-- Show resource limits from `config_template.resource_limits`
-- Display tool count (if available) or "Runtime Discovery" indicator
-
-#### Spawn Status Display
-
-**Success Response**:
-```json
-{
-  "message": "VirtualMCP adapter created and deployed successfully",
-  "adapter": {
-    "id": "adapter-id",
-    "name": "adapter-name",
-    "connectionType": "StreamableHttp"
-  },
-  "mcp_endpoint": "http://localhost:8911/api/v1/adapters/{id}/mcp",
-  "token_info": {
-    "token": "jwt-token",
-    "tokenType": "Bearer",
-    "expiresAt": "2024-12-04T10:00:00Z"
-  }
-}
-```
-
-**UI Status Indicators**:
-- Spawning progress bar
-- Success/error messages
-- MCP endpoint for testing
-- Authentication token display (with copy button)
-- Adapter management links
 
 ### Error Handling UI
 
-#### Spawning Failures
 
-**Error Response**:
-```json
-{
-  "error": "Failed to deploy server: failed to spawn server after 3 attempts"
-}
-```
-
-**UI Error States**:
-- Retry button (if applicable)
-- Detailed error logs display
-- Troubleshooting suggestions
-- Alternative server recommendations
 
 ### Configuration UI
 
@@ -810,31 +722,11 @@ eventSource.addEventListener('spawning', (event) => {
 ```jsx
 <ServerCard
   server={server}
-  onSpawn={(serverId, config) => spawnServer(serverId, config)}
-  isSpawning={spawningServers.includes(server.id)}
 />
 ```
 
 **Props**:
 - `server`: Server object from API
-- `onSpawn`: Callback function for spawning
-- `isSpawning`: Boolean for loading state
-
-#### Spawn Configuration Modal
-
-```jsx
-<SpawnModal
-  server={selectedServer}
-  onSubmit={(config) => handleSpawn(config)}
-  onCancel={() => setShowModal(false)}
-/>
-```
-
-**Features**:
-- Dynamic environment variable inputs
-- Resource limit display
-- Validation feedback
-- Loading states
 
 #### Status Notification System
 

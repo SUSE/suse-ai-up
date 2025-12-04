@@ -25,12 +25,11 @@ The SUSE AI Universal Proxy features a powerful plugin architecture that enables
 - **Dynamic Routing**: Path-based routing to registered services (e.g., `/v1/*` → SmartAgents)
 - **Capability Management**: Services declare their API capabilities for intelligent routing
 - **Health Monitoring**: Built-in health checks and service status tracking
-- **Multi-Service Support**: Support for smartagents, registry, and virtualmcp service types
+- **Multi-Service Support**: Support for smartagents and registry service types
 
 ### Service Types
 - **smartagents**: AI orchestration and chat completions
 - **registry**: MCP server registry management
-- **virtualmcp**: VM-based MCP server management (future)
 
 ## Key Concepts
 
@@ -47,16 +46,16 @@ The SUSE AI Universal Proxy features a powerful plugin architecture that enables
 │                    SUSE AI Universal Proxy                       │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │                    Plugin Service Framework                 │ │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │ │
-│  │  │   SmartAgents   │  │    Registry     │  │ VirtualMCP  │  │ │
-│  │  │   Service       │  │   Service       │  │  Service    │  │ │
-│  │  └─────────────────┘  └─────────────────┘  └─────────────┘  │ │
-│  │           │                       │                       │  │ │
-│  └───────────┼───────────────────────┼───────────────────────┘  │ │
-│              │                       │                          │ │
-│  ┌───────────▼───────────────────────▼─────────────────────────┐ │ │
-│  │                Dynamic Router & Load Balancer               │ │
-│  └─────────────────────────────────────────────────────────────┘ │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐                    │ │
+│  │  │   SmartAgents   │  │    Registry     │                    │ │
+│  │  │   Service       │  │   Service       │                    │ │
+│  │  └─────────────────┘  └─────────────────┘                    │ │
+│  │           │                       │                         │ │
+│  └───────────┼───────────────────────┼─────────────────────────┘ │ │
+│              │                       │                           │ │
+│  ┌───────────▼───────────────────────▼───────────────────────────┐ │ │
+│  │                Dynamic Router & Load Balancer                 │ │
+│  └───────────────────────────────────────────────────────────────┘ │ │
 │  ┌─────────────────────────────────────────────────────────────┐ │ │
 │  │              Service Discovery & Health Monitor             │ │ │
 │  └─────────────────────────────────────────────────────────────┘ │ │

@@ -124,6 +124,12 @@ func reconfigureVirtualMCPAdapter(data *models.AdapterData) {
 	log.Printf("Reconfiguring VirtualMCP adapter: %s", data.Name)
 	log.Printf("Original connection type: %s", data.ConnectionType)
 
+	// Skip reconfiguration if this is already an HTTP-based VirtualMCP adapter (from registry spawning)
+	if data.ConnectionType == models.ConnectionTypeStreamableHttp {
+		log.Printf("Skipping reconfiguration for HTTP-based VirtualMCP adapter: %s", data.Name)
+		return
+	}
+
 	// Get API base URL from adapter configuration or default
 	apiBaseUrl := data.ApiBaseUrl
 	if apiBaseUrl == "" {
@@ -303,10 +309,7 @@ func main() {
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
-	// Initialize local process deployment handler (replaces Kubernetes deployment)
-	deploymentHandler := handlers.NewLocalProcessDeploymentHandler(registryStore, cfg.LocalDeployment.MinPort, cfg.LocalDeployment.MaxPort, &cfg.Spawning)
-
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, deploymentHandler, adapterStore, &cfg.Spawning)
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore)
 
 	// Initialize plugin service manager
 	serviceManager := plugins.NewServiceManager(cfg, registryManager)
@@ -584,7 +587,7 @@ func main() {
 			registry.POST("/upload/bulk", registryHandler.UploadBulkRegistryEntries)
 			registry.POST("/upload/local-mcp", registryHandler.UploadLocalMCP)
 			registry.GET("/browse", registryHandler.BrowseRegistry)
-			registry.POST("/:id/create-adapter", registryHandler.CreateAdapterFromRegistry)
+
 			registry.GET("/:id", registryHandler.GetMCPServer)
 			registry.PUT("/:id", registryHandler.UpdateMCPServer)
 			registry.DELETE("/:id", registryHandler.DeleteMCPServer)
@@ -601,12 +604,6 @@ func main() {
 			plugins.GET("/services/:serviceId/health", pluginHandler.GetServiceHealth)
 		}
 
-		// Deployment routes
-		deployment := v1.Group("/deployment")
-		{
-			deployment.GET("/config/:serverId", deploymentHandler.GetMCPConfig)
-			deployment.POST("/deploy", deploymentHandler.DeployMCP)
-		}
 	}
 
 	// Start health checks for plugins
@@ -641,10 +638,6 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
-
-	// Shutdown deployment handler
-	log.Println("Shutting down deployment handler...")
-	deploymentHandler.Shutdown()
 
 	// Give outstanding requests 30 seconds to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

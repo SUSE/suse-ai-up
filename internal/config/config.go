@@ -28,18 +28,6 @@ type LocalDeploymentConfig struct {
 	MaxPort int `json:"max_port"`
 }
 
-// SpawningConfig holds configuration for MCP server spawning
-type SpawningConfig struct {
-	RetryAttempts  int    `json:"retry_attempts"`
-	RetryBackoffMs int    `json:"retry_backoff_ms"`
-	DefaultCpu     string `json:"default_cpu"`
-	DefaultMemory  string `json:"default_memory"`
-	MaxCpu         string `json:"max_cpu"`
-	MaxMemory      string `json:"max_memory"`
-	LogLevel       string `json:"log_level"`
-	IncludeContext bool   `json:"include_context"`
-}
-
 // Config holds the main application configuration
 type Config struct {
 	Host           string                   `json:"host"`
@@ -58,9 +46,6 @@ type Config struct {
 
 	// Local deployment configuration
 	LocalDeployment LocalDeploymentConfig `json:"local_deployment"`
-
-	// Spawning configuration
-	Spawning SpawningConfig `json:"spawning"`
 
 	// Authentication
 	AuthMode string `json:"auth_mode"`
@@ -113,11 +98,6 @@ func LoadConfig() *Config {
 					URL:     getEnv("REGISTRY_URL", "http://localhost:8912"),
 					Timeout: getEnv("REGISTRY_TIMEOUT", "30s"),
 				},
-				"virtualmcp": {
-					Enabled: getEnvBool("VIRTUALMCP_ENABLED", true),
-					URL:     getEnv("VIRTUALMCP_URL", "http://localhost:8913"),
-					Timeout: getEnv("VIRTUALMCP_TIMEOUT", "30s"),
-				},
 			},
 		},
 
@@ -128,17 +108,6 @@ func LoadConfig() *Config {
 		LocalDeployment: LocalDeploymentConfig{
 			MinPort: getEnvInt("LOCAL_DEPLOYMENT_MIN_PORT", 8000),
 			MaxPort: getEnvInt("LOCAL_DEPLOYMENT_MAX_PORT", 19999),
-		},
-
-		Spawning: SpawningConfig{
-			RetryAttempts:  getEnvInt("SPAWNING_RETRY_ATTEMPTS", 3),
-			RetryBackoffMs: getEnvInt("SPAWNING_RETRY_BACKOFF_MS", 2000),
-			DefaultCpu:     getEnv("SPAWNING_DEFAULT_CPU", "500m"),
-			DefaultMemory:  getEnv("SPAWNING_DEFAULT_MEMORY", "256Mi"),
-			MaxCpu:         getEnv("SPAWNING_MAX_CPU", "1000m"),
-			MaxMemory:      getEnv("SPAWNING_MAX_MEMORY", "1Gi"),
-			LogLevel:       getEnv("SPAWNING_LOG_LEVEL", "debug"),
-			IncludeContext: getEnvBool("SPAWNING_INCLUDE_CONTEXT", true),
 		},
 
 		AuthMode: getEnv("AUTH_MODE", "development"),

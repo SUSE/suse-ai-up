@@ -140,24 +140,6 @@ type ScanJob struct {
 	Error     string             `json:"error,omitempty"`
 }
 
-// MCPConfigTemplate represents a deployment configuration template for MCP servers
-type MCPConfigTemplate struct {
-	Command   string            `json:"command"`         // docker, node, python, etc.
-	Args      []string          `json:"args,omitempty"`  // command arguments
-	Env       map[string]string `json:"env,omitempty"`   // environment variables
-	Transport string            `json:"transport"`       // stdio, http, sse, websocket
-	Image     string            `json:"image,omitempty"` // Docker image if applicable
-
-	// Resource limits
-	ResourceLimits *ResourceLimits `json:"resource_limits,omitempty"`
-}
-
-// ResourceLimits represents resource constraints for spawned processes
-type ResourceLimits struct {
-	CPU    string `json:"cpu,omitempty"`    // CPU limit (e.g., "500m", "1")
-	Memory string `json:"memory,omitempty"` // Memory limit (e.g., "256Mi", "1Gi")
-}
-
 // GitHubConfig represents GitHub-specific MCP server configuration
 type GitHubConfig struct {
 	APIEndpoint string `json:"api_endpoint,omitempty"` // GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)
@@ -179,7 +161,6 @@ type MCPServer struct {
 	DiscoveredAt     time.Time              `json:"discovered_at"`
 	URL              string                 `json:"url,omitempty"` // Legacy URL field for remote servers
 	Meta             map[string]interface{} `json:"_meta,omitempty"`
-	ConfigTemplate   *MCPConfigTemplate     `json:"config_template,omitempty"`
 	GitHubConfig     *GitHubConfig          `json:"github_config,omitempty"`
 }
 

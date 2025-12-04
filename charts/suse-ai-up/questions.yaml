@@ -125,64 +125,7 @@ questions:
     default: true
     group: "Runtime Support"
 
-  # MCP Server Spawning
-  - variable: env.spawning.retryAttempts
-    label: "Spawning Retry Attempts"
-    description: "Number of retry attempts when spawning MCP servers fails"
-    type: integer
-    min: 1
-    max: 10
-    default: 3
-    group: "MCP Server Spawning"
-  - variable: env.spawning.retryBackoffMs
-    label: "Retry Backoff (ms)"
-    description: "Delay between spawning retry attempts in milliseconds"
-    type: integer
-    min: 100
-    max: 10000
-    default: 2000
-    group: "MCP Server Spawning"
-  - variable: env.spawning.defaultCpu
-    label: "Default CPU Limit"
-    description: "Default CPU resource limit for spawned MCP servers"
-    type: string
-    default: "500m"
-    group: "MCP Server Spawning"
-  - variable: env.spawning.defaultMemory
-    label: "Default Memory Limit"
-    description: "Default memory resource limit for spawned MCP servers"
-    type: string
-    default: "256Mi"
-    group: "MCP Server Spawning"
-  - variable: env.spawning.maxCpu
-    label: "Maximum CPU Limit"
-    description: "Maximum allowed CPU limit for spawned MCP servers"
-    type: string
-    default: "1000m"
-    group: "MCP Server Spawning"
-  - variable: env.spawning.maxMemory
-    label: "Maximum Memory Limit"
-    description: "Maximum allowed memory limit for spawned MCP servers"
-    type: string
-    default: "1Gi"
-    group: "MCP Server Spawning"
-  - variable: env.spawning.logLevel
-    label: "Spawning Log Level"
-    description: "Log level for MCP server spawning operations"
-    type: enum
-    options:
-      - "debug"
-      - "info"
-      - "warn"
-      - "error"
-    default: "debug"
-    group: "MCP Server Spawning"
-  - variable: env.spawning.includeContext
-    label: "Include Context in Logs"
-    description: "Include contextual information in spawning log messages"
-    type: boolean
-    default: true
-    group: "MCP Server Spawning"
+
 
   # GitHub Integration
   - variable: env.github.pat

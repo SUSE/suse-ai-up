@@ -24,3 +24,4 @@ result3.json
 service.log
 session_1.json
 proxy.log
+.github/workflows/docker-build.yml

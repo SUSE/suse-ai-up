@@ -2,7 +2,7 @@
 
 ![SUSE Logo](https://apps.rancher.io/logos/suse-ai-deployer.png)
 
-This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities, MCP server registry management, and automatic spawning of MCP servers with configurable resource limits.
+This Helm chart deploys the SUSE AI Universal Proxy service with OpenTelemetry observability capabilities and MCP server registry management.
 
 **Certified for SUSE Rancher** | **OpenTelemetry Enabled** | **Multi-Architecture Support**
 
@@ -87,18 +87,7 @@ helm install suse-ai-up ./charts/suse-ai-up -n ai-up --create-namespace
 | `env.python.enabled` | Enable Python runtime | `true` | Runtime Support |
 | `env.nodejs.enabled` | Enable Node.js runtime | `true` | Runtime Support |
 
-### MCP Server Spawning
 
-| Parameter | Description | Default | Rancher UI Category |
-|-----------|-------------|---------|-------------------|
-| `env.spawning.retryAttempts` | Number of retry attempts for failed spawns | `3` | MCP Server Spawning |
-| `env.spawning.retryBackoffMs` | Delay between retry attempts (ms) | `2000` | MCP Server Spawning |
-| `env.spawning.defaultCpu` | Default CPU limit for spawned servers | `500m` | MCP Server Spawning |
-| `env.spawning.defaultMemory` | Default memory limit for spawned servers | `256Mi` | MCP Server Spawning |
-| `env.spawning.maxCpu` | Maximum allowed CPU limit | `1000m` | MCP Server Spawning |
-| `env.spawning.maxMemory` | Maximum allowed memory limit | `1Gi` | MCP Server Spawning |
-| `env.spawning.logLevel` | Log level for spawning operations | `debug` | MCP Server Spawning |
-| `env.spawning.includeContext` | Include context in spawning logs | `true` | MCP Server Spawning |
 
 ### Multi-Architecture Support
 
@@ -201,14 +190,7 @@ The form includes validation, helpful descriptions, and conditional fields that 
 - **Node.js MCP Servers**: Node.js 18+ with npm for JavaScript/TypeScript MCP servers
 - **Container Security**: Non-root execution with minimal attack surface
 
-### 🔄 MCP Server Spawning
 
-- **Automatic Spawning**: Registry entries spawn as running processes when adapters are created
-- **Resource Management**: Configurable CPU/memory limits prevent resource exhaustion
-- **Retry Logic**: Exponential backoff retry for failed spawning attempts
-- **Tool Discovery**: Runtime tool discovery with fallback to registry definitions
-- **Pre-loaded Servers**: Built-in support for official MCP servers (filesystem, git, memory, etc.)
-- **Configurable Logging**: Debug-level logging with contextual information
 
 ### ☸️ Kubernetes Native
 
@@ -258,104 +240,7 @@ curl -X POST http://localhost:8911/api/v1/adapters \
   }'
 ```
 
-### Spawning MCP Servers from Registry
 
-The service includes automatic MCP server spawning capabilities. Registry entries can be spawned as running processes with proper resource management.
-
-#### Spawn Official MCP Server
-
-```bash
-# Spawn the filesystem MCP server
-curl -X POST http://localhost:8911/api/v1/registry/filesystem/create-adapter \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environmentVariables": {
-      "ALLOWED_DIRS": "/tmp,/app/data"
-    }
-  }'
-```
-
-#### Response
-
-```json
-{
-  "message": "LocalStdio adapter created successfully",
-  "adapter": {
-    "id": "localstdio-filesystem-123",
-    "name": "localstdio-filesystem",
-    "connectionType": "LocalStdio"
-  },
-  "mcp_endpoint": "http://localhost:8911/api/v1/adapters/localstdio-filesystem-123/mcp"
-}
-```
-
-#### Spawn with Custom Resource Limits
-
-```bash
-# Spawn with custom environment and resource configuration
-curl -X POST http://localhost:8911/api/v1/registry/git/create-adapter \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environmentVariables": {
-      "GIT_AUTHOR_NAME": "AI Assistant",
-      "GIT_AUTHOR_EMAIL": "ai@example.com"
-    }
-  }'
-```
-
-#### Available Pre-loaded Servers
-
-The service includes pre-loaded official MCP servers:
-
-- **filesystem**: Secure file operations with directory restrictions
-- **git**: Git repository operations and analysis
-- **memory**: Knowledge graph-based persistent memory
-- **sequential-thinking**: Dynamic problem-solving tools
-- **time**: Timezone conversion and date operations
-- **everything**: Reference implementation with all features
-- **fetch**: Web content fetching and conversion
-- **github**: GitHub integration with repository management and code analysis tools
-
-#### GitHub MCP Server
-
-The GitHub MCP server provides access to GitHub's MCP API for repository management, pull requests, and code analysis. To use the GitHub server:
-
-1. **Configure GitHub PAT**: Set the `GITHUB_PAT` environment variable with a GitHub Personal Access Token that has appropriate permissions
-2. **Create Adapter**: Spawn the GitHub adapter from the registry
-3. **Access Features**: Use MCP tools for GitHub operations like repository analysis, pull request management, and code search
-
-```bash
-# Set GitHub PAT
-export GITHUB_PAT=your_github_personal_access_token
-
-# Create GitHub adapter
-curl -X POST http://localhost:8911/api/v1/registry/github/create-adapter \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environmentVariables": {
-      "GITHUB_PAT": "'$GITHUB_PAT'"
-    }
-  }'
-```
-
-The GitHub adapter automatically proxies requests to `https://api.githubcopilot.com/mcp/` with proper authentication headers.
-
-#### Spawning Configuration
-
-Configure spawning behavior through Helm values:
-
-```yaml
-env:
-  spawning:
-    retryAttempts: 3      # Number of retry attempts
-    retryBackoffMs: 2000  # Delay between retries (ms)
-    defaultCpu: "500m"    # Default CPU limit
-    defaultMemory: "256Mi" # Default memory limit
-    maxCpu: "1000m"       # Maximum CPU limit
-    maxMemory: "1Gi"      # Maximum memory limit
-    logLevel: "debug"     # Logging level
-    includeContext: true  # Include context in logs
-```
 
 ## Troubleshooting
 

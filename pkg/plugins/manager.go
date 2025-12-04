@@ -463,23 +463,6 @@ func (sm *ServiceManager) convertMCPImplementationToMCPServer(impl map[string]in
 		server.Version = version
 	}
 
-	// For virtualMCP servers, use HTTP transport instead of stdio
-	server.ConfigTemplate = &models.MCPConfigTemplate{
-		Command:   "tsx",
-		Args:      []string{"templates/virtualmcp-server.ts"},
-		Env:       make(map[string]string),
-		Transport: "http",                                       // Use HTTP transport for virtualMCP
-		Image:     "ghcr.io/alessandro-festa/suse-ai-up:latest", // Use main suse-ai-up image
-	}
-
-	// Extract tools configuration for the template
-	if tools, ok := impl["tools"].([]interface{}); ok {
-		toolsJSON, err := json.Marshal(tools)
-		if err == nil {
-			server.ConfigTemplate.Env["TOOLS_CONFIG"] = string(toolsJSON)
-		}
-	}
-
 	// Handle packages - create a package entry for this implementation
 	server.Packages = []models.Package{
 		{
