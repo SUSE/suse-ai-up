@@ -9,10 +9,6 @@ variable "REPO_NAME" {
   default = "alessandro-festa/suse-ai-up"
 }
 
-variable "TAG" {
-  default = "latest"
-}
-
 # Define the target platforms
 variable "PLATFORMS" {
   default = ["linux/amd64", "linux/arm64"]
@@ -21,10 +17,7 @@ variable "PLATFORMS" {
 # Main target for multi-platform build
 target "multiarch" {
   platforms = "${PLATFORMS}"
-  tags = [
-    "${REGISTRY}/${REPO_NAME}:${TAG}",
-    "${REGISTRY}/${REPO_NAME}:v${TAG}"
-  ]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
   context = "."
   dockerfile = "Dockerfile"
   args = {
@@ -35,7 +28,7 @@ target "multiarch" {
 # Target for building only amd64
 target "amd64" {
   platforms = ["linux/amd64"]
-  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}-amd64"]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
   context = "."
   dockerfile = "Dockerfile"
 }
@@ -43,29 +36,23 @@ target "amd64" {
 # Target for building only arm64
 target "arm64" {
   platforms = ["linux/arm64"]
-  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}-arm64"]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
   context = "."
   dockerfile = "Dockerfile"
 }
 
 # Development build (single platform based on host)
 target "dev" {
-  tags = ["${REGISTRY}/${REPO_NAME}:dev"]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
   context = "."
   dockerfile = "Dockerfile"
 }
-
-
 
 # Release target with additional metadata
 target "release" {
   inherits = ["multiarch"]
   platforms = "${PLATFORMS}"
-  tags = [
-    "${REGISTRY}/${REPO_NAME}:${TAG}",
-    "${REGISTRY}/${REPO_NAME}:latest",
-    "${REGISTRY}/${REPO_NAME}:${TAG}-multiarch"
-  ]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
   labels = {
     "org.opencontainers.image.title" = "SUSE AI Universal Proxy"
     "org.opencontainers.image.description" = "MCP server proxy and registry"
