@@ -38,17 +38,6 @@ global:
   tolerations: []
   affinity: {}
 
-# Service configuration
-service:
-  type: ClusterIP
-  annotations: {}
-
-# Deployment annotations
-deploymentAnnotations: {}
-
-# Pod annotations
-podAnnotations: {}
-
 # Service enablement and configuration
 services:
   # Primary proxy service (always enabled)
@@ -56,20 +45,20 @@ services:
     enabled: true
     port: 8911
     tlsPort: 3911
-     resources:
-       requests:
-         cpu: 100m
-         memory: 128Mi
-       limits:
-         cpu: 500m
-         memory: 512Mi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
 
-   # Registry service (starts after proxy)
-   registry:
-     enabled: true
-     port: 8913
-     tlsPort: 38913
-      remoteServersFile: "config/remote_mcp_servers.json"  # Optional: static remote servers file (uses in-memory storage if not found)
+  # Registry service (starts after proxy)
+  registry:
+    enabled: true
+    port: 8913
+    tlsPort: 38913
+    remoteServersFile: "config/remote_mcp_servers.json"  # Optional: static remote servers file (uses in-memory storage if not found)
     resources:
       requests:
         cpu: 50m
@@ -112,20 +101,9 @@ services:
 tls:
   enabled: true
   autoGenerate: true
-  certFile: ""
-  keyFile: ""
-  secretName: "suse-ai-up-tls"  # Generate self-signed certificates
-
-  # Custom certificate configuration
   certFile: ""  # Path to certificate file
   keyFile: ""   # Path to private key file
-
-  # Certificate secret name (if using external certs)
   secretName: "suse-ai-up-tls"
-
-# Kubernetes service configuration
-kubernetes:
-  namespace: "default"  # Default namespace, can be overridden
 
 # CORS Configuration
 cors:
@@ -159,8 +137,6 @@ auth:
     token: ""
 
 # Monitoring Configuration
-# Note: This chart does not install Prometheus/Grafana.
-# Install them separately and configure connections below.
 monitoring:
   enabled: false
 
@@ -285,36 +261,12 @@ logging:
   format: "json"  # json, text
   outputs:
     - stdout
-    - file
 
 # Metrics Configuration
 metrics:
   enabled: true
   path: "/metrics"
   port: 9090
-
-# Probes Configuration
-probes:
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-
-  readinessProbe:
-    enabled: true
-    initialDelaySeconds: 5
-    periodSeconds: 5
-    timeoutSeconds: 3
-    failureThreshold: 3
-
-  startupProbe:
-    enabled: true
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 30
 
 # Horizontal Pod Autoscaler
 autoscaling:
@@ -342,27 +294,6 @@ extraVolumes: []
 
 # Custom volume mounts
 extraVolumeMounts: []
-
-# Additional containers
-extraContainers: []
-
-# Init containers
-initContainers: []
-
-# Lifecycle hooks
-lifecycle: {}
-
-# Termination grace period
-terminationGracePeriodSeconds: 30
-
-# Priority class
-priorityClassName: ""
-
-# Service account
-serviceAccount:
-  create: false
-  annotations: {}
-  name: ""
 
 # Additional containers
 extraContainers: []

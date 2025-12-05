@@ -4,289 +4,50 @@ metadata:
   name: {{ include "suse-ai-up.fullname" . }}
   labels:
     {{- include "suse-ai-up.labels" . | nindent 4 }}
-  {{- with .Values.deploymentAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "suse-ai-up.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
       labels:
         {{- include "suse-ai-up.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "suse-ai-up.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if .Values.initContainers }}
-      initContainers:
-        {{- toYaml .Values.initContainers | nindent 8 }}
-      {{- end }}
       containers:
-        {{- /* Main proxy container - starts first */}}
-        {{- if .Values.services.proxy.enabled }}
         - name: proxy
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - "/home/mcpuser/suse-ai-up"
-            - "proxy"
           ports:
-            - name: proxy-http
-              containerPort: {{ .Values.services.proxy.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: proxy-https
-              containerPort: {{ .Values.services.proxy.tlsPort }}
-              protocol: TCP
-            {{- end }}
-           env:
-             - name: PROXY_PORT
-               value: {{ .Values.services.proxy.port | quote }}
-             {{- if .Values.tls.enabled }}
-             - name: TLS_PORT
-               value: {{ .Values.services.proxy.tlsPort | quote }}
-             - name: AUTO_TLS
-               value: {{ .Values.tls.autoGenerate | quote }}
-             {{- if .Values.tls.certFile }}
-             - name: TLS_CERT_FILE
-               value: {{ .Values.tls.certFile | quote }}
-             {{- end }}
-             {{- if .Values.tls.keyFile }}
-             - name: TLS_KEY_FILE
-               value: {{ .Values.tls.keyFile | quote }}
-             {{- end }}
-             {{- end }}
-             - name: CORS_ALLOWED_ORIGINS
-               value: {{ .Values.cors.allowedOrigins | quote }}
-             {{- with .Values.extraEnvVars }}
-             {{- toYaml . | nindent 12 }}
-             {{- end }}
-          resources:
-            {{- toYaml .Values.services.proxy.resources | nindent 12 }}
-          {{- if .Values.probes.startupProbe.enabled }}
-          startupProbe:
-            httpGet:
-              path: /health
-              port: proxy-http
-            initialDelaySeconds: {{ .Values.probes.startupProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.probes.startupProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.probes.startupProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.startupProbe.failureThreshold }}
-          {{- end }}
-          {{- if .Values.probes.livenessProbe.enabled }}
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: proxy-http
-            initialDelaySeconds: {{ .Values.probes.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.probes.livenessProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.probes.livenessProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.livenessProbe.failureThreshold }}
-          {{- end }}
-          {{- if .Values.probes.readinessProbe.enabled }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: proxy-http
-            initialDelaySeconds: {{ .Values.probes.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.probes.readinessProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.probes.readinessProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.readinessProbe.failureThreshold }}
-          {{- end }}
-          volumeMounts:
-            {{- if .Values.tls.certFile }}
-            - name: tls-cert
-              mountPath: /etc/ssl/certs/
-              readOnly: true
-            {{- end }}
-            {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-        {{- end }}
-
-        {{- /* Registry sidecar - starts second */}}
-        {{- if .Values.services.registry.enabled }}
+            - containerPort: {{ .Values.services.proxy.port }}
+          env:
+            - name: PROXY_PORT
+              value: "{{ .Values.services.proxy.port }}"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
         - name: registry
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - "/home/mcpuser/suse-ai-up"
-            - "registry"
           ports:
-            - name: registry-http
-              containerPort: {{ .Values.services.registry.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: registry-https
-              containerPort: {{ .Values.services.registry.tlsPort }}
-              protocol: TCP
-            {{- end }}
+            - containerPort: {{ .Values.services.registry.port }}
           env:
             - name: REGISTRY_PORT
-              value: {{ .Values.services.registry.port | quote }}
-            {{- if .Values.tls.enabled }}
-            - name: TLS_PORT
-              value: {{ .Values.services.registry.tlsPort | quote }}
-            - name: AUTO_TLS
-              value: {{ .Values.tls.autoGenerate | quote }}
-            {{- end }}
-            - name: ENABLE_OFFICIAL
-              value: {{ .Values.services.registry.enableOfficial | quote }}
-            - name: ENABLE_DOCKER
-              value: {{ .Values.services.registry.enableDocker | quote }}
-             - name: SYNC_INTERVAL
-               value: {{ .Values.services.registry.syncInterval | quote }}
-             - name: CORS_ALLOWED_ORIGINS
-               value: {{ .Values.cors.allowedOrigins | quote }}
-             {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          resources:
-            {{- toYaml .Values.services.registry.resources | nindent 12 }}
-          volumeMounts:
-            {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-        {{- end }}
-
-        {{- /* Discovery sidecar - starts third */}}
-        {{- if .Values.services.discovery.enabled }}
+              value: "{{ .Values.services.registry.port }}"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
         - name: discovery
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - "/home/mcpuser/suse-ai-up"
-            - "discovery"
           ports:
-            - name: discovery-http
-              containerPort: {{ .Values.services.discovery.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: discovery-https
-              containerPort: {{ .Values.services.discovery.tlsPort }}
-              protocol: TCP
-            {{- end }}
+            - containerPort: {{ .Values.services.discovery.port }}
           env:
             - name: DISCOVERY_PORT
-              value: {{ .Values.services.discovery.port | quote }}
-            {{- if .Values.tls.enabled }}
-            - name: TLS_PORT
-              value: {{ .Values.services.discovery.tlsPort | quote }}
-            - name: AUTO_TLS
-              value: {{ .Values.tls.autoGenerate | quote }}
-            {{- end }}
-            - name: DEFAULT_TIMEOUT
-              value: {{ .Values.services.discovery.defaultTimeout | quote }}
-            - name: MAX_CONCURRENCY
-              value: {{ .Values.services.discovery.maxConcurrency | quote }}
-            - name: EXCLUDE_PROXY
-              value: {{ .Values.services.discovery.excludeProxy | quote }}
-            {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          resources:
-            {{- toYaml .Values.services.discovery.resources | nindent 12 }}
-          volumeMounts:
-            {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-        {{- end }}
-
-        {{- /* Plugins sidecar - starts last */}}
-        {{- if .Values.services.plugins.enabled }}
+              value: "{{ .Values.services.discovery.port }}"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
         - name: plugins
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "suse-ai-up.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - "/home/mcpuser/suse-ai-up"
-            - "plugins"
           ports:
-            - name: plugins-http
-              containerPort: {{ .Values.services.plugins.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: plugins-https
-              containerPort: {{ .Values.services.plugins.tlsPort }}
-              protocol: TCP
-            {{- end }}
+            - containerPort: {{ .Values.services.plugins.port }}
           env:
             - name: PLUGINS_PORT
-              value: {{ .Values.services.plugins.port | quote }}
-            {{- if .Values.tls.enabled }}
-            - name: TLS_PORT
-              value: {{ .Values.services.plugins.tlsPort | quote }}
-            - name: AUTO_TLS
-              value: {{ .Values.tls.autoGenerate | quote }}
-            {{- end }}
-            - name: HEALTH_INTERVAL
-              value: {{ .Values.services.plugins.healthInterval | quote }}
-            {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          resources:
-            {{- toYaml .Values.services.plugins.resources | nindent 12 }}
-          volumeMounts:
-            {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-        {{- end }}
-
-        {{- /* Additional containers */}}
-        {{- with .Values.extraContainers }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-
-      volumes:
-        {{- /* TLS certificate volume */}}
-        {{- if .Values.tls.certFile }}
-        - name: tls-cert
-          secret:
-            secretName: {{ .Values.tls.secretName }}
-        {{- end }}
-
-        {{- /* Extra volumes */}}
-        {{- with .Values.extraVolumes }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-
-      {{- with .Values.lifecycle }}
-      lifecycle:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-
-      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+              value: "{{ .Values.services.plugins.port }}"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
