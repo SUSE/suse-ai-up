@@ -45,7 +45,7 @@ func (th *TokenHandler) GetAdapterToken(c *gin.Context) {
 	}
 
 	// Get adapter configuration
-	adapter, err := th.store.TryGetAsync(adapterName, nil)
+	adapter, err := th.store.Get(c.Request.Context(), adapterName)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -189,7 +189,7 @@ func (th *TokenHandler) ValidateToken(c *gin.Context) {
 	}
 
 	// Get adapter configuration for audience validation
-	adapter, err := th.store.TryGetAsync(adapterName, nil)
+	adapter, err := th.store.Get(c.Request.Context(), adapterName)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -263,7 +263,7 @@ func (th *TokenHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// Get adapter configuration
-	adapter, err := th.store.TryGetAsync(adapterName, nil)
+	adapter, err := th.store.Get(c.Request.Context(), adapterName)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return

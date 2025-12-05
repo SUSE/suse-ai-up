@@ -64,14 +64,12 @@ services:
         cpu: 500m
         memory: 512Mi
 
-  # Registry service (starts after proxy)
-  registry:
-    enabled: true
-    port: 8913
-    tlsPort: 38913
-    syncInterval: 24h  # How often to sync external registries
-    enableOfficial: true  # Sync official MCP registry
-    enableDocker: true    # Sync Docker MCP images
+   # Registry service (starts after proxy)
+   registry:
+     enabled: true
+     port: 8913
+     tlsPort: 38913
+     remoteServersFile: "config/remote_mcp_servers.json"  # Static remote servers file
     resources:
       requests:
         cpu: 50m

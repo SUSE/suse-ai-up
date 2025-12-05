@@ -38,7 +38,7 @@ func (h *MCPAuthHandler) GetClientToken(c *gin.Context) {
 	name := c.Param("name")
 
 	// Get adapter
-	adapter, err := h.store.TryGetAsync(name, c.Request.Context())
+	adapter, err := h.store.Get(c.Request.Context(), name)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -169,7 +169,7 @@ func (h *MCPAuthHandler) TestAuthConnection(c *gin.Context) {
 	name := c.Param("name")
 
 	// Get adapter
-	adapter, err := h.store.TryGetAsync(name, c.Request.Context())
+	adapter, err := h.store.Get(c.Request.Context(), name)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -182,11 +182,6 @@ func (h *MCPAuthHandler) TestAuthConnection(c *gin.Context) {
 		"status":  "tested",
 		"message": "Authentication test not yet implemented",
 	})
-}
-
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error string `json:"error"`
 }
 
 // BearerTokenConfig represents bearer token authentication configuration

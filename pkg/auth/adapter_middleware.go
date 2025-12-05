@@ -37,7 +37,7 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 		userAgent := c.GetHeader("User-Agent")
 
 		// Get adapter configuration
-		adapter, err := aam.store.TryGetAsync(adapterName, nil)
+		adapter, err := aam.store.Get(c.Request.Context(), adapterName)
 		if err != nil {
 			// Log the error but let the main handler deal with it
 			fmt.Printf("AUTH: Failed to retrieve adapter %s: %v\n", adapterName, err)

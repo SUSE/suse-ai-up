@@ -13,50 +13,54 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
+
+	adaptersvc "suse-ai-up/pkg/services/adapters"
 )
 
 // Service represents the registry service
 type Service struct {
-	config      *Config
-	server      *http.Server
-	store       clients.MCPServerStore
-	syncManager *SyncManager
-	mu          sync.RWMutex
+	config         *Config
+	server         *http.Server
+	store          clients.MCPServerStore
+	adapterStore   clients.AdapterResourceStore
+	adapterService *adaptersvc.AdapterService
+	mu             sync.RWMutex
 }
 
 // Config holds registry service configuration
 type Config struct {
-	Port           int           `json:"port"`
-	TLSPort        int           `json:"tls_port"`
-	ConfigFile     string        `json:"config_file"`
-	EnableOfficial bool          `json:"enable_official"`
-	EnableDocker   bool          `json:"enable_docker"`
-	SyncInterval   time.Duration `json:"sync_interval"`
-	AutoTLS        bool          `json:"auto_tls"`
-	CertFile       string        `json:"cert_file"`
-	KeyFile        string        `json:"key_file"`
+	Port              int    `json:"port"`
+	TLSPort           int    `json:"tls_port"`
+	ConfigFile        string `json:"config_file"`
+	RemoteServersFile string `json:"remote_servers_file"`
+	AutoTLS           bool   `json:"auto_tls"`
+	CertFile          string `json:"cert_file"`
+	KeyFile           string `json:"key_file"`
 }
 
 // NewService creates a new registry service
 func NewService(config *Config) *Service {
-	if config.SyncInterval == 0 {
-		config.SyncInterval = 24 * time.Hour // Default to daily sync
+	if config.RemoteServersFile == "" {
+		config.RemoteServersFile = "config/remote_mcp_servers.json"
 	}
 
 	service := &Service{
-		config: config,
-		store:  clients.NewInMemoryMCPServerStore(),
+		config:       config,
+		store:        clients.NewInMemoryMCPServerStore(),
+		adapterStore: clients.NewFileAdapterStore("data/adapters.json"),
 	}
 
-	// Initialize sync manager
-	service.syncManager = NewSyncManager(service.store)
+	// Initialize adapter service
+	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store)
 
 	return service
 }
@@ -72,15 +76,65 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleRegistryByID)))
 	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleUpload)))
 	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleBulkUpload)))
-	mux.HandleFunc("/api/v1/registry/sync/official", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleSyncOfficial)))
-	mux.HandleFunc("/api/v1/registry/sync/docker", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleSyncDocker)))
+	mux.HandleFunc("/api/v1/registry/reload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleReloadRemoteServers)))
 
-	// Start sync operations if enabled
-	if s.config.EnableOfficial {
-		go s.startPeriodicSync("official", s.syncOfficialRegistry)
-	}
-	if s.config.EnableDocker {
-		go s.startPeriodicSync("docker", s.syncDockerRegistry)
+	// Adapter management routes
+	adapterHandler := handlers.NewAdapterHandler(s.adapterService)
+	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.CreateAdapter)))
+	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			adapterHandler.ListAdapters(w, r)
+		} else {
+			http.NotFound(w, r)
+		}
+	})))
+	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+		if path == "" {
+			if r.Method == "GET" {
+				adapterHandler.ListAdapters(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+
+		// Extract adapter ID from path
+		parts := strings.Split(path, "/")
+		if len(parts) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+
+		adapterID := parts[0]
+
+		switch r.Method {
+		case "GET":
+			// Set adapter ID in URL params for handler
+			r.URL.Path = "/api/v1/adapters/" + adapterID
+			adapterHandler.GetAdapter(w, r)
+		case "PUT":
+			r.URL.Path = "/api/v1/adapters/" + adapterID
+			adapterHandler.UpdateAdapter(w, r)
+		case "DELETE":
+			r.URL.Path = "/api/v1/adapters/" + adapterID
+			adapterHandler.DeleteAdapter(w, r)
+		case "POST":
+			if len(parts) > 1 && parts[1] == "sync" {
+				r.URL.Path = "/api/v1/adapters/" + adapterID + "/sync"
+				adapterHandler.SyncAdapterCapabilities(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	})))
+
+	// Load remote MCP servers from static file
+	if err := s.loadRemoteServers(); err != nil {
+		log.Printf("Failed to load remote servers: %v", err)
+		// Continue anyway - service can still function
 	}
 
 	// Start HTTP server
@@ -192,32 +246,39 @@ func (s *Service) generateSelfSignedCert() (*tls.Certificate, error) {
 	return cert, nil
 }
 
-// startPeriodicSync starts periodic sync for a registry source
-func (s *Service) startPeriodicSync(sourceName string, syncFunc func() error) {
-	ticker := time.NewTicker(s.config.SyncInterval)
-	defer ticker.Stop()
+// loadRemoteServers loads remote MCP servers from the static JSON file
+func (s *Service) loadRemoteServers() error {
+	log.Println("Loading remote MCP servers from static file")
 
-	for {
-		select {
-		case <-ticker.C:
-			log.Printf("Starting periodic sync for %s registry", sourceName)
-			if err := syncFunc(); err != nil {
-				log.Printf("Failed to sync %s registry: %v", sourceName, err)
-			} else {
-				log.Printf("Successfully synced %s registry", sourceName)
-			}
+	data, err := os.ReadFile(s.config.RemoteServersFile)
+	if err != nil {
+		return fmt.Errorf("failed to read remote servers file %s: %w", s.config.RemoteServersFile, err)
+	}
+
+	var servers []models.MCPServer
+	if err := json.Unmarshal(data, &servers); err != nil {
+		return fmt.Errorf("failed to parse remote servers JSON: %w", err)
+	}
+
+	// Store servers in the registry
+	for _, server := range servers {
+		// Ensure server has required fields
+		if server.ID == "" {
+			server.ID = fmt.Sprintf("remote-%s", strings.ToLower(strings.ReplaceAll(server.Name, " ", "-")))
+		}
+		if server.ValidationStatus == "" {
+			server.ValidationStatus = "approved"
+		}
+		server.DiscoveredAt = time.Now()
+
+		if err := s.store.CreateMCPServer(&server); err != nil {
+			log.Printf("Failed to store remote server %s: %v", server.ID, err)
+			// Continue with other servers
 		}
 	}
-}
 
-// syncOfficialRegistry syncs the official MCP registry
-func (s *Service) syncOfficialRegistry() error {
-	return s.syncManager.SyncOfficialRegistry(context.Background())
-}
-
-// syncDockerRegistry syncs the Docker MCP registry
-func (s *Service) syncDockerRegistry() error {
-	return s.syncManager.SyncDockerRegistry(context.Background())
+	log.Printf("Successfully loaded %d remote MCP servers", len(servers))
+	return nil
 }
 
 // handleHealth handles health check requests
@@ -463,42 +524,26 @@ func (s *Service) handleBulkUpload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// handleSyncOfficial triggers official registry sync
-func (s *Service) handleSyncOfficial(w http.ResponseWriter, r *http.Request) {
+// handleReloadRemoteServers reloads remote MCP servers from the static file
+func (s *Service) handleReloadRemoteServers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	go func() {
-		if err := s.syncOfficialRegistry(); err != nil {
-			log.Printf("Official registry sync failed: %v", err)
-		}
-	}()
+	// Clear existing remote servers
+	// Note: In a real implementation, you might want to be more selective
+	// For now, we'll reload all servers
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "sync_started",
-		"source": "official",
-	})
-}
-
-// handleSyncDocker triggers Docker registry sync
-func (s *Service) handleSyncDocker(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if err := s.loadRemoteServers(); err != nil {
+		log.Printf("Failed to reload remote servers: %v", err)
+		http.Error(w, "Failed to reload remote servers", http.StatusInternalServerError)
 		return
 	}
 
-	go func() {
-		if err := s.syncDockerRegistry(); err != nil {
-			log.Printf("Docker registry sync failed: %v", err)
-		}
-	}()
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "sync_started",
-		"source": "docker",
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "reload_completed",
+		"message": "Remote MCP servers reloaded successfully",
 	})
 }

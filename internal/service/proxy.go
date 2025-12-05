@@ -49,8 +49,12 @@ func (ph *ProxyHandler) ForwardStreamableHttp(c *gin.Context) {
 
 	// Get adapter from store
 	ctx := context.Background()
-	adapter, err := ph.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	adapter, err := ph.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		log.Printf("ForwardStreamableHttp: Adapter %s not found", name)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return

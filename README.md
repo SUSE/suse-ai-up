@@ -12,7 +12,7 @@ A comprehensive, modular MCP (Model Context Protocol) proxy system that enables 
 
 **🔍 Network Discovery** - Automated network scanning to discover MCP servers, detect authentication types, and assess security vulnerabilities.
 
-**📚 Server Registry** - Multi-source MCP server registry supporting official MCP registry, Docker Hub integration, and custom server management.
+**📚 Server Registry** - Curated registry of remote MCP servers from mcpservers.org, including GitHub, Notion, Sentry, Linear, and 20+ other popular services.
 
 **🔌 Plugin Management** - Dynamic plugin system for extending functionality with service registration, health monitoring, and capability routing.
 
@@ -89,6 +89,84 @@ go run ./cmd
 - **Features**: Service registration, health monitoring, capability routing
 - **Ports**: HTTP 8914, HTTPS 38914
 - **Documentation**: [Plugins Service Guide](docs/services/plugins.md)
+
+## 🌐 Remote MCP Servers
+
+The registry includes **20+ curated remote MCP servers** from [mcpservers.org](https://mcpservers.org/remote-mcp-servers), providing instant access to popular services:
+
+### 📊 Available Servers
+
+| Service | Authentication | Category | Description |
+|---------|----------------|----------|-------------|
+| **GitHub** | OAuth | Development | Repository management, issues, PRs, code search |
+| **Notion** | OAuth | Productivity | Document collaboration and knowledge base |
+| **Sentry** | OAuth | Monitoring | Error tracking and performance monitoring |
+| **Linear** | OAuth | Project Management | Issue tracking and agile workflows |
+| **Figma** | OAuth | Design | Collaborative design and prototyping |
+| **CoinGecko** | Open | Cryptocurrency | Market data and trading information |
+| **Semgrep** | Open | Security | Code security and quality analysis |
+| **Atlassian** | OAuth | Enterprise | Jira, Confluence, enterprise tools |
+
+### 🚀 Quick Examples
+
+#### GitHub MCP Server
+```bash
+# List repositories
+curl -H "X-API-Key: dev-service-key-123" \
+  "http://localhost:8911/api/v1/registry/browse?q=github"
+
+# Create adapter for GitHub
+curl -X POST http://localhost:8911/api/v1/adapters \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "github-adapter",
+    "mcpServerId": "github",
+    "authentication": {
+      "type": "oauth",
+      "oauth": {
+        "clientId": "your-github-oauth-client-id",
+        "clientSecret": "your-github-oauth-client-secret"
+      }
+    }
+  }'
+```
+
+#### Atlassian MCP Server
+```bash
+# Browse Atlassian services
+curl -H "X-API-Key: dev-service-key-123" \
+  "http://localhost:8911/api/v1/registry/browse?q=atlassian"
+
+# Configure Jira integration
+curl -X POST http://localhost:8911/api/v1/adapters \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "jira-adapter",
+    "mcpServerId": "atlassian",
+    "authentication": {
+      "type": "oauth",
+      "oauth": {
+        "clientId": "your-atlassian-oauth-client-id",
+        "clientSecret": "your-atlassian-oauth-client-secret"
+      }
+    }
+  }'
+```
+
+### 🔑 Authentication Setup
+
+**OAuth Services**: Configure OAuth 2.0 credentials in your adapter configuration
+**Open Services**: No authentication required - use directly
+
+**Note**: Authentication is configured per-adapter, not in the registry. The registry only indicates which servers require user authentication.
+
+### 🔄 Manual Registry Updates
+
+To update the remote server list:
+```bash
+curl -X POST -H "X-API-Key: dev-service-key-123" \
+  http://localhost:8911/api/v1/registry/reload
+```
 
 ## 🔐 Authentication & Security
 

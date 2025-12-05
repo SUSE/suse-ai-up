@@ -36,12 +36,12 @@ func NewSessionManagementService(sessionStore session.SessionStore, store client
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/adapters/{name}/sessions [get]
-func (sms *SessionManagementService) ListSessions(c *gin.Context) {
+func (sms *SessionManagementService) ListAdapterSessions(c *gin.Context) {
 	name := c.Param("name")
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
+	adapter, err := sms.store.Get(ctx, name)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -72,13 +72,13 @@ func (sms *SessionManagementService) ListSessions(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/adapters/{name}/sessions/{sessionId} [get]
-func (sms *SessionManagementService) GetSession(c *gin.Context) {
+func (sms *SessionManagementService) GetAdapterSession(c *gin.Context) {
 	name := c.Param("name")
 	sessionID := c.Param("sessionId")
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
+	adapter, err := sms.store.Get(ctx, name)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -116,8 +116,8 @@ func (sms *SessionManagementService) DeleteSession(c *gin.Context) {
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	_, err := sms.store.Get(ctx, name)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}
@@ -167,8 +167,8 @@ func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	adapter, err := sms.store.Get(ctx, name)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}
@@ -207,8 +207,8 @@ func (sms *SessionManagementService) DeleteAllSessions(c *gin.Context) {
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	_, err := sms.store.Get(ctx, name)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}

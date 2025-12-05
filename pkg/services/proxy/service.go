@@ -703,10 +703,11 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
     "ScanConfig": {
       "type": "object",
       "properties": {
-        "networks": {"type": "array", "items": {"type": "string"}},
-        "ports": {"type": "array", "items": {"type": "integer"}},
-        "timeout": {"type": "integer"},
-        "maxConcurrency": {"type": "integer"}
+        "scanRanges": {"type": "array", "items": {"type": "string"}, "example": ["192.168.1.0/24"]},
+        "ports": {"type": "array", "items": {"type": "string"}, "example": ["3000", "4000"]},
+        "timeout": {"type": "string", "example": "30s"},
+        "maxConcurrent": {"type": "integer", "example": 10},
+        "excludeProxy": {"type": "boolean", "example": true}
       }
     },
     "ScanJob": {

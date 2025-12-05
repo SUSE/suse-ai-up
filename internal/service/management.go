@@ -182,7 +182,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 	log.Printf("CreateAdapter: User: %s", user)
 
 	// Check if exists
-	existing, _ := ms.store.TryGetAsync(data.Name, ctx)
+	existing, _ := ms.store.Get(ctx, data.Name)
 	if existing != nil {
 		log.Printf("CreateAdapter: Adapter already exists: %s", data.Name)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter with the same name already exists."})
@@ -247,7 +247,11 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 // @Router /api/v1/adapters [get]
 func (ms *ManagementService) ListAdapters(c *gin.Context) {
 	ctx := context.Background()
-	adapters, err := ms.store.ListAsync(ctx)
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	adapters, err := ms.store.List(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -267,8 +271,17 @@ func (ms *ManagementService) ListAdapters(c *gin.Context) {
 func (ms *ManagementService) GetAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	// Check if adapter belongs to user
+	if adapter.CreatedBy != userID {
 		c.Status(http.StatusNotFound)
 		return
 	}
@@ -322,8 +335,12 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	existing, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || existing == nil {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	existing, err := ms.store.Get(ctx, name)
+	if err != nil || existing.CreatedBy != userID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter does not exist."})
 		return
 	}
@@ -398,15 +415,19 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
 
-	// Check ownership (simplified)
-	adapter, _ := ms.store.TryGetAsync(name, ctx)
-	if adapter == nil {
+	// Check ownership
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter does not exist."})
 		return
 	}
 
-	if err := ms.store.DeleteAsync(name, ctx); err != nil {
+	if err := ms.store.Delete(ctx, name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -440,10 +461,14 @@ func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
 
 	// Get adapter to check type
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}
@@ -476,10 +501,14 @@ func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 func (ms *ManagementService) GetAdapterLogs(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
 
 	// Get adapter to check type
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}

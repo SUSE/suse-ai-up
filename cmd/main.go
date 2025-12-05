@@ -108,11 +108,10 @@ func runDiscovery() {
 
 func runRegistry() {
 	config := &registry.Config{
-		Port:           8913,
-		TLSPort:        38913, // HTTPS port
-		EnableOfficial: true,
-		EnableDocker:   true,
-		AutoTLS:        true, // Enable auto-generated TLS certificates
+		Port:              8913,
+		TLSPort:           38913, // HTTPS port
+		RemoteServersFile: "config/remote_mcp_servers.json",
+		AutoTLS:           true, // Enable auto-generated TLS certificates
 	}
 
 	service := registry.NewService(config)
