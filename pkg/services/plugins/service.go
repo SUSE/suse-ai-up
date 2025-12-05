@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/plugins"
 )
@@ -63,13 +64,13 @@ func NewService(config *Config) *Service {
 func (s *Service) Start() error {
 	log.Printf("Starting MCP Plugins service on port %d", s.config.Port)
 
-	// Setup HTTP routes
+	// Setup HTTP routes with CORS middleware
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/api/v1/plugins/register", s.handleRegisterPlugin)
-	mux.HandleFunc("/api/v1/plugins/", s.handlePluginByID)
-	mux.HandleFunc("/api/v1/plugins", s.handleListPlugins)
-	mux.HandleFunc("/api/v1/health/", s.handlePluginHealth)
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/api/v1/plugins/register", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleRegisterPlugin)))
+	mux.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handlePluginByID)))
+	mux.HandleFunc("/api/v1/plugins", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleListPlugins)))
+	mux.HandleFunc("/api/v1/health/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handlePluginHealth)))
 
 	// Start health checks
 	ctx, cancel := context.WithCancel(context.Background())

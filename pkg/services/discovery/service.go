@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/scanner"
 )
@@ -77,12 +78,12 @@ func NewService(config *Config) *Service {
 func (s *Service) Start() error {
 	log.Printf("Starting MCP Discovery service on port %d", s.config.Port)
 
-	// Setup HTTP routes
+	// Setup HTTP routes with CORS middleware
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/api/v1/scan", s.handleStartScan)
-	mux.HandleFunc("/api/v1/scan/", s.handleGetScanStatus)
-	mux.HandleFunc("/api/v1/servers", s.handleListServers)
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleStartScan)))
+	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleGetScanStatus)))
+	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleListServers)))
 
 	// Start HTTP server
 	httpServer := &http.Server{

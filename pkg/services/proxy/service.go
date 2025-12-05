@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/proxy"
 	"time"
 )
@@ -55,22 +56,22 @@ func (s *Service) Start() error {
 	// Create HTTP handler
 	handler := proxy.NewMCPProxyHandler(s.server)
 
-	// Setup routes
+	// Setup routes with CORS middleware
 	mux := http.NewServeMux()
-	mux.HandleFunc("/mcp", handler.HandleMCP)
-	mux.HandleFunc("/mcp/tools", handler.HandleToolsList)
-	mux.HandleFunc("/mcp/tools/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/mcp", middleware.CORSMiddleware(handler.HandleMCP))
+	mux.HandleFunc("/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
+	mux.HandleFunc("/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			handler.HandleToolCall(w, r)
 		} else {
 			http.NotFound(w, r)
 		}
-	})
-	mux.HandleFunc("/mcp/resources", handler.HandleResourcesList)
-	mux.HandleFunc("/mcp/resources/", handler.HandleResourceRead)
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/docs", s.handleDocs)
-	mux.HandleFunc("/swagger.json", s.handleSwaggerJSON)
+	}))
+	mux.HandleFunc("/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
+	mux.HandleFunc("/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
+	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
 
 	// Start HTTP server
 	httpServer := &http.Server{

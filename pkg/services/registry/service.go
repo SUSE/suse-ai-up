@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 )
 
@@ -64,15 +65,15 @@ func NewService(config *Config) *Service {
 func (s *Service) Start() error {
 	log.Printf("Starting MCP Registry service on port %d", s.config.Port)
 
-	// Setup HTTP routes
+	// Setup HTTP routes with CORS middleware
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/api/v1/registry/browse", s.handleBrowse)
-	mux.HandleFunc("/api/v1/registry/", s.handleRegistryByID)
-	mux.HandleFunc("/api/v1/registry/upload", s.handleUpload)
-	mux.HandleFunc("/api/v1/registry/upload/bulk", s.handleBulkUpload)
-	mux.HandleFunc("/api/v1/registry/sync/official", s.handleSyncOfficial)
-	mux.HandleFunc("/api/v1/registry/sync/docker", s.handleSyncDocker)
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/api/v1/registry/browse", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleBrowse)))
+	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleRegistryByID)))
+	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleUpload)))
+	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleBulkUpload)))
+	mux.HandleFunc("/api/v1/registry/sync/official", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleSyncOfficial)))
+	mux.HandleFunc("/api/v1/registry/sync/docker", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleSyncDocker)))
 
 	// Start sync operations if enabled
 	if s.config.EnableOfficial {
