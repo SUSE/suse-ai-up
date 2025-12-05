@@ -65,16 +65,16 @@ func (s *Service) Start() error {
 
 	// Create a custom handler that prevents automatic redirects for CORS
 	rootHandler := func(w http.ResponseWriter, r *http.Request) {
-		// Handle MCP routes
-		if r.URL.Path == "/mcp" {
+		// Handle MCP routes (both /mcp/* and /api/v1/mcp/* for compatibility)
+		if r.URL.Path == "/mcp" || r.URL.Path == "/api/v1/mcp" {
 			middleware.CORSMiddleware(handler.HandleMCP)(w, r)
 			return
 		}
-		if r.URL.Path == "/mcp/tools" {
+		if r.URL.Path == "/mcp/tools" || r.URL.Path == "/api/v1/mcp/tools" {
 			middleware.CORSMiddleware(handler.HandleToolsList)(w, r)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/mcp/tools/") {
+		if strings.HasPrefix(r.URL.Path, "/mcp/tools/") || strings.HasPrefix(r.URL.Path, "/api/v1/mcp/tools/") {
 			middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == "POST" {
 					handler.HandleToolCall(w, r)
@@ -84,11 +84,11 @@ func (s *Service) Start() error {
 			})(w, r)
 			return
 		}
-		if r.URL.Path == "/mcp/resources" {
+		if r.URL.Path == "/mcp/resources" || r.URL.Path == "/api/v1/mcp/resources" {
 			middleware.CORSMiddleware(handler.HandleResourcesList)(w, r)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/mcp/resources/") {
+		if strings.HasPrefix(r.URL.Path, "/mcp/resources/") || strings.HasPrefix(r.URL.Path, "/api/v1/mcp/resources/") {
 			middleware.CORSMiddleware(handler.HandleResourceRead)(w, r)
 			return
 		}
