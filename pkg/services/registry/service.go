@@ -82,13 +82,6 @@ func (s *Service) Start() error {
 	adapterHandler := handlers.NewAdapterHandler(s.adapterService)
 	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.CreateAdapter)))
 	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			adapterHandler.ListAdapters(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
-	})))
-	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
 		if path == "" {
 			if r.Method == "GET" {
