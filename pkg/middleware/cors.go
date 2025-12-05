@@ -53,7 +53,15 @@ func isOriginAllowed(origin string, allowedOrigins []string) string {
 		return ""
 	}
 
-	// Check exact matches first
+	// Check for wildcard "*" first - allows all origins
+	for _, allowed := range allowedOrigins {
+		allowed = strings.TrimSpace(allowed)
+		if allowed == "*" {
+			return origin
+		}
+	}
+
+	// Check exact matches
 	for _, allowed := range allowedOrigins {
 		if strings.TrimSpace(allowed) == origin {
 			return origin
