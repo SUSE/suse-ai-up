@@ -772,17 +772,17 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 
 // proxyToRegistry forwards requests to the registry service
 func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8913", "")
+	s.proxyRequest(w, r, "http://localhost:8913", "")
 }
 
 // proxyToDiscovery forwards requests to the discovery service
 func (s *Service) proxyToDiscovery(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8912", "")
+	s.proxyRequest(w, r, "http://localhost:8912", "")
 }
 
 // proxyToPlugins forwards requests to the plugins service
 func (s *Service) proxyToPlugins(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8914", "")
+	s.proxyRequest(w, r, "http://localhost:8914", "")
 }
 
 // proxyRequest forwards HTTP requests to other services
