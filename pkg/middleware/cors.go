@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -20,13 +21,7 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		origin := r.Header.Get("Origin")
 
 		// Check if origin is allowed
-		allowOrigin := ""
-		for _, allowed := range allowedOrigins {
-			if strings.TrimSpace(allowed) == origin {
-				allowOrigin = origin
-				break
-			}
-		}
+		allowOrigin := isOriginAllowed(origin, allowedOrigins)
 
 		// Set CORS headers
 		if allowOrigin != "" {
@@ -44,4 +39,34 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r)
 	}
+}
+
+// isOriginAllowed checks if the given origin is allowed based on the configured allowed origins
+func isOriginAllowed(origin string, allowedOrigins []string) string {
+	if origin == "" {
+		return ""
+	}
+
+	// Parse the origin URL
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		return ""
+	}
+
+	// Check exact matches first
+	for _, allowed := range allowedOrigins {
+		if strings.TrimSpace(allowed) == origin {
+			return origin
+		}
+	}
+
+	// For public IP access, allow origins that are valid HTTP/HTTPS URLs
+	// This allows webapps running on public IPs or load balancers to access the API
+	if originURL.Scheme == "http" || originURL.Scheme == "https" {
+		// Allow any valid HTTP/HTTPS origin for public access
+		// This is more permissive but necessary for load balancer and public IP scenarios
+		return origin
+	}
+
+	return ""
 }

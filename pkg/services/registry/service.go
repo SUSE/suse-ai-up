@@ -50,13 +50,18 @@ type Config struct {
 // NewService creates a new registry service
 func NewService(config *Config) *Service {
 	if config.RemoteServersFile == "" {
-		config.RemoteServersFile = "config/remote_mcp_servers.json"
+		// Check environment variable first, then default
+		if envFile := os.Getenv("REMOTE_SERVERS_FILE"); envFile != "" {
+			config.RemoteServersFile = envFile
+		} else {
+			config.RemoteServersFile = "config/remote_mcp_servers.json"
+		}
 	}
 
 	service := &Service{
 		config:       config,
 		store:        clients.NewInMemoryMCPServerStore(),
-		adapterStore: clients.NewFileAdapterStore("data/adapters.json"),
+		adapterStore: clients.NewInMemoryAdapterStore(),
 	}
 
 	// Initialize adapter service
@@ -245,6 +250,11 @@ func (s *Service) loadRemoteServers() error {
 
 	data, err := os.ReadFile(s.config.RemoteServersFile)
 	if err != nil {
+		// If file doesn't exist, log a warning but don't fail - use in-memory storage only
+		if os.IsNotExist(err) {
+			log.Printf("Remote servers file %s not found, using in-memory storage only", s.config.RemoteServersFile)
+			return nil
+		}
 		return fmt.Errorf("failed to read remote servers file %s: %w", s.config.RemoteServersFile, err)
 	}
 

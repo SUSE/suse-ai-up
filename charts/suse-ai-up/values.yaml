@@ -56,20 +56,20 @@ services:
     enabled: true
     port: 8911
     tlsPort: 3911
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+     resources:
+       requests:
+         cpu: 100m
+         memory: 128Mi
+       limits:
+         cpu: 500m
+         memory: 512Mi
 
    # Registry service (starts after proxy)
    registry:
      enabled: true
      port: 8913
      tlsPort: 38913
-     remoteServersFile: "config/remote_mcp_servers.json"  # Static remote servers file
+      remoteServersFile: "config/remote_mcp_servers.json"  # Optional: static remote servers file (uses in-memory storage if not found)
     resources:
       requests:
         cpu: 50m
@@ -129,7 +129,7 @@ kubernetes:
 
 # CORS Configuration
 cors:
-  allowedOrigins: "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000"
+  allowedOrigins: "*"  # Allow all origins by default for public access
 
 # Service API Keys (for inter-service authentication)
 serviceApiKeys: ""

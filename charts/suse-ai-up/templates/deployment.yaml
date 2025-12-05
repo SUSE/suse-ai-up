@@ -68,26 +68,28 @@ spec:
               containerPort: {{ .Values.services.proxy.tlsPort }}
               protocol: TCP
             {{- end }}
-          env:
-            - name: PROXY_PORT
-              value: {{ .Values.services.proxy.port | quote }}
-            {{- if .Values.tls.enabled }}
-            - name: TLS_PORT
-              value: {{ .Values.services.proxy.tlsPort | quote }}
-            - name: AUTO_TLS
-              value: {{ .Values.tls.autoGenerate | quote }}
-            {{- if .Values.tls.certFile }}
-            - name: TLS_CERT_FILE
-              value: {{ .Values.tls.certFile | quote }}
-            {{- end }}
-            {{- if .Values.tls.keyFile }}
-            - name: TLS_KEY_FILE
-              value: {{ .Values.tls.keyFile | quote }}
+           env:
+             - name: PROXY_PORT
+               value: {{ .Values.services.proxy.port | quote }}
+             {{- if .Values.tls.enabled }}
+             - name: TLS_PORT
+               value: {{ .Values.services.proxy.tlsPort | quote }}
+             - name: AUTO_TLS
+               value: {{ .Values.tls.autoGenerate | quote }}
+             {{- if .Values.tls.certFile }}
+             - name: TLS_CERT_FILE
+               value: {{ .Values.tls.certFile | quote }}
+             {{- end }}
+             {{- if .Values.tls.keyFile }}
+             - name: TLS_KEY_FILE
+               value: {{ .Values.tls.keyFile | quote }}
              {{- end }}
              {{- end }}
+             - name: CORS_ALLOWED_ORIGINS
+               value: {{ .Values.cors.allowedOrigins | quote }}
              {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
+             {{- toYaml . | nindent 12 }}
+             {{- end }}
           resources:
             {{- toYaml .Values.services.proxy.resources | nindent 12 }}
           {{- if .Values.probes.startupProbe.enabled }}
@@ -163,9 +165,11 @@ spec:
               value: {{ .Values.services.registry.enableOfficial | quote }}
             - name: ENABLE_DOCKER
               value: {{ .Values.services.registry.enableDocker | quote }}
-            - name: SYNC_INTERVAL
-              value: {{ .Values.services.registry.syncInterval | quote }}
-            {{- with .Values.extraEnvVars }}
+             - name: SYNC_INTERVAL
+               value: {{ .Values.services.registry.syncInterval | quote }}
+             - name: CORS_ALLOWED_ORIGINS
+               value: {{ .Values.cors.allowedOrigins | quote }}
+             {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
