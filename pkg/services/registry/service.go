@@ -35,6 +35,7 @@ type Service struct {
 	store          clients.MCPServerStore
 	adapterStore   clients.AdapterResourceStore
 	adapterService *adaptersvc.AdapterService
+	syncManager    *SyncManager
 	shutdownCh     chan struct{}
 	mu             sync.RWMutex
 }
@@ -67,6 +68,9 @@ func NewService(config *Config) *Service {
 		adapterStore: clients.NewInMemoryAdapterStore(),
 		shutdownCh:   make(chan struct{}),
 	}
+
+	// Initialize sync manager
+	service.syncManager = NewSyncManager(service.store)
 
 	// Initialize adapter service
 	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store)
@@ -133,10 +137,19 @@ func (s *Service) Start() error {
 		}
 	})))
 
-	// Load remote MCP servers from static file
-	if err := s.loadRemoteServers(); err != nil {
-		log.Printf("Failed to load remote servers: %v", err)
-		// Continue anyway - service can still function
+	// Sync remote MCP servers from external registries
+	if err := s.syncManager.SyncOfficialRegistry(context.Background()); err != nil {
+		log.Printf("Failed to sync remote servers: %v", err)
+		// Fall back to loading from static file
+		if err := s.loadRemoteServers(); err != nil {
+			log.Printf("Failed to load remote servers from file: %v", err)
+			// Continue anyway - service can still function
+		}
+	} else {
+		// Save synced data to local file for persistence
+		if err := s.saveRemoteServers(); err != nil {
+			log.Printf("Failed to save synced servers to file: %v", err)
+		}
 	}
 
 	// Start HTTP server
@@ -300,6 +313,35 @@ func (s *Service) loadRemoteServers() error {
 	return nil
 }
 
+// saveRemoteServers saves the current remote servers to the static file
+func (s *Service) saveRemoteServers() error {
+	// Get all servers from the store
+	servers := s.store.ListMCPServers()
+
+	// Filter to only remote servers (those with source metadata)
+	var remoteServers []models.MCPServer
+	for _, server := range servers {
+		if server.Meta != nil {
+			if source, ok := server.Meta["source"].(string); ok && source != "" {
+				remoteServers = append(remoteServers, *server)
+			}
+		}
+	}
+
+	// Save to file
+	data, err := json.MarshalIndent(remoteServers, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal servers: %w", err)
+	}
+
+	if err := os.WriteFile(s.config.RemoteServersFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write servers file: %w", err)
+	}
+
+	log.Printf("Saved %d remote servers to %s", len(remoteServers), s.config.RemoteServersFile)
+	return nil
+}
+
 // handleHealth handles health check requests
 func (s *Service) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -320,6 +362,7 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	query := r.URL.Query()
 	searchQuery := query.Get("q")
+	category := query.Get("category")
 	transportType := query.Get("transport")
 	registryType := query.Get("registryType")
 	validationStatus := query.Get("validationStatus")
@@ -330,7 +373,7 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	// Apply filters
 	var filtered []*models.MCPServer
 	for _, server := range servers {
-		if s.matchesFilters(server, searchQuery, transportType, registryType, validationStatus) {
+		if s.matchesFilters(server, searchQuery, category, transportType, registryType, validationStatus) {
 			filtered = append(filtered, server)
 		}
 	}
@@ -340,12 +383,19 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 }
 
 // matchesFilters checks if a server matches the given filters
-func (s *Service) matchesFilters(server *models.MCPServer, query, transport, registryType, validationStatus string) bool {
+func (s *Service) matchesFilters(server *models.MCPServer, query, category, transport, registryType, validationStatus string) bool {
 	// Search query filter
 	if query != "" {
 		queryLower := strings.ToLower(query)
 		if !strings.Contains(strings.ToLower(server.Name), queryLower) &&
 			!strings.Contains(strings.ToLower(server.Description), queryLower) {
+			return false
+		}
+	}
+
+	// Category filter
+	if category != "" && server.Meta != nil {
+		if metaCategory, ok := server.Meta["category"].(string); !ok || metaCategory != category {
 			return false
 		}
 	}
@@ -543,21 +593,27 @@ func (s *Service) handleBulkUpload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// handleReloadRemoteServers reloads remote MCP servers from the static file
+// handleReloadRemoteServers reloads remote MCP servers from external registries
 func (s *Service) handleReloadRemoteServers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Clear existing remote servers
-	// Note: In a real implementation, you might want to be more selective
-	// For now, we'll reload all servers
-
-	if err := s.loadRemoteServers(); err != nil {
-		log.Printf("Failed to reload remote servers: %v", err)
-		http.Error(w, "Failed to reload remote servers", http.StatusInternalServerError)
-		return
+	// Sync from remote registries
+	if err := s.syncManager.SyncOfficialRegistry(r.Context()); err != nil {
+		log.Printf("Failed to sync remote servers: %v", err)
+		// Fall back to loading from static file
+		if err := s.loadRemoteServers(); err != nil {
+			log.Printf("Failed to reload remote servers from file: %v", err)
+			http.Error(w, "Failed to reload remote servers", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Save synced data to local file for persistence
+		if err := s.saveRemoteServers(); err != nil {
+			log.Printf("Failed to save synced servers to file: %v", err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

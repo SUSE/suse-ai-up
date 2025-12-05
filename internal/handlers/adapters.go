@@ -39,12 +39,12 @@ type CreateAdapterRequest struct {
 
 // CreateAdapterResponse represents the response for adapter creation
 type CreateAdapterResponse struct {
-	ID             string                  `json:"id"`
-	MCPServerID    string                  `json:"mcpServerId"`
-	MCPClientConfig map[string]interface{} `json:"mcpClientConfig"`
-	Capabilities   *models.MCPFunctionality `json:"capabilities"`
-	Status         string                  `json:"status"`
-	CreatedAt      time.Time               `json:"createdAt"`
+	ID              string                   `json:"id"`
+	MCPServerID     string                   `json:"mcpServerId"`
+	MCPClientConfig map[string]interface{}   `json:"mcpClientConfig"`
+	Capabilities    *models.MCPFunctionality `json:"capabilities"`
+	Status          string                   `json:"status"`
+	CreatedAt       time.Time                `json:"createdAt"`
 }
 
 // CreateAdapter creates a new adapter from a registry server
@@ -98,7 +98,7 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 			{
 				"url": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
 				"auth": map[string]interface{}{
-					"type": "bearer",
+					"type":  "bearer",
 					"token": "adapter-session-token", // Would be generated properly
 				},
 			},
@@ -106,12 +106,12 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := CreateAdapterResponse{
-		ID:             adapter.ID,
-		MCPServerID:    req.MCPServerID,
+		ID:              adapter.ID,
+		MCPServerID:     req.MCPServerID,
 		MCPClientConfig: mcpClientConfig,
-		Capabilities:   adapter.MCPFunctionality,
-		Status:         "ready",
-		CreatedAt:      adapter.CreatedAt,
+		Capabilities:    adapter.MCPFunctionality,
+		Status:          "ready",
+		CreatedAt:       adapter.CreatedAt,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -285,7 +285,7 @@ func (h *AdapterHandler) SyncAdapterCapabilities(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "capabilities_synced",
+		"status":  "capabilities_synced",
 		"message": "Adapter capabilities have been synchronized",
 	})
 }

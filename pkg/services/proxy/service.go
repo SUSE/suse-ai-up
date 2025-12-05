@@ -63,76 +63,55 @@ func (s *Service) Start() error {
 	// Create HTTP handler
 	handler := proxy.NewMCPProxyHandler(s.server)
 
-	// Create a custom handler that prevents automatic redirects for CORS
-	rootHandler := func(w http.ResponseWriter, r *http.Request) {
-		// Handle MCP routes (both /mcp/* and /api/v1/mcp/* for compatibility)
-		if r.URL.Path == "/mcp" || r.URL.Path == "/api/v1/mcp" {
-			middleware.CORSMiddleware(handler.HandleMCP)(w, r)
-			return
-		}
-		if r.URL.Path == "/mcp/tools" || r.URL.Path == "/api/v1/mcp/tools" {
-			middleware.CORSMiddleware(handler.HandleToolsList)(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, "/mcp/tools/") || strings.HasPrefix(r.URL.Path, "/api/v1/mcp/tools/") {
-			middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method == "POST" {
-					handler.HandleToolCall(w, r)
-				} else {
-					http.NotFound(w, r)
-				}
-			})(w, r)
-			return
-		}
-		if r.URL.Path == "/mcp/resources" || r.URL.Path == "/api/v1/mcp/resources" {
-			middleware.CORSMiddleware(handler.HandleResourcesList)(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, "/mcp/resources/") || strings.HasPrefix(r.URL.Path, "/api/v1/mcp/resources/") {
-			middleware.CORSMiddleware(handler.HandleResourceRead)(w, r)
-			return
-		}
+	// Create mux with specific route handlers
+	mux := http.NewServeMux()
 
-		// Handle health and docs
-		if r.URL.Path == "/health" {
-			middleware.CORSMiddleware(s.handleHealth)(w, r)
-			return
+	// MCP routes (both /mcp/* and /api/v1/mcp/* for compatibility)
+	mux.HandleFunc("/mcp", middleware.CORSMiddleware(handler.HandleMCP))
+	mux.HandleFunc("/api/v1/mcp", middleware.CORSMiddleware(handler.HandleMCP))
+	mux.HandleFunc("/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
+	mux.HandleFunc("/api/v1/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
+	mux.HandleFunc("/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			handler.HandleToolCall(w, r)
+		} else {
+			http.NotFound(w, r)
 		}
-		if r.URL.Path == "/docs" {
-			middleware.CORSMiddleware(s.handleDocs)(w, r)
-			return
+	}))
+	mux.HandleFunc("/api/v1/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			handler.HandleToolCall(w, r)
+		} else {
+			http.NotFound(w, r)
 		}
-		if r.URL.Path == "/swagger.json" {
-			middleware.CORSMiddleware(s.handleSwaggerJSON)(w, r)
-			return
-		}
+	}))
+	mux.HandleFunc("/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
+	mux.HandleFunc("/api/v1/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
+	mux.HandleFunc("/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
+	mux.HandleFunc("/api/v1/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
 
-		// Handle proxy routes without automatic redirects
-		if strings.HasPrefix(r.URL.Path, "/api/v1/registry/") || strings.HasPrefix(r.URL.Path, "/api/v1/adapters") {
-			middleware.CORSMiddleware(s.proxyToRegistry)(w, r)
-			return
-		}
-		if r.URL.Path == "/api/v1/scan" || strings.HasPrefix(r.URL.Path, "/api/v1/scan/") {
-			middleware.CORSMiddleware(s.proxyToDiscovery)(w, r)
-			return
-		}
-		if r.URL.Path == "/api/v1/servers" {
-			middleware.CORSMiddleware(s.proxyToDiscovery)(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, "/api/v1/plugins") {
-			middleware.CORSMiddleware(s.proxyToPlugins)(w, r)
-			return
-		}
+	// Health and docs
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
+	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
 
-		// Not found
-		http.NotFound(w, r)
-	}
+	// Proxy routes for service APIs
+	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(s.proxyToDiscovery))
+	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
+	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
+	mux.HandleFunc("/api/v1/plugins", middleware.CORSMiddleware(s.proxyToPlugins))
+	mux.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(s.proxyToPlugins))
+	mux.HandleFunc("/api/v1/health/", middleware.CORSMiddleware(s.proxyToPlugins))
 
 	// Start HTTP server
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
-		Handler: http.HandlerFunc(rootHandler),
+		Handler: mux,
 	}
 
 	// Start HTTP server in goroutine
@@ -175,7 +154,7 @@ func (s *Service) Start() error {
 		if len(tlsConfig.Certificates) > 0 {
 			httpsServer := &http.Server{
 				Addr:      fmt.Sprintf("0.0.0.0:%d", s.config.TLSPort),
-				Handler:   http.HandlerFunc(rootHandler),
+				Handler:   mux,
 				TLSConfig: tlsConfig,
 			}
 
@@ -338,454 +317,902 @@ func (s *Service) handleDocs(w http.ResponseWriter, r *http.Request) {
 
 // handleSwaggerJSON serves the Swagger JSON specification
 func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
-	swaggerJSON := `{
-  "swagger": "2.0",
-  "info": {
-    "title": "SUSE AI Universal Proxy API",
-    "description": "Complete API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system with registry, discovery, and plugin management",
-    "version": "1.0.0",
-    "contact": {
-      "name": "SUSE AI Team",
-      "email": "ai@suse.com"
-    }
-  },
-  "host": "localhost:8911",
-  "basePath": "/",
-  "schemes": ["http", "https"],
-  "consumes": ["application/json"],
-  "produces": ["application/json"],
-  "tags": [
-    {"name": "Proxy", "description": "MCP proxy endpoints"},
-    {"name": "Registry", "description": "MCP server registry management"},
-    {"name": "Discovery", "description": "Network discovery and server scanning"},
-    {"name": "Plugins", "description": "Plugin management and registration"},
-    {"name": "Health", "description": "Health check endpoints"}
-  ],
-  "paths": {
-    "/health": {
-      "get": {
-        "tags": ["Health"],
-        "summary": "Proxy Health Check",
-        "description": "Check the health status of the proxy service",
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "service": {"type": "string", "example": "proxy"},
-                "status": {"type": "string", "example": "healthy"},
-                "timestamp": {"type": "string", "format": "date-time"}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mcp": {
-      "post": {
-        "tags": ["Proxy"],
-        "summary": "MCP JSON-RPC Endpoint",
-        "description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "request",
-            "description": "JSON-RPC 2.0 request",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "jsonrpc": {"type": "string", "example": "2.0"},
-                "id": {"type": "integer", "example": 1},
-                "method": {"type": "string", "example": "tools/call"},
-                "params": {"type": "object"}
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful MCP response",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "jsonrpc": {"type": "string"},
-                "id": {"type": "integer"},
-                "result": {"type": "object"}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mcp/tools": {
-      "get": {
-        "tags": ["Proxy"],
-        "summary": "List Available Tools",
-        "description": "Get a list of all available MCP tools",
-        "responses": {
-          "200": {
-            "description": "List of tools",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "tools": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "name": {"type": "string"},
-                      "description": {"type": "string"},
-                      "inputSchema": {"type": "object"}
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mcp/resources": {
-      "get": {
-        "tags": ["Proxy"],
-        "summary": "List Available Resources",
-        "description": "Get a list of all available MCP resources",
-        "responses": {
-          "200": {
-            "description": "List of resources",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "resources": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "uri": {"type": "string"},
-                      "name": {"type": "string"},
-                      "description": {"type": "string"},
-                      "mimeType": {"type": "string"}
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/registry/browse": {
-      "get": {
-        "tags": ["Registry"],
-        "summary": "Browse MCP Server Registry",
-        "description": "Get a filtered list of MCP servers from the registry",
-        "parameters": [
-          {"name": "q", "in": "query", "description": "Search query", "type": "string"},
-          {"name": "transport", "in": "query", "description": "Transport type filter", "type": "string"},
-          {"name": "registryType", "in": "query", "description": "Registry type filter", "type": "string"},
-          {"name": "validationStatus", "in": "query", "description": "Validation status filter", "type": "string"}
-        ],
-        "responses": {
-          "200": {"description": "List of MCP servers", "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/registry/{id}": {
-      "get": {
-        "tags": ["Registry"],
-        "summary": "Get MCP Server by ID",
-        "description": "Retrieve a specific MCP server from the registry",
-        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "200": {"description": "MCP server details", "schema": {"$ref": "#/definitions/MCPServer"}},
-          "404": {"description": "Server not found"}
-        },
-        "security": [{"apiKey": []}]
-      },
-      "put": {
-        "tags": ["Registry"],
-        "summary": "Update MCP Server",
-        "description": "Update an existing MCP server in the registry",
-        "parameters": [
-          {"name": "id", "in": "path", "required": true, "type": "string"},
-          {"name": "server", "in": "body", "required": true, "schema": {"$ref": "#/definitions/MCPServer"}}
-        ],
-        "responses": {
-          "200": {"description": "Updated server", "schema": {"$ref": "#/definitions/MCPServer"}},
-          "404": {"description": "Server not found"}
-        },
-        "security": [{"apiKey": []}]
-      },
-      "delete": {
-        "tags": ["Registry"],
-        "summary": "Delete MCP Server",
-        "description": "Remove an MCP server from the registry",
-        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "204": {"description": "Server deleted"},
-          "404": {"description": "Server not found"}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/registry/upload": {
-      "post": {
-        "tags": ["Registry"],
-        "summary": "Upload Single MCP Server",
-        "description": "Add a single MCP server to the registry",
-        "parameters": [{"name": "server", "in": "body", "required": true, "schema": {"$ref": "#/definitions/MCPServer"}}],
-        "responses": {
-          "201": {"description": "Server created", "schema": {"$ref": "#/definitions/MCPServer"}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/registry/upload/bulk": {
-      "post": {
-        "tags": ["Registry"],
-        "summary": "Bulk Upload MCP Servers",
-        "description": "Add multiple MCP servers to the registry",
-        "parameters": [{"name": "servers", "in": "body", "required": true, "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}],
-        "responses": {
-          "201": {"description": "Servers created", "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/registry/sync/official": {
-      "post": {
-        "tags": ["Registry"],
-        "summary": "Sync Official Registry",
-        "description": "Trigger synchronization with the official MCP registry",
-        "responses": {
-          "200": {"description": "Sync started", "schema": {"type": "object", "properties": {"status": {"type": "string"}, "source": {"type": "string"}}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/registry/sync/docker": {
-      "post": {
-        "tags": ["Registry"],
-        "summary": "Sync Docker Registry",
-        "description": "Trigger synchronization with Docker MCP registry",
-        "responses": {
-          "200": {"description": "Sync started", "schema": {"type": "object", "properties": {"status": {"type": "string"}, "source": {"type": "string"}}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/scan": {
-      "post": {
-        "tags": ["Discovery"],
-        "summary": "Start Network Scan",
-        "description": "Initiate a network scan for MCP servers",
-        "parameters": [{"name": "config", "in": "body", "required": true, "schema": {"$ref": "#/definitions/ScanConfig"}}],
-        "responses": {
-          "200": {"description": "Scan started", "schema": {"type": "object", "properties": {"scan_id": {"type": "string"}}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/scan/{id}": {
-      "get": {
-        "tags": ["Discovery"],
-        "summary": "Get Scan Status",
-        "description": "Check the status of a running or completed scan",
-        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "200": {"description": "Scan status", "schema": {"$ref": "#/definitions/ScanJob"}},
-          "404": {"description": "Scan not found"}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/servers": {
-      "get": {
-        "tags": ["Discovery"],
-        "summary": "List Discovered Servers",
-        "description": "Get a list of all discovered MCP servers",
-        "responses": {
-          "200": {"description": "List of discovered servers", "schema": {"type": "array", "items": {"$ref": "#/definitions/DiscoveredServer"}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/plugins": {
-      "get": {
-        "tags": ["Plugins"],
-        "summary": "List Plugins",
-        "description": "Get a list of all registered plugins",
-        "responses": {
-          "200": {"description": "List of plugins", "schema": {"type": "array", "items": {"$ref": "#/definitions/Plugin"}}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/plugins/register": {
-      "post": {
-        "tags": ["Plugins"],
-        "summary": "Register Plugin",
-        "description": "Register a new plugin",
-        "parameters": [{"name": "plugin", "in": "body", "required": true, "schema": {"$ref": "#/definitions/Plugin"}}],
-        "responses": {
-          "201": {"description": "Plugin registered", "schema": {"$ref": "#/definitions/Plugin"}}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/plugins/{id}": {
-      "get": {
-        "tags": ["Plugins"],
-        "summary": "Get Plugin by ID",
-        "description": "Retrieve details of a specific plugin",
-        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "200": {"description": "Plugin details", "schema": {"$ref": "#/definitions/Plugin"}},
-          "404": {"description": "Plugin not found"}
-        },
-        "security": [{"apiKey": []}]
-      },
-      "put": {
-        "tags": ["Plugins"],
-        "summary": "Update Plugin",
-        "description": "Update an existing plugin",
-        "parameters": [
-          {"name": "id", "in": "path", "required": true, "type": "string"},
-          {"name": "plugin", "in": "body", "required": true, "schema": {"$ref": "#/definitions/Plugin"}}
-        ],
-        "responses": {
-          "200": {"description": "Plugin updated", "schema": {"$ref": "#/definitions/Plugin"}},
-          "404": {"description": "Plugin not found"}
-        },
-        "security": [{"apiKey": []}]
-      },
-      "delete": {
-        "tags": ["Plugins"],
-        "summary": "Unregister Plugin",
-        "description": "Remove a plugin from the registry",
-        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "204": {"description": "Plugin unregistered"},
-          "404": {"description": "Plugin not found"}
-        },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/api/v1/health/{pluginId}": {
-      "get": {
-        "tags": ["Plugins"],
-        "summary": "Get Plugin Health",
-        "description": "Check the health status of a specific plugin",
-        "parameters": [{"name": "pluginId", "in": "path", "required": true, "type": "string"}],
-        "responses": {
-          "200": {"description": "Plugin health status", "schema": {"$ref": "#/definitions/HealthStatus"}},
-          "404": {"description": "Plugin not found"}
-        },
-        "security": [{"apiKey": []}]
-      }
-    }
-  },
-  "definitions": {
-    "MCPServer": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string"},
-        "name": {"type": "string"},
-        "description": {"type": "string"},
-        "packages": {"type": "array", "items": {"$ref": "#/definitions/Package"}},
-        "validationStatus": {"type": "string"},
-        "discoveredAt": {"type": "string", "format": "date-time"},
-        "meta": {"type": "object"}
-      }
-    },
-    "Package": {
-      "type": "object",
-      "properties": {
-        "name": {"type": "string"},
-        "version": {"type": "string"},
-        "transport": {"$ref": "#/definitions/Transport"},
-        "registryType": {"type": "string"}
-      }
-    },
-    "Transport": {
-      "type": "object",
-      "properties": {
-        "type": {"type": "string"},
-        "config": {"type": "object"}
-      }
-    },
-    "ScanConfig": {
-      "type": "object",
-      "properties": {
-        "scanRanges": {"type": "array", "items": {"type": "string"}, "example": ["192.168.1.0/24"]},
-        "ports": {"type": "array", "items": {"type": "string"}, "example": ["3000", "4000"]},
-        "timeout": {"type": "string", "example": "30s"},
-        "maxConcurrent": {"type": "integer", "example": 10},
-        "excludeProxy": {"type": "boolean", "example": true}
-      }
-    },
-    "ScanJob": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string"},
-        "config": {"$ref": "#/definitions/ScanConfig"},
-        "startTime": {"type": "string", "format": "date-time"},
-        "status": {"type": "string"},
-        "results": {"type": "array", "items": {"$ref": "#/definitions/DiscoveredServer"}},
-        "error": {"type": "string"}
-      }
-    },
-    "DiscoveredServer": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string"},
-        "address": {"type": "string"},
-        "port": {"type": "integer"},
-        "protocol": {"type": "string"},
-        "discoveredAt": {"type": "string", "format": "date-time"},
-        "lastSeen": {"type": "string", "format": "date-time"}
-      }
-    },
-    "Plugin": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string"},
-        "name": {"type": "string"},
-        "description": {"type": "string"},
-        "version": {"type": "string"},
-        "status": {"type": "string"},
-        "config": {"type": "object"}
-      }
-    },
-    "HealthStatus": {
-      "type": "object",
-      "properties": {
-        "status": {"type": "string"},
-        "lastChecked": {"type": "string", "format": "date-time"},
-        "responseTime": {"type": "integer"},
-        "error": {"type": "string"}
-      }
-    }
-  },
-  "securityDefinitions": {
-    "apiKey": {
-      "type": "apiKey",
-      "name": "X-API-Key",
-      "in": "header",
-      "description": "API key authentication"
-    }
-  },
-  "security": [
-    {
-      "apiKey": []
-    }
-  ]
-}`
+	// Determine the host dynamically based on the request
+	host := r.Host
+	if host == "" {
+		host = "localhost:8911"
+	}
+
+	// Create the swagger spec as a Go map for easier manipulation
+	swagger := map[string]interface{}{
+		"swagger": "2.0",
+		"info": map[string]interface{}{
+			"title":       "SUSE AI Universal Proxy API",
+			"description": "Complete API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system with registry, discovery, and plugin management",
+			"version":     "1.0.0",
+			"contact": map[string]interface{}{
+				"name":  "SUSE AI Team",
+				"email": "ai@suse.com",
+			},
+		},
+		"host":     host,
+		"basePath": "/",
+		"schemes":  []string{"http", "https"},
+		"consumes": []string{"application/json"},
+		"produces": []string{"application/json"},
+		"tags": []map[string]interface{}{
+			{"name": "Proxy", "description": "MCP proxy endpoints (Port 8911)"},
+			{"name": "Registry", "description": "MCP server registry management (Port 8913)"},
+			{"name": "Discovery", "description": "Network discovery and server scanning (Port 8912)"},
+			{"name": "Plugins", "description": "Plugin management and registration (Port 8914)"},
+			{"name": "Health", "description": "Health check endpoints"},
+		},
+		"paths": map[string]interface{}{
+			"/health": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Health"},
+					"summary":     "Proxy Health Check",
+					"description": "Check the health status of the proxy service",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Service is healthy",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"status":    map[string]interface{}{"type": "string", "example": "healthy"},
+									"service":   map[string]interface{}{"type": "string", "example": "proxy"},
+									"timestamp": map[string]interface{}{"type": "string", "format": "date-time"},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/mcp": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Proxy"},
+					"summary":     "MCP JSON-RPC Endpoint",
+					"description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
+					"parameters": []map[string]interface{}{
+						{
+							"in":          "body",
+							"name":        "request",
+							"description": "JSON-RPC 2.0 request",
+							"required":    true,
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"jsonrpc": map[string]interface{}{"type": "string", "example": "2.0"},
+									"id":      map[string]interface{}{"type": "integer", "example": 1},
+									"method":  map[string]interface{}{"type": "string", "example": "tools/call"},
+									"params":  map[string]interface{}{"type": "object"},
+								},
+							},
+						},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Successful MCP response",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"jsonrpc": map[string]interface{}{"type": "string"},
+									"id":      map[string]interface{}{"type": "integer"},
+									"result":  map[string]interface{}{"type": "object"},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/mcp/tools": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Proxy"},
+					"summary":     "List Available Tools",
+					"description": "Get a list of all available MCP tools",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of tools",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"tools": map[string]interface{}{
+										"type": "array",
+										"items": map[string]interface{}{
+											"type": "object",
+											"properties": map[string]interface{}{
+												"name":        map[string]interface{}{"type": "string"},
+												"description": map[string]interface{}{"type": "string"},
+												"inputSchema": map[string]interface{}{"type": "object"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/mcp/tools/{toolName}": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Proxy"},
+					"summary":     "Call MCP Tool",
+					"description": "Execute a specific MCP tool",
+					"parameters": []map[string]interface{}{
+						{"name": "toolName", "in": "path", "required": true, "type": "string"},
+						{"name": "params", "in": "body", "required": true, "schema": map[string]interface{}{"type": "object"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Tool execution result",
+							"schema":      map[string]interface{}{"type": "object"},
+						},
+					},
+				},
+			},
+			"/mcp/resources": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Proxy"},
+					"summary":     "List Available Resources",
+					"description": "Get a list of all available MCP resources",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of resources",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"resources": map[string]interface{}{
+										"type": "array",
+										"items": map[string]interface{}{
+											"type": "object",
+											"properties": map[string]interface{}{
+												"uri":         map[string]interface{}{"type": "string"},
+												"name":        map[string]interface{}{"type": "string"},
+												"description": map[string]interface{}{"type": "string"},
+												"mimeType":    map[string]interface{}{"type": "string"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/mcp/resources/{resourceUri}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Proxy"},
+					"summary":     "Read MCP Resource",
+					"description": "Read content from a specific MCP resource",
+					"parameters": []map[string]interface{}{
+						{"name": "resourceUri", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Resource content",
+							"schema":      map[string]interface{}{"type": "object"},
+						},
+					},
+				},
+			},
+			"/api/v1/registry/browse": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Browse MCP Server Registry",
+					"description": "Get a filtered list of MCP servers from the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "q", "in": "query", "description": "Search query", "type": "string"},
+						{"name": "category", "in": "query", "description": "Category filter (development, productivity, etc.)", "type": "string"},
+						{"name": "transport", "in": "query", "description": "Transport type filter", "type": "string"},
+						{"name": "registryType", "in": "query", "description": "Registry type filter", "type": "string"},
+						{"name": "validationStatus", "in": "query", "description": "Validation status filter", "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of MCP servers",
+							"schema": map[string]interface{}{
+								"type":  "array",
+								"items": map[string]interface{}{"$ref": "#/definitions/MCPServer"},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Get MCP Server by ID",
+					"description": "Retrieve a specific MCP server from the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "MCP server details",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/MCPServer"},
+						},
+						"404": map[string]interface{}{
+							"description": "Server not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"put": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Update MCP Server",
+					"description": "Update an existing MCP server in the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "server", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/MCPServer"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Updated server",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/MCPServer"},
+						},
+						"404": map[string]interface{}{
+							"description": "Server not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Delete MCP Server",
+					"description": "Remove an MCP server from the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "Server deleted",
+						},
+						"404": map[string]interface{}{
+							"description": "Server not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/upload": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Upload Single MCP Server",
+					"description": "Add a single MCP server to the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "server", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/MCPServer"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Server created",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/MCPServer"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/upload/bulk": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Bulk Upload MCP Servers",
+					"description": "Add multiple MCP servers to the registry (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "servers", "in": "body", "required": true, "schema": map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPServer"}}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Servers created",
+							"schema":      map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPServer"}},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/reload": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Reload Remote Servers",
+					"description": "Reload MCP servers from remote configuration files (Registry Service - Port 8913)",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Reload completed",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"status":  map[string]interface{}{"type": "string"},
+									"message": map[string]interface{}{"type": "string"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/adapters": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "List Adapters",
+					"description": "Get a list of all adapters for the current user (Registry Service - Port 8913)",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of adapters",
+							"schema": map[string]interface{}{
+								"type":  "array",
+								"items": map[string]interface{}{"$ref": "#/definitions/Adapter"},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Create Adapter",
+					"description": "Create a new adapter from a registry server (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "adapter", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/CreateAdapterRequest"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Adapter created",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/CreateAdapterResponse"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/adapters/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Get Adapter by ID",
+					"description": "Retrieve details of a specific adapter (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Adapter details",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/Adapter"},
+						},
+						"404": map[string]interface{}{
+							"description": "Adapter not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"put": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Update Adapter",
+					"description": "Update an existing adapter (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "adapter", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/Adapter"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Adapter updated",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/Adapter"},
+						},
+						"404": map[string]interface{}{
+							"description": "Adapter not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Delete Adapter",
+					"description": "Remove an adapter (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "Adapter deleted",
+						},
+						"404": map[string]interface{}{
+							"description": "Adapter not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/adapters/{id}/sync": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Sync Adapter Capabilities",
+					"description": "Synchronize capabilities for a specific adapter (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Capabilities synced",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"status":  map[string]interface{}{"type": "string"},
+									"message": map[string]interface{}{"type": "string"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/scan": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Discovery"},
+					"summary":     "Start Network Scan",
+					"description": "Initiate a network scan for MCP servers (Discovery Service - Port 8912)",
+					"parameters": []map[string]interface{}{
+						{"name": "config", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/ScanConfig"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Scan started",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"scanId":    map[string]interface{}{"type": "string"},
+									"status":    map[string]interface{}{"type": "string"},
+									"config":    map[string]interface{}{"$ref": "#/definitions/ScanConfig"},
+									"startTime": map[string]interface{}{"type": "string", "format": "date-time"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/scan/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Discovery"},
+					"summary":     "Get Scan Status",
+					"description": "Check the status of a running or completed scan (Discovery Service - Port 8912)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Scan status",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/ScanJob"},
+						},
+						"404": map[string]interface{}{
+							"description": "Scan not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/servers": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Discovery"},
+					"summary":     "List Discovered Servers",
+					"description": "Get a list of all discovered MCP servers (Discovery Service - Port 8912)",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of discovered servers",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"servers": map[string]interface{}{
+										"type":  "array",
+										"items": map[string]interface{}{"$ref": "#/definitions/DiscoveredServer"},
+									},
+									"totalCount": map[string]interface{}{"type": "integer"},
+									"scanCount":  map[string]interface{}{"type": "integer"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/plugins": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Plugins"},
+					"summary":     "List Plugins",
+					"description": "Get a list of all registered plugins (Plugins Service - Port 8914)",
+					"parameters": []map[string]interface{}{
+						{"name": "type", "in": "query", "description": "Filter by service type", "type": "string", "enum": []string{"smartagents", "registry", "virtualmcp"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of plugins",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"plugins": map[string]interface{}{
+										"type":  "array",
+										"items": map[string]interface{}{"$ref": "#/definitions/Plugin"},
+									},
+									"totalCount": map[string]interface{}{"type": "integer"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/plugins/register": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Plugins"},
+					"summary":     "Register Plugin",
+					"description": "Register a new plugin (Plugins Service - Port 8914)",
+					"parameters": []map[string]interface{}{
+						{"name": "plugin", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/ServiceRegistration"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Plugin registered",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/ServiceRegistration"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/plugins/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Plugins"},
+					"summary":     "Get Plugin by ID",
+					"description": "Retrieve details of a specific plugin (Plugins Service - Port 8914)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Plugin details",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/ServiceRegistration"},
+						},
+						"404": map[string]interface{}{
+							"description": "Plugin not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"Plugins"},
+					"summary":     "Unregister Plugin",
+					"description": "Remove a plugin from the registry (Plugins Service - Port 8914)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "Plugin unregistered",
+						},
+						"404": map[string]interface{}{
+							"description": "Plugin not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/health/{pluginId}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Plugins"},
+					"summary":     "Get Plugin Health",
+					"description": "Check the health status of a specific plugin (Plugins Service - Port 8914)",
+					"parameters": []map[string]interface{}{
+						{"name": "pluginId", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Plugin health status",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/HealthStatus"},
+						},
+						"404": map[string]interface{}{
+							"description": "Plugin not found",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+		},
+		"definitions": map[string]interface{}{
+			"MCPServer": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":               map[string]interface{}{"type": "string"},
+					"name":             map[string]interface{}{"type": "string"},
+					"description":      map[string]interface{}{"type": "string"},
+					"packages":         map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/Package"}},
+					"validationStatus": map[string]interface{}{"type": "string"},
+					"discoveredAt":     map[string]interface{}{"type": "string", "format": "date-time"},
+					"meta":             map[string]interface{}{"type": "object"},
+				},
+			},
+			"Package": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":         map[string]interface{}{"type": "string"},
+					"version":      map[string]interface{}{"type": "string"},
+					"transport":    map[string]interface{}{"$ref": "#/definitions/Transport"},
+					"registryType": map[string]interface{}{"type": "string"},
+				},
+			},
+			"Transport": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"type":   map[string]interface{}{"type": "string"},
+					"config": map[string]interface{}{"type": "object"},
+				},
+			},
+			"Adapter": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":                   map[string]interface{}{"type": "string", "example": "my-adapter"},
+					"name":                 map[string]interface{}{"type": "string", "example": "my-adapter"},
+					"imageName":            map[string]interface{}{"type": "string", "example": "nginx"},
+					"imageVersion":         map[string]interface{}{"type": "string", "example": "latest"},
+					"protocol":             map[string]interface{}{"type": "string", "example": "MCP"},
+					"connectionType":       map[string]interface{}{"type": "string", "example": "StreamableHttp"},
+					"environmentVariables": map[string]interface{}{"type": "object", "additionalProperties": map[string]interface{}{"type": "string"}},
+					"replicaCount":         map[string]interface{}{"type": "integer", "example": 1},
+					"description":          map[string]interface{}{"type": "string", "example": "My MCP adapter"},
+					"useWorkloadIdentity":  map[string]interface{}{"type": "boolean", "example": false},
+					"remoteUrl":            map[string]interface{}{"type": "string", "example": "https://remote-mcp.example.com"},
+					"apiBaseUrl":           map[string]interface{}{"type": "string", "example": "http://localhost:8000"},
+					"tools":                map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "object"}},
+					"command":              map[string]interface{}{"type": "string", "example": "python"},
+					"args":                 map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+					"mcpClientConfig":      map[string]interface{}{"type": "object"},
+					"authentication":       map[string]interface{}{"$ref": "#/definitions/AdapterAuthConfig"},
+					"mcpFunctionality":     map[string]interface{}{"$ref": "#/definitions/MCPFunctionality"},
+					"createdBy":            map[string]interface{}{"type": "string", "example": "user@example.com"},
+					"createdAt":            map[string]interface{}{"type": "string", "format": "date-time"},
+					"lastUpdatedAt":        map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"CreateAdapterRequest": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":                 map[string]interface{}{"type": "string", "example": "my-adapter"},
+					"imageName":            map[string]interface{}{"type": "string", "example": "nginx"},
+					"imageVersion":         map[string]interface{}{"type": "string", "example": "latest"},
+					"protocol":             map[string]interface{}{"type": "string", "example": "MCP"},
+					"connectionType":       map[string]interface{}{"type": "string", "example": "StreamableHttp"},
+					"environmentVariables": map[string]interface{}{"type": "object", "additionalProperties": map[string]interface{}{"type": "string"}},
+					"replicaCount":         map[string]interface{}{"type": "integer", "example": 1},
+					"description":          map[string]interface{}{"type": "string", "example": "My MCP adapter"},
+					"useWorkloadIdentity":  map[string]interface{}{"type": "boolean", "example": false},
+					"remoteUrl":            map[string]interface{}{"type": "string", "example": "https://remote-mcp.example.com"},
+					"apiBaseUrl":           map[string]interface{}{"type": "string", "example": "http://localhost:8000"},
+					"tools":                map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "object"}},
+					"command":              map[string]interface{}{"type": "string", "example": "python"},
+					"args":                 map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+					"mcpClientConfig":      map[string]interface{}{"type": "object"},
+					"authentication":       map[string]interface{}{"$ref": "#/definitions/AdapterAuthConfig"},
+				},
+				"required": []string{"name"},
+			},
+			"CreateAdapterResponse": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":                   map[string]interface{}{"type": "string", "example": "my-adapter"},
+					"name":                 map[string]interface{}{"type": "string", "example": "my-adapter"},
+					"imageName":            map[string]interface{}{"type": "string", "example": "nginx"},
+					"imageVersion":         map[string]interface{}{"type": "string", "example": "latest"},
+					"protocol":             map[string]interface{}{"type": "string", "example": "MCP"},
+					"connectionType":       map[string]interface{}{"type": "string", "example": "StreamableHttp"},
+					"environmentVariables": map[string]interface{}{"type": "object", "additionalProperties": map[string]interface{}{"type": "string"}},
+					"replicaCount":         map[string]interface{}{"type": "integer", "example": 1},
+					"description":          map[string]interface{}{"type": "string", "example": "My MCP adapter"},
+					"useWorkloadIdentity":  map[string]interface{}{"type": "boolean", "example": false},
+					"remoteUrl":            map[string]interface{}{"type": "string", "example": "https://remote-mcp.example.com"},
+					"apiBaseUrl":           map[string]interface{}{"type": "string", "example": "http://localhost:8000"},
+					"tools":                map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "object"}},
+					"command":              map[string]interface{}{"type": "string", "example": "python"},
+					"args":                 map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+					"mcpClientConfig":      map[string]interface{}{"type": "object"},
+					"authentication":       map[string]interface{}{"$ref": "#/definitions/AdapterAuthConfig"},
+					"mcpFunctionality":     map[string]interface{}{"$ref": "#/definitions/MCPFunctionality"},
+					"createdBy":            map[string]interface{}{"type": "string", "example": "user@example.com"},
+					"createdAt":            map[string]interface{}{"type": "string", "format": "date-time"},
+					"lastUpdatedAt":        map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"ScanConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"scanRanges":       map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"192.168.1.0/24", "10.0.0.1-10.0.0.10"}},
+					"ports":            map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"8000", "8001", "9000-9100"}},
+					"timeout":          map[string]interface{}{"type": "string", "example": "30s"},
+					"maxConcurrent":    map[string]interface{}{"type": "integer", "example": 10},
+					"excludeProxy":     map[string]interface{}{"type": "boolean", "example": true},
+					"excludeAddresses": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+				},
+			},
+			"ScanJob": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":        map[string]interface{}{"type": "string", "example": "scan-12345"},
+					"status":    map[string]interface{}{"type": "string", "example": "running"},
+					"startTime": map[string]interface{}{"type": "string", "format": "date-time"},
+					"config":    map[string]interface{}{"$ref": "#/definitions/ScanConfig"},
+					"results":   map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/DiscoveredServer"}},
+					"error":     map[string]interface{}{"type": "string"},
+				},
+			},
+			"DiscoveredServer": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":                  map[string]interface{}{"type": "string", "example": "server-123"},
+					"name":                map[string]interface{}{"type": "string", "example": "MCP Example Server"},
+					"address":             map[string]interface{}{"type": "string", "example": "http://192.168.1.100:8000"},
+					"protocol":            map[string]interface{}{"type": "string", "example": "MCP"},
+					"connection":          map[string]interface{}{"type": "string", "example": "StreamableHttp"},
+					"status":              map[string]interface{}{"type": "string", "example": "healthy"},
+					"lastSeen":            map[string]interface{}{"type": "string", "format": "date-time"},
+					"metadata":            map[string]interface{}{"type": "object", "additionalProperties": map[string]interface{}{"type": "string"}},
+					"vulnerability_score": map[string]interface{}{"type": "string", "example": "high"},
+				},
+			},
+			"Plugin": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"service_id":     map[string]interface{}{"type": "string"},
+					"service_type":   map[string]interface{}{"type": "string", "enum": []string{"smartagents", "registry", "virtualmcp"}},
+					"service_url":    map[string]interface{}{"type": "string"},
+					"capabilities":   map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/ServiceCapability"}},
+					"version":        map[string]interface{}{"type": "string"},
+					"registered_at":  map[string]interface{}{"type": "string", "format": "date-time"},
+					"last_heartbeat": map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"ServiceRegistration": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"service_id":     map[string]interface{}{"type": "string"},
+					"service_type":   map[string]interface{}{"type": "string", "enum": []string{"smartagents", "registry", "virtualmcp"}},
+					"service_url":    map[string]interface{}{"type": "string"},
+					"capabilities":   map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/ServiceCapability"}},
+					"version":        map[string]interface{}{"type": "string"},
+					"registered_at":  map[string]interface{}{"type": "string", "format": "date-time"},
+					"last_heartbeat": map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"ServiceCapability": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"path":        map[string]interface{}{"type": "string", "example": "/v1/*"},
+					"methods":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"GET", "POST"}},
+					"description": map[string]interface{}{"type": "string"},
+				},
+			},
+			"HealthStatus": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"status":        map[string]interface{}{"type": "string", "enum": []string{"healthy", "unhealthy", "unknown"}},
+					"message":       map[string]interface{}{"type": "string"},
+					"last_checked":  map[string]interface{}{"type": "string", "format": "date-time"},
+					"response_time": map[string]interface{}{"type": "integer", "description": "Response time in nanoseconds"},
+				},
+			},
+			"AdapterAuthConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"required":    map[string]interface{}{"type": "boolean"},
+					"type":        map[string]interface{}{"type": "string", "enum": []string{"bearer", "oauth", "basic", "apikey", "none"}},
+					"bearerToken": map[string]interface{}{"$ref": "#/definitions/BearerTokenConfig"},
+					"oauth":       map[string]interface{}{"$ref": "#/definitions/OAuthConfig"},
+					"basic":       map[string]interface{}{"$ref": "#/definitions/BasicAuthConfig"},
+					"apiKey":      map[string]interface{}{"$ref": "#/definitions/APIKeyConfig"},
+				},
+			},
+			"BearerTokenConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"token":     map[string]interface{}{"type": "string"},
+					"dynamic":   map[string]interface{}{"type": "boolean"},
+					"expiresAt": map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"OAuthConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"clientId":     map[string]interface{}{"type": "string"},
+					"clientSecret": map[string]interface{}{"type": "string"},
+					"authUrl":      map[string]interface{}{"type": "string"},
+					"tokenUrl":     map[string]interface{}{"type": "string"},
+					"scopes":       map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+					"redirectUri":  map[string]interface{}{"type": "string"},
+				},
+			},
+			"BasicAuthConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"username": map[string]interface{}{"type": "string"},
+					"password": map[string]interface{}{"type": "string"},
+				},
+			},
+			"APIKeyConfig": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"key":      map[string]interface{}{"type": "string"},
+					"location": map[string]interface{}{"type": "string", "enum": []string{"header", "query", "cookie"}},
+					"name":     map[string]interface{}{"type": "string"},
+				},
+			},
+			"MCPFunctionality": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"serverInfo":    map[string]interface{}{"$ref": "#/definitions/MCPServerInfo"},
+					"tools":         map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPTool"}},
+					"prompts":       map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPPrompt"}},
+					"resources":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPResource"}},
+					"lastRefreshed": map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"MCPServerInfo": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":         map[string]interface{}{"type": "string"},
+					"version":      map[string]interface{}{"type": "string"},
+					"protocol":     map[string]interface{}{"type": "string"},
+					"capabilities": map[string]interface{}{"type": "object"},
+				},
+			},
+			"MCPTool": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":         map[string]interface{}{"type": "string"},
+					"description":  map[string]interface{}{"type": "string"},
+					"input_schema": map[string]interface{}{"type": "object"},
+					"source_type":  map[string]interface{}{"type": "string", "enum": []string{"api", "database", "graphql"}},
+					"config":       map[string]interface{}{"type": "object"},
+				},
+			},
+			"MCPPrompt": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":        map[string]interface{}{"type": "string"},
+					"description": map[string]interface{}{"type": "string"},
+					"arguments":   map[string]interface{}{"type": "array", "items": map[string]interface{}{"$ref": "#/definitions/MCPArgument"}},
+				},
+			},
+			"MCPArgument": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"name":        map[string]interface{}{"type": "string"},
+					"description": map[string]interface{}{"type": "string"},
+					"required":    map[string]interface{}{"type": "boolean"},
+				},
+			},
+			"MCPResource": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"uri":         map[string]interface{}{"type": "string"},
+					"name":        map[string]interface{}{"type": "string"},
+					"description": map[string]interface{}{"type": "string"},
+					"mimeType":    map[string]interface{}{"type": "string"},
+				},
+			},
+		},
+		"securityDefinitions": map[string]interface{}{
+			"apiKey": map[string]interface{}{
+				"type":        "apiKey",
+				"name":        "X-API-Key",
+				"in":          "header",
+				"description": "API key authentication",
+			},
+		},
+		"security": []map[string]interface{}{
+			{"apiKey": []interface{}{}},
+		},
+	}
+
+	// Convert to JSON
+	responseData, err := json.Marshal(swagger)
+	if err != nil {
+		log.Printf("Failed to marshal swagger JSON: %v", err)
+		http.Error(w, "Swagger documentation not available", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(swaggerJSON))
+	w.Write(responseData)
 }
 
 // proxyToRegistry forwards requests to the registry service
@@ -841,6 +1268,7 @@ func (s *Service) proxyRequest(w http.ResponseWriter, r *http.Request, serviceUR
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("Proxy request failed: %v", err)
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 		return
 	}
