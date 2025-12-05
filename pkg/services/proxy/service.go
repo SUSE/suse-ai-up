@@ -108,7 +108,7 @@ func (s *Service) Start() error {
 		}
 
 		// Handle proxy routes without automatic redirects
-		if strings.HasPrefix(r.URL.Path, "/api/v1/registry/") {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/registry/") || strings.HasPrefix(r.URL.Path, "/api/v1/adapters") {
 			middleware.CORSMiddleware(s.proxyToRegistry)(w, r)
 			return
 		}
@@ -131,7 +131,7 @@ func (s *Service) Start() error {
 
 	// Start HTTP server
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.config.Port),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
 		Handler: http.HandlerFunc(rootHandler),
 	}
 
@@ -174,7 +174,7 @@ func (s *Service) Start() error {
 
 		if len(tlsConfig.Certificates) > 0 {
 			httpsServer := &http.Server{
-				Addr:      fmt.Sprintf(":%d", s.config.TLSPort),
+				Addr:      fmt.Sprintf("0.0.0.0:%d", s.config.TLSPort),
 				Handler:   http.HandlerFunc(rootHandler),
 				TLSConfig: tlsConfig,
 			}
@@ -790,17 +790,17 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 
 // proxyToRegistry forwards requests to the registry service
 func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://localhost:8913", "")
+	s.proxyRequest(w, r, "http://127.0.0.1:8913", "")
 }
 
 // proxyToDiscovery forwards requests to the discovery service
 func (s *Service) proxyToDiscovery(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://localhost:8912", "")
+	s.proxyRequest(w, r, "http://127.0.0.1:8912", "")
 }
 
 // proxyToPlugins forwards requests to the plugins service
 func (s *Service) proxyToPlugins(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://localhost:8914", "")
+	s.proxyRequest(w, r, "http://127.0.0.1:8914", "")
 }
 
 // proxyRequest forwards HTTP requests to other services

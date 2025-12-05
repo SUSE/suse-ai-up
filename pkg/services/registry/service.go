@@ -141,7 +141,7 @@ func (s *Service) Start() error {
 
 	// Start HTTP server
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.config.Port),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
 		Handler: mux,
 	}
 
@@ -183,7 +183,7 @@ func (s *Service) Start() error {
 
 		if len(tlsConfig.Certificates) > 0 {
 			httpsServer := &http.Server{
-				Addr:      fmt.Sprintf(":%d", s.config.TLSPort),
+				Addr:      fmt.Sprintf("0.0.0.0:%d", s.config.TLSPort),
 				Handler:   mux,
 				TLSConfig: tlsConfig,
 			}

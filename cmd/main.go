@@ -152,7 +152,7 @@ func runAllServices() {
 
 	// Service configurations
 	services := []ServiceConfig{
-		{Name: "proxy", Port: 8080, Cmd: []string{"./suse-ai-up", "proxy"}},
+		{Name: "proxy", Port: 8911, Cmd: []string{"./suse-ai-up", "proxy"}},
 		{Name: "discovery", Port: 8912, Cmd: []string{"./suse-ai-up", "discovery"}},
 		{Name: "registry", Port: 8913, Cmd: []string{"./suse-ai-up", "registry"}},
 		{Name: "plugins", Port: 8914, Cmd: []string{"./suse-ai-up", "plugins"}},
@@ -320,44 +320,57 @@ func startHealthCheckServer(errors chan<- error) error {
 	// Swagger JSON endpoint
 	mux.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		swaggerJSON := `{
+
+		// Determine host: query parameter > environment variable > request host > default
+		host := r.URL.Query().Get("host")
+		if host == "" {
+			host = os.Getenv("SWAGGER_HOST")
+			if host == "" {
+				host = r.Host
+				if host == "" {
+					host = "localhost:8911"
+				}
+			}
+		}
+
+		swaggerJSON := fmt.Sprintf(`{
   "swagger": "2.0",
   "info": {
     "title": "SUSE AI Universal Proxy API",
-    "description": "API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system with registry, discovery, and plugin management",
+    "description": "API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system. Customize host via ?host= parameter or SWAGGER_HOST env var.",
     "version": "1.0.0",
     "contact": {
       "name": "SUSE AI Team",
       "email": "ai@suse.com"
     }
   },
-  "host": "localhost:8911",
+  "host": "%s",
   "basePath": "/",
   "schemes": ["http", "https"],
   "consumes": ["application/json"],
   "produces": ["application/json"],
+  "tags": [
+    {"name": "Health", "description": "Health check endpoints"},
+    {"name": "MCP", "description": "Model Context Protocol endpoints"},
+    {"name": "Registry", "description": "MCP server registry management"},
+    {"name": "Adapters", "description": "Adapter management"},
+    {"name": "Discovery", "description": "Network discovery and scanning"},
+    {"name": "Plugins", "description": "Plugin management"}
+  ],
   "paths": {
     "/health": {
       "get": {
+        "tags": ["Health"],
         "summary": "Health Check",
-        "description": "Check the health status of all proxy services",
+        "description": "Check the health status of all services",
         "responses": {
           "200": {
-            "description": "All services are healthy",
+            "description": "Services are healthy",
             "schema": {
               "type": "object",
               "properties": {
-                "status": {"type": "string", "example": "healthy"},
-                "timestamp": {"type": "string", "format": "date-time"},
-                "services": {
-                  "type": "object",
-                  "properties": {
-                    "proxy": {"type": "string"},
-                    "registry": {"type": "string"},
-                    "discovery": {"type": "string"},
-                    "plugins": {"type": "string"}
-                  }
-                }
+                "status": {"type": "string"},
+                "services": {"type": "object"}
               }
             }
           }
@@ -366,150 +379,177 @@ func startHealthCheckServer(errors chan<- error) error {
     },
     "/mcp": {
       "post": {
-        "summary": "MCP JSON-RPC Endpoint",
-        "description": "Main Model Context Protocol JSON-RPC endpoint for tool calls and resource access",
-        "parameters": [{"in": "body", "name": "request", "description": "JSON-RPC 2.0 request", "required": true, "schema": {"type": "object", "properties": {"jsonrpc": {"type": "string", "example": "2.0"}, "id": {"type": "integer", "example": 1}, "method": {"type": "string", "example": "tools/call"}, "params": {"type": "object"}}}}],
-        "responses": {"200": {"description": "Successful MCP response", "schema": {"type": "object", "properties": {"jsonrpc": {"type": "string"}, "id": {"type": "integer"}, "result": {"type": "object"}}}}}
+        "tags": ["MCP"],
+        "summary": "MCP JSON-RPC",
+        "description": "Model Context Protocol JSON-RPC endpoint",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {"type": "object"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/mcp": {
       "post": {
-        "summary": "MCP JSON-RPC Endpoint (API v1)",
-        "description": "API v1 compatible MCP JSON-RPC endpoint",
-        "parameters": [{"in": "body", "name": "request", "description": "JSON-RPC 2.0 request", "required": true, "schema": {"type": "object"}}],
-        "responses": {"200": {"description": "Successful MCP response", "schema": {"type": "object"}}}
+        "tags": ["MCP"],
+        "summary": "MCP JSON-RPC (API v1)",
+        "description": "API v1 compatible MCP endpoint",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {"type": "object"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success", "schema": {"type": "object"}}
+        }
       }
     },
     "/mcp/tools": {
       "get": {
-        "summary": "List Available Tools",
-        "description": "Get a list of all available MCP tools",
-        "responses": {"200": {"description": "List of tools", "schema": {"type": "object", "properties": {"tools": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "inputSchema": {"type": "object"}}}}}}}}
+        "tags": ["MCP"],
+        "summary": "List MCP Tools",
+        "description": "Get available MCP tools",
+        "responses": {
+          "200": {
+            "description": "List of tools",
+            "schema": {"type": "object"}
+          }
+        }
       }
     },
     "/api/v1/mcp/tools": {
       "get": {
-        "summary": "List Available Tools (API v1)",
-        "description": "API v1 compatible endpoint for listing MCP tools",
-        "responses": {"200": {"description": "List of tools", "schema": {"type": "object"}}}
+        "tags": ["MCP"],
+        "summary": "List MCP Tools (API v1)",
+        "description": "API v1 compatible tools endpoint",
+        "responses": {
+          "200": {"description": "List of tools", "schema": {"type": "object"}}
+        }
       }
     },
     "/mcp/resources": {
       "get": {
-        "summary": "List Available Resources",
-        "description": "Get a list of all available MCP resources",
-        "responses": {"200": {"description": "List of resources", "schema": {"type": "object", "properties": {"resources": {"type": "array", "items": {"type": "object", "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"}, "mimeType": {"type": "string"}}}}}}}}
+        "tags": ["MCP"],
+        "summary": "List MCP Resources",
+        "description": "Get available MCP resources",
+        "responses": {
+          "200": {"description": "List of resources", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/mcp/resources": {
       "get": {
-        "summary": "List Available Resources (API v1)",
-        "description": "API v1 compatible endpoint for listing MCP resources",
-        "responses": {"200": {"description": "List of resources", "schema": {"type": "object"}}}
+        "tags": ["MCP"],
+        "summary": "List MCP Resources (API v1)",
+        "description": "API v1 compatible resources endpoint",
+        "responses": {
+          "200": {"description": "List of resources", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/registry/browse": {
       "get": {
-        "summary": "Browse MCP Servers",
-        "description": "Browse all registered MCP servers",
-        "responses": {"200": {"description": "List of MCP servers", "schema": {"type": "object"}}}
+        "tags": ["Registry"],
+        "summary": "Browse Registry",
+        "description": "Browse MCP servers in registry (proxied to registry service)",
+        "responses": {
+          "200": {"description": "List of servers", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/registry/upload": {
       "post": {
-        "summary": "Upload MCP Server",
-        "description": "Upload and register a new MCP server",
-        "parameters": [{"in": "body", "name": "server", "description": "MCP server configuration", "required": true, "schema": {"type": "object"}}],
-        "responses": {"201": {"description": "Server uploaded successfully", "schema": {"type": "object"}}}
-      }
-    },
-    "/api/v1/registry/upload/bulk": {
-      "post": {
-        "summary": "Bulk Upload MCP Servers",
-        "description": "Upload multiple MCP servers at once",
-        "parameters": [{"in": "body", "name": "servers", "description": "Array of MCP server configurations", "required": true, "schema": {"type": "array"}}],
-        "responses": {"201": {"description": "Servers uploaded successfully", "schema": {"type": "object"}}}
-      }
-    },
-    "/api/v1/registry/reload": {
-      "post": {
-        "summary": "Reload Remote Servers",
-        "description": "Reload remote MCP servers from configuration",
-        "responses": {"200": {"description": "Servers reloaded successfully", "schema": {"type": "object"}}}
+        "tags": ["Registry"],
+        "summary": "Upload Server",
+        "description": "Upload MCP server to registry (proxied to registry service)",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "server",
+            "required": true,
+            "schema": {"type": "object"}
+          }
+        ],
+        "responses": {
+          "201": {"description": "Server uploaded", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/adapters": {
       "get": {
+        "tags": ["Adapters"],
         "summary": "List Adapters",
-        "description": "Get all registered adapters",
-        "responses": {"200": {"description": "List of adapters", "schema": {"type": "object"}}}
+        "description": "Get registered adapters (proxied to registry service)",
+        "responses": {
+          "200": {"description": "List of adapters", "schema": {"type": "object"}}
+        }
       },
       "post": {
+        "tags": ["Adapters"],
         "summary": "Create Adapter",
-        "description": "Create a new adapter",
-        "parameters": [{"in": "body", "name": "adapter", "description": "Adapter configuration", "required": true, "schema": {"type": "object"}}],
-        "responses": {"201": {"description": "Adapter created successfully", "schema": {"type": "object"}}}
+        "description": "Create new adapter (proxied to registry service)",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "adapter",
+            "required": true,
+            "schema": {"type": "object"}
+          }
+        ],
+        "responses": {
+          "201": {"description": "Adapter created", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/scan": {
       "post": {
-        "summary": "Start Network Scan",
-        "description": "Start a network scan for MCP servers",
-        "parameters": [{"in": "body", "name": "scan", "description": "Scan configuration", "required": true, "schema": {"type": "object"}}],
-        "responses": {"202": {"description": "Scan started", "schema": {"type": "object"}}}
-      }
-    },
-    "/api/v1/scan/{id}": {
-      "get": {
-        "summary": "Get Scan Status",
-        "description": "Get the status of a network scan",
-        "parameters": [{"in": "path", "name": "id", "description": "Scan ID", "required": true, "type": "string"}],
-        "responses": {"200": {"description": "Scan status", "schema": {"type": "object"}}}
+        "tags": ["Discovery"],
+        "summary": "Start Scan",
+        "description": "Start network scan for MCP servers (proxied to discovery service)",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "config",
+            "required": true,
+            "schema": {"type": "object"}
+          }
+        ],
+        "responses": {
+          "202": {"description": "Scan started", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/servers": {
       "get": {
-        "summary": "List Discovered Servers",
-        "description": "Get all discovered MCP servers",
-        "responses": {"200": {"description": "List of discovered servers", "schema": {"type": "object"}}}
+        "tags": ["Discovery"],
+        "summary": "List Servers",
+        "description": "Get discovered MCP servers (proxied to discovery service)",
+        "responses": {
+          "200": {"description": "List of servers", "schema": {"type": "object"}}
+        }
       }
     },
     "/api/v1/plugins": {
       "get": {
+        "tags": ["Plugins"],
         "summary": "List Plugins",
-        "description": "Get all registered plugins",
-        "responses": {"200": {"description": "List of plugins", "schema": {"type": "object"}}}
-      }
-    },
-    "/api/v1/plugins/register": {
-      "post": {
-        "summary": "Register Plugin",
-        "description": "Register a new plugin",
-        "parameters": [{"in": "body", "name": "plugin", "description": "Plugin configuration", "required": true, "schema": {"type": "object"}}],
-        "responses": {"201": {"description": "Plugin registered successfully", "schema": {"type": "object"}}}
+        "description": "Get registered plugins (proxied to plugins service)",
+        "responses": {
+          "200": {"description": "List of plugins", "schema": {"type": "object"}}
+        }
       }
     }
-  },
-  "definitions": {},
-  "securityDefinitions": {
-    "bearerAuth": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "Bearer token authentication (e.g., 'Bearer <token>')"
-    },
-    "apiKey": {
-      "type": "apiKey",
-      "name": "X-API-Key",
-      "in": "header",
-      "description": "API key authentication"
-    }
-  },
-  "security": [
-    {"bearerAuth": []},
-    {"apiKey": []}
-  ]
-}`
+  }
+}`, host)
 		w.Write([]byte(swaggerJSON))
 	})
 
