@@ -8,10 +8,12 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
 	"net/http"
+	"strings"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/proxy"
 	"time"
@@ -72,6 +74,12 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
 	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
 	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
+
+	// Proxy routes for other services
+	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
+	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
+	mux.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(s.proxyToPlugins))
 
 	// Start HTTP server
 	httpServer := &http.Server{
@@ -232,7 +240,33 @@ func (s *Service) handleDocs(w http.ResponseWriter, r *http.Request) {
                 plugins: [
                     SwaggerUIBundle.plugins.DownloadUrl
                 ],
-                layout: "StandaloneLayout"
+                layout: "StandaloneLayout",
+                servers: [
+                    {
+                        url: 'http://localhost:8911',
+                        description: 'Proxy Service'
+                    }
+                ],
+                onComplete: function() {
+                    // Add custom server selection for different operations
+                    setTimeout(function() {
+                        // Find all operations and set appropriate servers
+                        const operations = document.querySelectorAll('.opblock-summary-method');
+                        operations.forEach(function(op) {
+                            const path = op.closest('.opblock').querySelector('.opblock-summary-path').textContent.trim();
+                            if (path.startsWith('/api/v1/registry')) {
+                                // This should use registry service
+                                console.log('Registry operation:', path);
+                            } else if (path.startsWith('/api/v1/scan') || path.startsWith('/api/v1/servers')) {
+                                // This should use discovery service
+                                console.log('Discovery operation:', path);
+                            } else if (path.startsWith('/api/v1/plugins')) {
+                                // This should use plugins service
+                                console.log('Plugins operation:', path);
+                            }
+                        });
+                    }, 1000);
+                }
             });
         };
     </script>
@@ -385,214 +419,127 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
     "/api/v1/registry/browse": {
       "get": {
         "tags": ["Registry"],
-        "summary": "Browse Registry",
-        "description": "Browse available MCP servers in the registry",
+        "summary": "Browse MCP Server Registry",
+        "description": "Get a filtered list of MCP servers from the registry",
+        "parameters": [
+          {"name": "q", "in": "query", "description": "Search query", "type": "string"},
+          {"name": "transport", "in": "query", "description": "Transport type filter", "type": "string"},
+          {"name": "registryType", "in": "query", "description": "Registry type filter", "type": "string"},
+          {"name": "validationStatus", "in": "query", "description": "Validation status filter", "type": "string"}
+        ],
         "responses": {
-          "200": {
-            "description": "Registry browse results",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "servers": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {"type": "string"},
-                      "name": {"type": "string"},
-                      "description": {"type": "string"},
-                      "endpoint": {"type": "string"},
-                      "capabilities": {"type": "array", "items": {"type": "string"}}
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+          "200": {"description": "List of MCP servers", "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/registry/{id}": {
       "get": {
         "tags": ["Registry"],
-        "summary": "Get Registry Server",
-        "description": "Get details of a specific MCP server from the registry",
+        "summary": "Get MCP Server by ID",
+        "description": "Retrieve a specific MCP server from the registry",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "MCP server details", "schema": {"$ref": "#/definitions/MCPServer"}},
+          "404": {"description": "Server not found"}
+        },
+        "security": [{"apiKey": []}]
+      },
+      "put": {
+        "tags": ["Registry"],
+        "summary": "Update MCP Server",
+        "description": "Update an existing MCP server in the registry",
         "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string",
-            "description": "Server ID"
-          }
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "server", "in": "body", "required": true, "schema": {"$ref": "#/definitions/MCPServer"}}
         ],
         "responses": {
-          "200": {
-            "description": "Server details",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "id": {"type": "string"},
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "endpoint": {"type": "string"},
-                "capabilities": {"type": "array", "items": {"type": "string"}}
-              }
-            }
-          },
-          "404": {
-            "description": "Server not found"
-          }
-        }
+          "200": {"description": "Updated server", "schema": {"$ref": "#/definitions/MCPServer"}},
+          "404": {"description": "Server not found"}
+        },
+        "security": [{"apiKey": []}]
+      },
+      "delete": {
+        "tags": ["Registry"],
+        "summary": "Delete MCP Server",
+        "description": "Remove an MCP server from the registry",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "204": {"description": "Server deleted"},
+          "404": {"description": "Server not found"}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/registry/upload": {
       "post": {
         "tags": ["Registry"],
-        "summary": "Upload Server to Registry",
-        "description": "Upload a new MCP server configuration to the registry",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "server",
-            "description": "Server configuration",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "endpoint": {"type": "string"},
-                "capabilities": {"type": "array", "items": {"type": "string"}}
-              }
-            }
-          }
-        ],
+        "summary": "Upload Single MCP Server",
+        "description": "Add a single MCP server to the registry",
+        "parameters": [{"name": "server", "in": "body", "required": true, "schema": {"$ref": "#/definitions/MCPServer"}}],
         "responses": {
-          "201": {
-            "description": "Server uploaded successfully"
-          }
-        }
+          "201": {"description": "Server created", "schema": {"$ref": "#/definitions/MCPServer"}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/registry/upload/bulk": {
       "post": {
         "tags": ["Registry"],
-        "summary": "Bulk Upload Servers",
-        "description": "Upload multiple MCP server configurations to the registry",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "servers",
-            "description": "Array of server configurations",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": {"type": "string"},
-                  "description": {"type": "string"},
-                  "endpoint": {"type": "string"},
-                  "capabilities": {"type": "array", "items": {"type": "string"}}
-                }
-              }
-            }
-          }
-        ],
+        "summary": "Bulk Upload MCP Servers",
+        "description": "Add multiple MCP servers to the registry",
+        "parameters": [{"name": "servers", "in": "body", "required": true, "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}],
         "responses": {
-          "201": {
-            "description": "Servers uploaded successfully"
-          }
-        }
+          "201": {"description": "Servers created", "schema": {"type": "array", "items": {"$ref": "#/definitions/MCPServer"}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/registry/sync/official": {
       "post": {
         "tags": ["Registry"],
         "summary": "Sync Official Registry",
-        "description": "Synchronize with the official MCP server registry",
+        "description": "Trigger synchronization with the official MCP registry",
         "responses": {
-          "200": {
-            "description": "Sync completed successfully"
-          }
-        }
+          "200": {"description": "Sync started", "schema": {"type": "object", "properties": {"status": {"type": "string"}, "source": {"type": "string"}}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/registry/sync/docker": {
       "post": {
         "tags": ["Registry"],
         "summary": "Sync Docker Registry",
-        "description": "Synchronize with Docker MCP images registry",
+        "description": "Trigger synchronization with Docker MCP registry",
         "responses": {
-          "200": {
-            "description": "Sync completed successfully"
-          }
-        }
+          "200": {"description": "Sync started", "schema": {"type": "object", "properties": {"status": {"type": "string"}, "source": {"type": "string"}}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/scan": {
       "post": {
         "tags": ["Discovery"],
         "summary": "Start Network Scan",
-        "description": "Start a network scan to discover MCP servers",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "config",
-            "description": "Scan configuration",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "cidr": {"type": "string", "example": "192.168.1.0/24"},
-                "ports": {"type": "array", "items": {"type": "integer"}, "example": [8080, 8911]},
-                "timeout": {"type": "string", "example": "30s"}
-              }
-            }
-          }
-        ],
+        "description": "Initiate a network scan for MCP servers",
+        "parameters": [{"name": "config", "in": "body", "required": true, "schema": {"$ref": "#/definitions/ScanConfig"}}],
         "responses": {
-          "202": {
-            "description": "Scan started",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "scan_id": {"type": "string"}
-              }
-            }
-          }
-        }
+          "200": {"description": "Scan started", "schema": {"type": "object", "properties": {"scan_id": {"type": "string"}}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/scan/{id}": {
       "get": {
         "tags": ["Discovery"],
         "summary": "Get Scan Status",
-        "description": "Get the status of a running or completed scan",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string",
-            "description": "Scan ID"
-          }
-        ],
+        "description": "Check the status of a running or completed scan",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
         "responses": {
-          "200": {
-            "description": "Scan status",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "id": {"type": "string"},
-                "status": {"type": "string", "enum": ["running", "completed", "failed"]},
-                "progress": {"type": "number"},
-                "results": {"type": "array", "items": {"type": "object"}}
-              }
-            }
-          }
-        }
+          "200": {"description": "Scan status", "schema": {"$ref": "#/definitions/ScanJob"}},
+          "404": {"description": "Scan not found"}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/servers": {
@@ -601,22 +548,9 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
         "summary": "List Discovered Servers",
         "description": "Get a list of all discovered MCP servers",
         "responses": {
-          "200": {
-            "description": "List of discovered servers",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "address": {"type": "string"},
-                  "port": {"type": "integer"},
-                  "server_type": {"type": "string"},
-                  "last_seen": {"type": "string", "format": "date-time"}
-                }
-              }
-            }
-          }
-        }
+          "200": {"description": "List of discovered servers", "schema": {"type": "array", "items": {"$ref": "#/definitions/DiscoveredServer"}}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/plugins": {
@@ -625,154 +559,240 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
         "summary": "List Plugins",
         "description": "Get a list of all registered plugins",
         "responses": {
-          "200": {
-            "description": "List of plugins",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {"type": "string"},
-                  "name": {"type": "string"},
-                  "description": {"type": "string"},
-                  "endpoint": {"type": "string"},
-                  "capabilities": {"type": "array", "items": {"type": "string"}},
-                  "status": {"type": "string", "enum": ["active", "inactive", "error"]}
-                }
-              }
-            }
-          }
-        }
-      },
+          "200": {"description": "List of plugins", "schema": {"type": "array", "items": {"$ref": "#/definitions/Plugin"}}}
+        },
+        "security": [{"apiKey": []}]
+      }
+    },
+    "/api/v1/plugins/register": {
       "post": {
         "tags": ["Plugins"],
         "summary": "Register Plugin",
-        "description": "Register a new plugin with the system",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "plugin",
-            "description": "Plugin configuration",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "endpoint": {"type": "string"},
-                "capabilities": {"type": "array", "items": {"type": "string"}}
-              }
-            }
-          }
-        ],
+        "description": "Register a new plugin",
+        "parameters": [{"name": "plugin", "in": "body", "required": true, "schema": {"$ref": "#/definitions/Plugin"}}],
         "responses": {
-          "201": {
-            "description": "Plugin registered successfully"
-          }
-        }
+          "201": {"description": "Plugin registered", "schema": {"$ref": "#/definitions/Plugin"}}
+        },
+        "security": [{"apiKey": []}]
       }
     },
     "/api/v1/plugins/{id}": {
       "get": {
         "tags": ["Plugins"],
-        "summary": "Get Plugin",
-        "description": "Get details of a specific plugin",
+        "summary": "Get Plugin by ID",
+        "description": "Retrieve details of a specific plugin",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Plugin details", "schema": {"$ref": "#/definitions/Plugin"}},
+          "404": {"description": "Plugin not found"}
+        },
+        "security": [{"apiKey": []}]
+      },
+      "put": {
+        "tags": ["Plugins"],
+        "summary": "Update Plugin",
+        "description": "Update an existing plugin",
         "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string",
-            "description": "Plugin ID"
-          }
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "plugin", "in": "body", "required": true, "schema": {"$ref": "#/definitions/Plugin"}}
         ],
         "responses": {
-          "200": {
-            "description": "Plugin details",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "id": {"type": "string"},
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "endpoint": {"type": "string"},
-                "capabilities": {"type": "array", "items": {"type": "string"}},
-                "status": {"type": "string"}
-              }
-            }
-          },
-          "404": {
-            "description": "Plugin not found"
-          }
-        }
+          "200": {"description": "Plugin updated", "schema": {"$ref": "#/definitions/Plugin"}},
+          "404": {"description": "Plugin not found"}
+        },
+        "security": [{"apiKey": []}]
       },
       "delete": {
         "tags": ["Plugins"],
         "summary": "Unregister Plugin",
-        "description": "Remove a plugin from the system",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string",
-            "description": "Plugin ID"
-          }
-        ],
+        "description": "Remove a plugin from the registry",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
         "responses": {
-          "204": {
-            "description": "Plugin unregistered successfully"
-          }
-        }
+          "204": {"description": "Plugin unregistered"},
+          "404": {"description": "Plugin not found"}
+        },
+        "security": [{"apiKey": []}]
       }
     },
-    "/api/v1/health/{id}": {
+    "/api/v1/health/{pluginId}": {
       "get": {
         "tags": ["Plugins"],
-        "summary": "Plugin Health Check",
+        "summary": "Get Plugin Health",
         "description": "Check the health status of a specific plugin",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string",
-            "description": "Plugin ID"
-          }
-        ],
+        "parameters": [{"name": "pluginId", "in": "path", "required": true, "type": "string"}],
         "responses": {
-          "200": {
-            "description": "Plugin is healthy",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {"type": "string", "example": "healthy"},
-                "timestamp": {"type": "string", "format": "date-time"}
-              }
-            }
-          },
-          "503": {
-            "description": "Plugin is unhealthy"
-          }
-        }
+          "200": {"description": "Plugin health status", "schema": {"$ref": "#/definitions/HealthStatus"}},
+          "404": {"description": "Plugin not found"}
+        },
+        "security": [{"apiKey": []}]
       }
     }
   },
-  "definitions": {},
+  "definitions": {
+    "MCPServer": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "packages": {"type": "array", "items": {"$ref": "#/definitions/Package"}},
+        "validationStatus": {"type": "string"},
+        "discoveredAt": {"type": "string", "format": "date-time"},
+        "meta": {"type": "object"}
+      }
+    },
+    "Package": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "transport": {"$ref": "#/definitions/Transport"},
+        "registryType": {"type": "string"}
+      }
+    },
+    "Transport": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string"},
+        "config": {"type": "object"}
+      }
+    },
+    "ScanConfig": {
+      "type": "object",
+      "properties": {
+        "networks": {"type": "array", "items": {"type": "string"}},
+        "ports": {"type": "array", "items": {"type": "integer"}},
+        "timeout": {"type": "integer"},
+        "maxConcurrency": {"type": "integer"}
+      }
+    },
+    "ScanJob": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "config": {"$ref": "#/definitions/ScanConfig"},
+        "startTime": {"type": "string", "format": "date-time"},
+        "status": {"type": "string"},
+        "results": {"type": "array", "items": {"$ref": "#/definitions/DiscoveredServer"}},
+        "error": {"type": "string"}
+      }
+    },
+    "DiscoveredServer": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "address": {"type": "string"},
+        "port": {"type": "integer"},
+        "protocol": {"type": "string"},
+        "discoveredAt": {"type": "string", "format": "date-time"},
+        "lastSeen": {"type": "string", "format": "date-time"}
+      }
+    },
+    "Plugin": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "version": {"type": "string"},
+        "status": {"type": "string"},
+        "config": {"type": "object"}
+      }
+    },
+    "HealthStatus": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "string"},
+        "lastChecked": {"type": "string", "format": "date-time"},
+        "responseTime": {"type": "integer"},
+        "error": {"type": "string"}
+      }
+    }
+  },
   "securityDefinitions": {
-    "bearerAuth": {
+    "apiKey": {
       "type": "apiKey",
-      "name": "Authorization",
+      "name": "X-API-Key",
       "in": "header",
-      "description": "Bearer token authentication (e.g., 'Bearer <token>')"
+      "description": "API key authentication"
     }
   },
   "security": [
     {
-      "bearerAuth": []
+      "apiKey": []
     }
   ]
 }`
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(swaggerJSON))
+}
+
+// proxyToRegistry forwards requests to the registry service
+func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8913", "")
+}
+
+// proxyToDiscovery forwards requests to the discovery service
+func (s *Service) proxyToDiscovery(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8912", "")
+}
+
+// proxyToPlugins forwards requests to the plugins service
+func (s *Service) proxyToPlugins(w http.ResponseWriter, r *http.Request) {
+	s.proxyRequest(w, r, "http://suse-ai-up-service.suse-ai-up.svc.cluster.local:8914", "")
+}
+
+// proxyRequest forwards HTTP requests to other services
+func (s *Service) proxyRequest(w http.ResponseWriter, r *http.Request, serviceURL, basePath string) {
+	// Build the target URL
+	targetPath := r.URL.Path
+	if basePath != "" {
+		targetPath = strings.TrimPrefix(r.URL.Path, basePath)
+		if !strings.HasPrefix(targetPath, "/") {
+			targetPath = "/" + targetPath
+		}
+	}
+	targetURL := serviceURL + targetPath
+	if r.URL.RawQuery != "" {
+		targetURL += "?" + r.URL.RawQuery
+	}
+
+	log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, targetURL)
+
+	// Create the request to the target service
+	req, err := http.NewRequest(r.Method, targetURL, r.Body)
+	if err != nil {
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		return
+	}
+
+	// Copy headers
+	for key, values := range r.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Add API key authentication
+	middleware.AddAPIKeyAuth(req)
+
+	// Make the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Copy response headers
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
+	// Set status code and copy body
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }

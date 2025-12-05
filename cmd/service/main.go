@@ -19,7 +19,6 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"suse-ai-up/docs"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
@@ -235,7 +234,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// Update swagger host dynamically
-	docs.SwaggerInfo.Host = cfg.GetSwaggerHost()
+	// docs.SwaggerInfo.Host = cfg.GetSwaggerHost() // Not used in current implementation
 
 	// Initialize OpenTelemetry (if enabled)
 	if cfg.OtelEnabled {

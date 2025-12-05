@@ -25,3 +25,6 @@ service.log
 session_1.json
 proxy.log
 .github/workflows/docker-build.yml
+proxy.pid
+suse-ai-up
+suse-ai-up-test

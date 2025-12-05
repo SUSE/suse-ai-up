@@ -85,20 +85,6 @@ spec:
               value: {{ .Values.tls.keyFile | quote }}
              {{- end }}
              {{- end }}
-             - name: CORS_ALLOWED_ORIGINS
-               value: {{ .Values.cors.allowedOrigins | quote }}
-             - name: SERVICE_API_KEY
-               valueFrom:
-                 secretKeyRef:
-                   name: {{ include "suse-ai-up.fullname" . }}-service-auth
-                   key: api-key
-                   optional: true
-             - name: SERVICE_REGISTRY_URL
-               value: {{ printf "http://registry.%s.svc.cluster.local:%d" .Values.kubernetes.namespace .Values.services.registry.port | quote }}
-             - name: SERVICE_DISCOVERY_URL
-               value: {{ printf "http://discovery.%s.svc.cluster.local:%d" .Values.kubernetes.namespace .Values.services.discovery.port | quote }}
-             - name: SERVICE_PLUGINS_URL
-               value: {{ printf "http://plugins.%s.svc.cluster.local:%d" .Values.kubernetes.namespace .Values.services.plugins.port | quote }}
              {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
