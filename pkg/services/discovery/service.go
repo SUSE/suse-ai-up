@@ -13,8 +13,11 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"suse-ai-up/pkg/clients"
@@ -29,6 +32,7 @@ type Service struct {
 	server      *http.Server
 	store       clients.ScanStore
 	scanner     *scanner.NetworkScanner
+	shutdownCh  chan struct{}
 	mu          sync.RWMutex
 	activeScans map[string]*ScanJob
 }
@@ -69,6 +73,7 @@ func NewService(config *Config) *Service {
 		config:      config,
 		store:       clients.NewInMemoryScanStore(),
 		activeScans: make(map[string]*ScanJob),
+		shutdownCh:  make(chan struct{}),
 	}
 
 	return service
@@ -144,13 +149,25 @@ func (s *Service) Start() error {
 	}
 
 	log.Printf("MCP Discovery service started successfully")
-	// Keep the service running
-	select {}
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-sigChan:
+		log.Println("Received shutdown signal")
+	case <-s.shutdownCh:
+		log.Println("Received internal shutdown signal")
+	}
+
+	return s.Stop()
 }
 
 // Stop stops the discovery service
 func (s *Service) Stop() error {
 	log.Println("Stopping MCP Discovery service")
+	close(s.shutdownCh)
 
 	// Cancel all active scans
 	s.mu.Lock()

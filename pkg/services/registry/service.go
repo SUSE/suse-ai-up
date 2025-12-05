@@ -14,8 +14,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"suse-ai-up/internal/handlers"
@@ -33,6 +35,7 @@ type Service struct {
 	store          clients.MCPServerStore
 	adapterStore   clients.AdapterResourceStore
 	adapterService *adaptersvc.AdapterService
+	shutdownCh     chan struct{}
 	mu             sync.RWMutex
 }
 
@@ -62,6 +65,7 @@ func NewService(config *Config) *Service {
 		config:       config,
 		store:        clients.NewInMemoryMCPServerStore(),
 		adapterStore: clients.NewInMemoryAdapterStore(),
+		shutdownCh:   make(chan struct{}),
 	}
 
 	// Initialize adapter service
@@ -194,13 +198,25 @@ func (s *Service) Start() error {
 	}
 
 	log.Printf("MCP Registry service started successfully")
-	// Keep the service running
-	select {}
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-sigChan:
+		log.Println("Received shutdown signal")
+	case <-s.shutdownCh:
+		log.Println("Received internal shutdown signal")
+	}
+
+	return s.Stop()
 }
 
 // Stop stops the registry service
 func (s *Service) Stop() error {
 	log.Println("Stopping MCP Registry service")
+	close(s.shutdownCh)
 	if s.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

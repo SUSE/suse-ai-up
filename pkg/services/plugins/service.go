@@ -13,8 +13,11 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"suse-ai-up/pkg/clients"
@@ -25,10 +28,11 @@ import (
 
 // Service represents the plugins service
 type Service struct {
-	config  *Config
-	server  *http.Server
-	manager plugins.PluginServiceManager
-	mu      sync.RWMutex
+	config     *Config
+	server     *http.Server
+	manager    plugins.PluginServiceManager
+	shutdownCh chan struct{}
+	mu         sync.RWMutex
 }
 
 // Config holds plugins service configuration
@@ -53,8 +57,9 @@ func NewService(config *Config) *Service {
 	}
 
 	service := &Service{
-		config:  config,
-		manager: plugins.NewServiceManager(nil, registryManager), // TODO: Add config
+		config:     config,
+		manager:    plugins.NewServiceManager(nil, registryManager), // TODO: Add config
+		shutdownCh: make(chan struct{}),
 	}
 
 	return service
@@ -143,13 +148,25 @@ func (s *Service) Start() error {
 	}
 
 	log.Printf("MCP Plugins service started successfully")
-	// Keep the service running
-	select {}
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-sigChan:
+		log.Println("Received shutdown signal")
+	case <-s.shutdownCh:
+		log.Println("Received internal shutdown signal")
+	}
+
+	return s.Stop()
 }
 
 // Stop stops the plugins service
 func (s *Service) Stop() error {
 	log.Println("Stopping MCP Plugins service")
+	close(s.shutdownCh)
 
 	if s.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

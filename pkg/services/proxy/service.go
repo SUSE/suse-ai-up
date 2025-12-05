@@ -13,16 +13,20 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/proxy"
+	"syscall"
 	"time"
 )
 
 // Service represents the proxy service
 type Service struct {
-	config *Config
-	server *proxy.MCPProxyServer
+	config     *Config
+	server     *proxy.MCPProxyServer
+	shutdownCh chan struct{}
 }
 
 // Config holds proxy service configuration
@@ -38,7 +42,8 @@ type Config struct {
 // NewService creates a new proxy service
 func NewService(config *Config) *Service {
 	return &Service{
-		config: config,
+		config:     config,
+		shutdownCh: make(chan struct{}),
 	}
 }
 
@@ -184,8 +189,19 @@ func (s *Service) Start() error {
 	}
 
 	log.Printf("MCP Proxy service started successfully")
-	// Keep the service running
-	select {}
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-sigChan:
+		log.Println("Received shutdown signal")
+	case <-s.shutdownCh:
+		log.Println("Received internal shutdown signal")
+	}
+
+	return s.Stop()
 }
 
 // loadProxyConfig loads the MCP server configuration
@@ -215,6 +231,7 @@ func (s *Service) handleHealth(w http.ResponseWriter, r *http.Request) {
 // Stop stops the proxy service
 func (s *Service) Stop() error {
 	log.Println("Stopping MCP Proxy service")
+	close(s.shutdownCh)
 	return nil
 }
 

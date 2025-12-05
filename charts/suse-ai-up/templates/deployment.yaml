@@ -15,39 +15,41 @@ spec:
         {{- include "suse-ai-up.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-        - name: proxy
+        - name: suse-ai-up
           image: {{ include "suse-ai-up.image" . }}
           ports:
-            - containerPort: {{ .Values.services.proxy.port }}
+            - name: proxy-http
+              containerPort: {{ .Values.services.proxy.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: proxy-https
+              containerPort: {{ .Values.services.proxy.tlsPort }}
+              protocol: TCP
+            {{- end }}
+            - name: registry-http
+              containerPort: {{ .Values.services.registry.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: registry-https
+              containerPort: {{ .Values.services.registry.tlsPort }}
+              protocol: TCP
+            {{- end }}
+            - name: discovery-http
+              containerPort: {{ .Values.services.discovery.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: discovery-https
+              containerPort: {{ .Values.services.discovery.tlsPort }}
+              protocol: TCP
+            {{- end }}
+            - name: plugins-http
+              containerPort: {{ .Values.services.plugins.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: plugins-https
+              containerPort: {{ .Values.services.plugins.tlsPort }}
+              protocol: TCP
+            {{- end }}
           env:
-            - name: PROXY_PORT
-              value: "{{ .Values.services.proxy.port }}"
-            - name: CORS_ALLOWED_ORIGINS
-              value: "{{ .Values.cors.allowedOrigins }}"
-        - name: registry
-          image: {{ include "suse-ai-up.image" . }}
-          ports:
-            - containerPort: {{ .Values.services.registry.port }}
-          env:
-            - name: REGISTRY_PORT
-              value: "{{ .Values.services.registry.port }}"
-            - name: CORS_ALLOWED_ORIGINS
-              value: "{{ .Values.cors.allowedOrigins }}"
-        - name: discovery
-          image: {{ include "suse-ai-up.image" . }}
-          ports:
-            - containerPort: {{ .Values.services.discovery.port }}
-          env:
-            - name: DISCOVERY_PORT
-              value: "{{ .Values.services.discovery.port }}"
-            - name: CORS_ALLOWED_ORIGINS
-              value: "{{ .Values.cors.allowedOrigins }}"
-        - name: plugins
-          image: {{ include "suse-ai-up.image" . }}
-          ports:
-            - containerPort: {{ .Values.services.plugins.port }}
-          env:
-            - name: PLUGINS_PORT
-              value: "{{ .Values.services.plugins.port }}"
             - name: CORS_ALLOWED_ORIGINS
               value: "{{ .Values.cors.allowedOrigins }}"
