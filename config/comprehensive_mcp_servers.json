@@ -1,0 +1,666 @@
+[
+  {
+    "id": "github",
+    "name": "GitHub",
+    "description": "GitHub's official MCP Server for repository management, issue tracking, and code analysis",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "api.githubcopilot.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://api.githubcopilot.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "development",
+      "documentation": "https://github.com/github/github-mcp-server",
+      "tags": ["git", "repository", "issues", "pull-requests", "code-search"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://api.githubcopilot.com/mcp/"
+    }
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "description": "Notion is a collaboration and productivity tool.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.notion.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.notion.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "productivity",
+      "documentation": "https://developers.notion.com/docs/get-started-with-mcp",
+      "tags": ["collaboration", "productivity", "notes", "databases"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.notion.com/"
+    }
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "description": "Sentry is a developer-first error tracking and performance monitoring platform.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.sentry.dev",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.sentry.dev/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "monitoring",
+      "documentation": "https://mcp.sentry.dev/",
+      "tags": ["error-tracking", "performance", "monitoring", "debugging"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.sentry.dev/"
+    }
+  },
+  {
+    "id": "linear",
+    "name": "Linear",
+    "description": "Linear is a project management tool.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.linear.app",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.linear.app/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "productivity",
+      "documentation": "https://linear.app/changelog/2025-05-01-mcp",
+      "tags": ["project-management", "issues", "sprints", "agile"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.linear.app/"
+    }
+  },
+  {
+    "id": "figma",
+    "name": "Figma",
+    "description": "Figma is a collaborative design and prototyping platform.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.figma.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.figma.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "design",
+      "documentation": "https://www.figma.com/blog/design-context-everywhere-you-build/",
+      "tags": ["design", "prototyping", "collaboration", "ui-ux"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.figma.com/"
+    }
+  },
+  {
+    "id": "intercom",
+    "name": "Intercom",
+    "description": "Intercom is a customer support platform.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.intercom.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.intercom.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "support",
+      "documentation": "https://www.intercom.com/blog/introducing-model-context-protocol-fin/",
+      "tags": ["customer-support", "communication", "helpdesk"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.intercom.com/"
+    }
+  },
+  {
+    "id": "neon",
+    "name": "Neon",
+    "description": "Neon is a fully managed serverless PostgreSQL.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.neon.tech",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.neon.tech/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "database",
+      "documentation": "https://neon.tech/docs/ai/neon-mcp-server",
+      "tags": ["postgresql", "database", "serverless", "sql"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.neon.tech/"
+    }
+  },
+  {
+    "id": "supabase",
+    "name": "Supabase",
+    "description": "Supabase is an open-source Firebase alternative.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.supabase.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.supabase.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "database",
+      "documentation": "https://supabase.com/blog/remote-mcp-server",
+      "tags": ["database", "backend", "api", "postgresql"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.supabase.com/"
+    }
+  },
+  {
+    "id": "paypal",
+    "name": "PayPal",
+    "description": "PayPal is a global online payment system.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.paypal.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.paypal.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "payments",
+      "documentation": "https://developer.paypal.com/limited-release/agents/",
+      "tags": ["payments", "finance", "transactions", "commerce"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.paypal.com/"
+    }
+  },
+  {
+    "id": "square",
+    "name": "Square",
+    "description": "Square is a payment processing platform.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.squareup.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.squareup.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "payments",
+      "documentation": "https://developer.squareup.com/docs/mcp",
+      "tags": ["payments", "pos", "commerce", "transactions"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.squareup.com/"
+    }
+  },
+  {
+    "id": "coingecko",
+    "name": "CoinGecko",
+    "description": "CoinGecko is a cryptocurrency data platform.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.api.coingecko.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.api.coingecko.com/",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": false,
+      "authType": "none",
+      "category": "cryptocurrency",
+      "documentation": "https://mcp.api.coingecko.com/",
+      "tags": ["cryptocurrency", "market-data", "trading", "finance"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.api.coingecko.com/"
+    }
+  },
+  {
+    "id": "ahrefs",
+    "name": "Ahrefs",
+    "description": "Ahrefs is an SEO platform for website analysis and keyword research.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "api.ahrefs.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://api.ahrefs.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "marketing",
+      "documentation": "https://docs.ahrefs.com/docs/mcp/",
+      "tags": ["seo", "analytics", "keywords", "backlinks"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://api.ahrefs.com/"
+    }
+  },
+  {
+    "id": "asana",
+    "name": "Asana",
+    "description": "Asana is a project management tool.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.asana.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.asana.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "productivity",
+      "documentation": "https://developers.asana.com/docs/using-asanas-mcp-server",
+      "tags": ["project-management", "tasks", "collaboration", "workflows"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.asana.com/"
+    }
+  },
+  {
+    "id": "atlassian",
+    "name": "Atlassian",
+    "description": "Collaboration software for software, IT and business teams",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.atlassian.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.atlassian.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "productivity",
+      "documentation": "https://www.atlassian.com/platform/remote-mcp-server",
+      "tags": ["collaboration", "jira", "confluence", "bitbucket"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.atlassian.com/"
+    }
+  },
+  {
+    "id": "wix",
+    "name": "Wix",
+    "description": "Wix is a website builder.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.wix.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.wix.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "website",
+      "documentation": "https://www.wix.com/studio/developers/mcp-server",
+      "tags": ["website-builder", "cms", "design", "hosting"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.wix.com/"
+    }
+  },
+  {
+    "id": "webflow",
+    "name": "Webflow",
+    "description": "Visual website builder",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.webflow.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.webflow.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "website",
+      "documentation": "https://developers.webflow.com/data/docs/ai-tools",
+      "tags": ["website-builder", "cms", "design", "no-code"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.webflow.com/"
+    }
+  },
+  {
+    "id": "globalping",
+    "name": "Globalping",
+    "description": "Remote MCP server that gives LLMs access to run network commands with Globalping",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.globalping.dev",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.globalping.dev/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "networking",
+      "documentation": "https://github.com/jsdelivr/globalping-mcp-server",
+      "tags": ["networking", "ping", "traceroute", "dns", "monitoring"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.globalping.dev/mcp"
+    }
+  },
+  {
+    "id": "semgrep",
+    "name": "Semgrep",
+    "description": "Semgrep is a static analysis tool for code security and quality.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.semgrep.ai",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.semgrep.ai/mcp",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": false,
+      "authType": "none",
+      "category": "security",
+      "documentation": "https://github.com/semgrep/semgrep/tree/develop/cli/src/semgrep/mcp",
+      "tags": ["security", "code-analysis", "vulnerabilities", "static-analysis"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.semgrep.ai/mcp"
+    }
+  },
+  {
+    "id": "deepwiki",
+    "name": "DeepWiki",
+    "description": "DeepWiki automatically generates architecture diagrams, documentation, and links to source code to help you understand unfamiliar codebases quickly.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "stdio",
+        "identifier": "deepwiki-mcp",
+        "transport": {
+          "type": "stdio"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": true,
+      "authType": "apikey",
+      "category": "documentation",
+      "documentation": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+      "tags": ["documentation", "architecture", "code-analysis", "diagrams"],
+      "hosted": false,
+      "transportType": "stdio",
+      "requiresInstallation": true
+    }
+  },
+  {
+    "id": "fetch",
+    "name": "Fetch",
+    "description": "An MCP server that provides web content fetching capabilities. This server enables LLMs to retrieve and process content from web pages, converting HTML to markdown for easier consumption.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "stdio",
+        "identifier": "mcp-fetch-server",
+        "transport": {
+          "type": "stdio"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": false,
+      "authType": "none",
+      "category": "web",
+      "documentation": "https://github.com/zcaceres/fetch-mcp",
+      "tags": ["web-scraping", "content-fetching", "markdown", "html"],
+      "hosted": false,
+      "transportType": "stdio",
+      "requiresInstallation": true
+    }
+  },
+  {
+    "id": "sequential-thinking",
+    "name": "Sequential Thinking",
+    "description": "An MCP server implementation that provides a tool for dynamic and reflective problem-solving through a structured thinking process.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "stdio",
+        "identifier": "mcp-sequential-thinking",
+        "transport": {
+          "type": "stdio"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": false,
+      "authType": "none",
+      "category": "ai",
+      "documentation": "https://github.com/arben-adm/mcp-sequential-thinking",
+      "tags": ["ai", "reasoning", "problem-solving", "thinking"],
+      "hosted": false,
+      "transportType": "stdio",
+      "requiresInstallation": true
+    }
+  },
+  {
+    "id": "edgeone-pages",
+    "name": "EdgeOne Pages",
+    "description": "An MCP service designed for deploying HTML content to EdgeOne Pages and obtaining an accessible public URL.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp-on-edge.edgeone.site",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp-on-edge.edgeone.site/mcp-server",
+    "_meta": {
+      "source": "mcpservers.org",
+      "userAuthRequired": false,
+      "authType": "none",
+      "category": "hosting",
+      "documentation": "https://github.com/TencentEdgeOne/edgeone-pages-mcp",
+      "tags": ["hosting", "deployment", "cdn", "static-sites"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp-on-edge.edgeone.site/mcp-server"
+    }
+  },
+  {
+    "id": "postman-mcp",
+    "name": "Postman MCP",
+    "description": "Official Postman MCP server for API testing and development workflows.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "mcp.postman.com",
+        "transport": {
+          "type": "http"
+        }
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "url": "https://mcp.postman.com/.well-known/oauth-authorization-server",
+    "_meta": {
+      "source": "postman.com",
+      "userAuthRequired": true,
+      "authType": "oauth",
+      "category": "api",
+      "documentation": "https://www.postman.com/explore/mcp-servers",
+      "tags": ["api", "testing", "development", "workflows"],
+      "hosted": true,
+      "transportType": "remote-http",
+      "endpoint": "https://mcp.postman.com/"
+    }
+  }
+]

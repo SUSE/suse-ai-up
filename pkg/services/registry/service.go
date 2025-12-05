@@ -137,18 +137,13 @@ func (s *Service) Start() error {
 		}
 	})))
 
-	// Sync remote MCP servers from external registries
-	if err := s.syncManager.SyncOfficialRegistry(context.Background()); err != nil {
-		log.Printf("Failed to sync remote servers: %v", err)
-		// Fall back to loading from static file
+	// Load comprehensive MCP servers from curated list
+	if err := s.loadComprehensiveServers(); err != nil {
+		log.Printf("Failed to load comprehensive servers: %v", err)
+		// Fall back to loading remote servers
 		if err := s.loadRemoteServers(); err != nil {
-			log.Printf("Failed to load remote servers from file: %v", err)
+			log.Printf("Failed to load remote servers: %v", err)
 			// Continue anyway - service can still function
-		}
-	} else {
-		// Save synced data to local file for persistence
-		if err := s.saveRemoteServers(); err != nil {
-			log.Printf("Failed to save synced servers to file: %v", err)
 		}
 	}
 
@@ -273,17 +268,73 @@ func (s *Service) generateSelfSignedCert() (*tls.Certificate, error) {
 	return cert, nil
 }
 
+// loadComprehensiveServers loads comprehensive MCP servers from the curated JSON file
+func (s *Service) loadComprehensiveServers() error {
+	log.Println("Loading comprehensive MCP servers from curated list")
+
+	comprehensiveFile := "config/comprehensive_mcp_servers.json"
+	data, err := os.ReadFile(comprehensiveFile)
+	if err != nil {
+		return fmt.Errorf("failed to read comprehensive servers file %s: %w", comprehensiveFile, err)
+	}
+
+	var servers []models.MCPServer
+	if err := json.Unmarshal(data, &servers); err != nil {
+		return fmt.Errorf("failed to parse comprehensive servers JSON: %w", err)
+	}
+
+	// Store servers in the registry
+	for _, server := range servers {
+		// Ensure server has required fields
+		if server.ID == "" {
+			server.ID = fmt.Sprintf("comprehensive-%s", strings.ToLower(strings.ReplaceAll(server.Name, " ", "-")))
+		}
+		if server.ValidationStatus == "" {
+			server.ValidationStatus = "approved"
+		}
+		server.DiscoveredAt = time.Now()
+
+		// Mark these as loaded from comprehensive list
+		if server.Meta == nil {
+			server.Meta = make(map[string]interface{})
+		}
+		server.Meta["source"] = "comprehensive"
+
+		if err := s.store.CreateMCPServer(&server); err != nil {
+			log.Printf("Failed to store comprehensive server %s: %v", server.ID, err)
+			// Continue with other servers
+		}
+	}
+
+	log.Printf("Successfully loaded %d comprehensive MCP servers", len(servers))
+	return nil
+}
+
 // loadRemoteServers loads remote MCP servers from the static JSON file
 func (s *Service) loadRemoteServers() error {
 	log.Println("Loading remote MCP servers from static file")
 
+	// Try to read from the primary location first
 	data, err := os.ReadFile(s.config.RemoteServersFile)
-	if err != nil {
-		// If file doesn't exist, log a warning but don't fail - use in-memory storage only
-		if os.IsNotExist(err) {
-			log.Printf("Remote servers file %s not found, using in-memory storage only", s.config.RemoteServersFile)
+	if err != nil && os.IsNotExist(err) {
+		// If primary file doesn't exist, try the fallback location
+		userHomeDir, homeErr := os.UserHomeDir()
+		if homeErr == nil {
+			fallbackFile := userHomeDir + "/synced_servers/remote_mcp_servers.json"
+			data, err = os.ReadFile(fallbackFile)
+			if err != nil && os.IsNotExist(err) {
+				log.Printf("Remote servers files not found at %s or %s, using in-memory storage only", s.config.RemoteServersFile, fallbackFile)
+				return nil
+			} else if err != nil {
+				log.Printf("Failed to read fallback remote servers file %s: %v", fallbackFile, err)
+				return nil // Don't fail, just use in-memory storage
+			}
+			log.Printf("Loading remote servers from fallback location: %s", fallbackFile)
+		} else {
+			log.Printf("Remote servers file %s not found and could not determine fallback location, using in-memory storage only", s.config.RemoteServersFile)
 			return nil
 		}
+	} else if err != nil {
 		return fmt.Errorf("failed to read remote servers file %s: %w", s.config.RemoteServersFile, err)
 	}
 
@@ -302,6 +353,12 @@ func (s *Service) loadRemoteServers() error {
 			server.ValidationStatus = "approved"
 		}
 		server.DiscoveredAt = time.Now()
+
+		// Mark these as loaded from file
+		if server.Meta == nil {
+			server.Meta = make(map[string]interface{})
+		}
+		server.Meta["source"] = "file"
 
 		if err := s.store.CreateMCPServer(&server); err != nil {
 			log.Printf("Failed to store remote server %s: %v", server.ID, err)
@@ -322,7 +379,7 @@ func (s *Service) saveRemoteServers() error {
 	var remoteServers []models.MCPServer
 	for _, server := range servers {
 		if server.Meta != nil {
-			if source, ok := server.Meta["source"].(string); ok && source != "" {
+			if source, ok := server.Meta["source"].(string); ok && source != "" && source != "file" {
 				remoteServers = append(remoteServers, *server)
 			}
 		}
@@ -334,8 +391,27 @@ func (s *Service) saveRemoteServers() error {
 		return fmt.Errorf("failed to marshal servers: %w", err)
 	}
 
+	// Try to save to the configured file first
 	if err := os.WriteFile(s.config.RemoteServersFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write servers file: %w", err)
+		// If that fails, try to save to a user-writable location
+		userHomeDir, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return fmt.Errorf("failed to write servers file to %s: %w, and could not get user home dir: %v", s.config.RemoteServersFile, err, homeErr)
+		}
+
+		// Create a synced_servers directory in user home
+		syncedDir := userHomeDir + "/synced_servers"
+		if mkdirErr := os.MkdirAll(syncedDir, 0755); mkdirErr != nil {
+			return fmt.Errorf("failed to write servers file to %s: %w, and could not create synced dir %s: %v", s.config.RemoteServersFile, err, syncedDir, mkdirErr)
+		}
+
+		syncedFile := syncedDir + "/remote_mcp_servers.json"
+		if writeErr := os.WriteFile(syncedFile, data, 0644); writeErr != nil {
+			return fmt.Errorf("failed to write servers file to %s: %w, and also failed to write to %s: %v", s.config.RemoteServersFile, err, syncedFile, writeErr)
+		}
+
+		log.Printf("Saved %d remote servers to %s (fallback location)", len(remoteServers), syncedFile)
+		return nil
 	}
 
 	log.Printf("Saved %d remote servers to %s", len(remoteServers), s.config.RemoteServersFile)
@@ -593,32 +669,26 @@ func (s *Service) handleBulkUpload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// handleReloadRemoteServers reloads remote MCP servers from external registries
+// handleReloadRemoteServers reloads MCP servers from comprehensive list
 func (s *Service) handleReloadRemoteServers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Sync from remote registries
-	if err := s.syncManager.SyncOfficialRegistry(r.Context()); err != nil {
-		log.Printf("Failed to sync remote servers: %v", err)
-		// Fall back to loading from static file
-		if err := s.loadRemoteServers(); err != nil {
-			log.Printf("Failed to reload remote servers from file: %v", err)
-			http.Error(w, "Failed to reload remote servers", http.StatusInternalServerError)
-			return
-		}
-	} else {
-		// Save synced data to local file for persistence
-		if err := s.saveRemoteServers(); err != nil {
-			log.Printf("Failed to save synced servers to file: %v", err)
-		}
+	// Clear existing servers and reload from comprehensive list
+	// Note: In a real implementation, you might want to be more selective
+	// For now, we'll reload all servers
+
+	if err := s.loadComprehensiveServers(); err != nil {
+		log.Printf("Failed to reload comprehensive servers: %v", err)
+		http.Error(w, "Failed to reload MCP servers", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "reload_completed",
-		"message": "Remote MCP servers reloaded successfully",
+		"message": "MCP servers reloaded successfully from comprehensive list",
 	})
 }

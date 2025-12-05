@@ -34,7 +34,7 @@ COPY --from=builder /app/docs ./docs
 COPY --from=builder /app/config ./config
 
 # Change ownership to non-root user
-RUN chown -R mcpuser:mcpuser suse-ai-up docs
+RUN chown -R mcpuser:mcpuser suse-ai-up docs config
 
 # Switch to non-root user
 USER 1000
