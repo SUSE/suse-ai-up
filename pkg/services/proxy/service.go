@@ -58,33 +58,76 @@ func (s *Service) Start() error {
 	// Create HTTP handler
 	handler := proxy.NewMCPProxyHandler(s.server)
 
-	// Setup routes with CORS middleware
-	mux := http.NewServeMux()
-	mux.HandleFunc("/mcp", middleware.CORSMiddleware(handler.HandleMCP))
-	mux.HandleFunc("/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
-	mux.HandleFunc("/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			handler.HandleToolCall(w, r)
-		} else {
-			http.NotFound(w, r)
+	// Create a custom handler that prevents automatic redirects for CORS
+	rootHandler := func(w http.ResponseWriter, r *http.Request) {
+		// Handle MCP routes
+		if r.URL.Path == "/mcp" {
+			middleware.CORSMiddleware(handler.HandleMCP)(w, r)
+			return
 		}
-	}))
-	mux.HandleFunc("/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
-	mux.HandleFunc("/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
-	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
-	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
-	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
+		if r.URL.Path == "/mcp/tools" {
+			middleware.CORSMiddleware(handler.HandleToolsList)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/mcp/tools/") {
+			middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == "POST" {
+					handler.HandleToolCall(w, r)
+				} else {
+					http.NotFound(w, r)
+				}
+			})(w, r)
+			return
+		}
+		if r.URL.Path == "/mcp/resources" {
+			middleware.CORSMiddleware(handler.HandleResourcesList)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/mcp/resources/") {
+			middleware.CORSMiddleware(handler.HandleResourceRead)(w, r)
+			return
+		}
 
-	// Proxy routes for other services
-	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
-	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
-	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
-	mux.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(s.proxyToPlugins))
+		// Handle health and docs
+		if r.URL.Path == "/health" {
+			middleware.CORSMiddleware(s.handleHealth)(w, r)
+			return
+		}
+		if r.URL.Path == "/docs" {
+			middleware.CORSMiddleware(s.handleDocs)(w, r)
+			return
+		}
+		if r.URL.Path == "/swagger.json" {
+			middleware.CORSMiddleware(s.handleSwaggerJSON)(w, r)
+			return
+		}
+
+		// Handle proxy routes without automatic redirects
+		if strings.HasPrefix(r.URL.Path, "/api/v1/registry/") {
+			middleware.CORSMiddleware(s.proxyToRegistry)(w, r)
+			return
+		}
+		if r.URL.Path == "/api/v1/scan" || strings.HasPrefix(r.URL.Path, "/api/v1/scan/") {
+			middleware.CORSMiddleware(s.proxyToDiscovery)(w, r)
+			return
+		}
+		if r.URL.Path == "/api/v1/servers" {
+			middleware.CORSMiddleware(s.proxyToDiscovery)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/v1/plugins") {
+			middleware.CORSMiddleware(s.proxyToPlugins)(w, r)
+			return
+		}
+
+		// Not found
+		http.NotFound(w, r)
+	}
 
 	// Start HTTP server
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.config.Port),
-		Handler: mux,
+		Handler: http.HandlerFunc(rootHandler),
 	}
 
 	// Start HTTP server in goroutine
@@ -127,7 +170,7 @@ func (s *Service) Start() error {
 		if len(tlsConfig.Certificates) > 0 {
 			httpsServer := &http.Server{
 				Addr:      fmt.Sprintf(":%d", s.config.TLSPort),
-				Handler:   mux,
+				Handler:   http.HandlerFunc(rootHandler),
 				TLSConfig: tlsConfig,
 			}
 

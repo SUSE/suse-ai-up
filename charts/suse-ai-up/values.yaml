@@ -38,18 +38,6 @@ global:
   tolerations: []
   affinity: {}
 
-# Image configuration
-image:
-  registry: ghcr.io
-  repository: alessandro-festa/suse-ai-up
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
-  # Multi-architecture support
-  architecture:
-    - amd64
-    - arm64
-
 # Service configuration
 service:
   type: ClusterIP

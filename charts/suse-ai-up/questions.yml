@@ -50,6 +50,20 @@ questions:
   default: true
   group: "Basic Configuration"
 
+- variable: image.pullPolicy
+  label: "Image Pull Policy"
+  description: "When to pull the container image - Always ensures latest version but may be slower"
+  type: enum
+  default: "IfNotPresent"
+  group: "Basic Configuration"
+  options:
+  - label: "If Not Present (recommended - faster startup)"
+    value: "IfNotPresent"
+  - label: "Always (ensures latest version - slower startup)"
+    value: "Always"
+  - label: "Never (use local images only)"
+    value: "Never"
+
 - variable: service.type
   label: "Service Type"
   description: "How to expose the services externally"
