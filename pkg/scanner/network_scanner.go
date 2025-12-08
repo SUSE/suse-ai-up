@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
 )
 
@@ -416,7 +418,15 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 
 			// Check if this is a valid MCP server response
 			if server := ns.parseMCPResponse(resp, bodyBytes, address, fmt.Sprintf("%d", port), endpoint); server != nil {
-				return server, nil
+				// Perform deep interrogation if this is a basic MCP detection
+				if endpoint == "/" || endpoint == "/mcp" {
+					ns.performDeepInterrogation(ns.ctx, server)
+				}
+
+				select {
+				case ns.results <- *server:
+				case <-ns.ctx.Done():
+				}
 			}
 		}
 	}
@@ -627,4 +637,87 @@ func (ns *NetworkScanner) GetAllDiscoveredServers() []models.DiscoveredServer {
 	result := make([]models.DiscoveredServer, len(ns.discoveredServers))
 	copy(result, ns.discoveredServers)
 	return result
+}
+
+// performDeepInterrogation performs detailed MCP protocol interrogation
+func (ns *NetworkScanner) performDeepInterrogation(ctx context.Context, server *models.DiscoveredServer) {
+	// Create MCP client for deep interrogation
+	client := mcp.NewClient(server.Address, 10*time.Second)
+
+	// Perform interrogation
+	capabilities, serverInfo, tools, resources, prompts, authAnalysis, err := client.InterrogateServer(ctx)
+	if err != nil {
+		// Log error and update server metadata with failure information
+		log.Printf("Deep interrogation failed for %s: %v", server.Address, err)
+
+		// Update server with failure information
+		if server.Metadata == nil {
+			server.Metadata = make(map[string]string)
+		}
+		server.Metadata["deep_scan_error"] = err.Error()
+		server.Metadata["deep_scan_status"] = "failed"
+		server.LastDeepScan = time.Now()
+
+		// If we got auth analysis even on failure, use it
+		if authAnalysis != nil {
+			server.AuthInfo = authAnalysis
+			if authAnalysis.Required {
+				server.VulnerabilityScore = "low" // Auth required = lower vulnerability
+			} else {
+				server.VulnerabilityScore = "high" // No auth = higher vulnerability
+			}
+		}
+
+		return
+	}
+
+	// Perform capability validation
+	validation, _ := client.ValidateCapabilities(ctx, capabilities, tools, resources, prompts)
+
+	// Update server with detailed information
+	server.Capabilities = capabilities
+	server.Tools = tools
+	server.Resources = resources
+	server.Prompts = prompts
+	server.ResourceTemplates = nil // TODO: Add resource templates support
+	server.AuthInfo = authAnalysis
+	server.LastDeepScan = time.Now()
+
+	if server.Metadata == nil {
+		server.Metadata = make(map[string]string)
+	}
+	server.Metadata["deep_scan_status"] = "success"
+	server.Metadata["capability_validation"] = fmt.Sprintf("tools:%t,resources:%t,prompts:%t",
+		validation.ToolsValid, validation.ResourcesValid, validation.PromptsValid)
+
+	if len(validation.Issues) > 0 {
+		server.Metadata["validation_issues"] = fmt.Sprintf("%d issues found", len(validation.Issues))
+	}
+
+	if serverInfo != nil {
+		server.ServerVersion = serverInfo.Version
+		server.ProtocolVersion = serverInfo.Protocol
+	}
+
+	// Update vulnerability score based on auth analysis and validation
+	vulnerabilityScore := "medium" // Default
+
+	if authAnalysis != nil {
+		if authAnalysis.Required {
+			vulnerabilityScore = "low" // Auth required = lower vulnerability
+		} else {
+			vulnerabilityScore = "high" // No auth = higher vulnerability
+		}
+	}
+
+	// If validation found issues, increase vulnerability score
+	if !validation.ToolsValid || !validation.ResourcesValid || !validation.PromptsValid {
+		if vulnerabilityScore == "low" {
+			vulnerabilityScore = "medium"
+		} else if vulnerabilityScore == "medium" {
+			vulnerabilityScore = "high"
+		}
+	}
+
+	server.VulnerabilityScore = vulnerabilityScore
 }

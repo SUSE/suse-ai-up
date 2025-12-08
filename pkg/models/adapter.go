@@ -118,6 +118,17 @@ type DiscoveredServer struct {
 	LastSeen           time.Time         `json:"lastSeen"`
 	Metadata           map[string]string `json:"metadata"`
 	VulnerabilityScore string            `json:"vulnerability_score" example:"high"`
+
+	// Enhanced fields for deep interrogation
+	Capabilities      *McpCapabilities      `json:"capabilities,omitempty"`
+	Tools             []McpTool             `json:"tools,omitempty"`
+	Resources         []McpResource         `json:"resources,omitempty"`
+	Prompts           []McpPrompt           `json:"prompts,omitempty"`
+	ResourceTemplates []McpResourceTemplate `json:"resource_templates,omitempty"`
+	AuthInfo          *AuthAnalysis         `json:"auth_info,omitempty"`
+	LastDeepScan      time.Time             `json:"last_deep_scan,omitempty"`
+	ServerVersion     string                `json:"server_version,omitempty"`
+	ProtocolVersion   string                `json:"protocol_version,omitempty"`
 }
 
 // ScanConfig represents configuration for network scanning
@@ -308,4 +319,68 @@ type RegistrySource struct {
 	Priority  int       `json:"priority"` // Higher priority sources are preferred
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// McpCapabilities represents MCP server capabilities
+type McpCapabilities struct {
+	Tools        bool `json:"tools"`
+	Prompts      bool `json:"prompts"`
+	Resources    bool `json:"resources"`
+	Logging      bool `json:"logging"`
+	Completions  bool `json:"completions"`
+	Experimental bool `json:"experimental"`
+}
+
+// McpTool represents a discovered MCP tool
+type McpTool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	InputSchema map[string]interface{} `json:"input_schema"`
+}
+
+// McpResource represents a discovered MCP resource
+type McpResource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mime_type,omitempty"`
+}
+
+// McpResourceTemplate represents a discovered MCP resource template
+type McpResourceTemplate struct {
+	URITemplate string `json:"uri_template"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mime_type,omitempty"`
+}
+
+// McpPrompt represents a discovered MCP prompt
+type McpPrompt struct {
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	Arguments   []McpArgument `json:"arguments,omitempty"`
+}
+
+// McpArgument represents an MCP prompt argument
+type McpArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Required    bool   `json:"required"`
+}
+
+// AuthAnalysis represents authentication analysis results
+type AuthAnalysis struct {
+	Required           bool     `json:"required"`
+	Type               string   `json:"type"` // "none", "basic", "bearer", "apikey", "oauth", "missing"
+	DetectedMechanisms []string `json:"detected_mechanisms"`
+	Vulnerabilities    []string `json:"vulnerabilities"`
+	Confidence         string   `json:"confidence"` // "high", "medium", "low"
+}
+
+// CapabilityValidation represents validation results for MCP capabilities
+type CapabilityValidation struct {
+	ToolsValid     bool     `json:"tools_valid"`
+	ResourcesValid bool     `json:"resources_valid"`
+	PromptsValid   bool     `json:"prompts_valid"`
+	Issues         []string `json:"issues"`
 }

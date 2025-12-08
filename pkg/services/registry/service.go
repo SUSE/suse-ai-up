@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -93,7 +94,7 @@ func (s *Service) Start() error {
 
 	// Adapter management routes
 	adapterHandler := handlers.NewAdapterHandler(s.adapterService)
-	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.CreateAdapter)))
+	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.HandleAdapters)))
 	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
 		if path == "" {
@@ -445,6 +446,29 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 	// Get all servers
 	servers := s.store.ListMCPServers()
+
+	// Sort by priority (SUSE servers first), then by name
+	sort.Slice(servers, func(i, j int) bool {
+		priorityI := 0
+		priorityJ := 0
+
+		if servers[i].Meta != nil {
+			if p, ok := servers[i].Meta["priority"].(float64); ok {
+				priorityI = int(p)
+			}
+		}
+		if servers[j].Meta != nil {
+			if p, ok := servers[j].Meta["priority"].(float64); ok {
+				priorityJ = int(p)
+			}
+		}
+
+		// Higher priority first, then alphabetical by name
+		if priorityI != priorityJ {
+			return priorityI > priorityJ
+		}
+		return strings.ToLower(servers[i].Name) < strings.ToLower(servers[j].Name)
+	})
 
 	// Apply filters
 	var filtered []*models.MCPServer

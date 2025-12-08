@@ -370,6 +370,11 @@ func (s *Service) handleGetScanStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleListServers handles requests to list all discovered servers
 func (s *Service) handleListServers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Get all stored scans and aggregate their results
 	scans := s.store.ListScans()
 	allServers := make([]models.DiscoveredServer, 0)

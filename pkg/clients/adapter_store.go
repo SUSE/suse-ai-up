@@ -77,7 +77,7 @@ func (s *FileAdapterStore) List(ctx context.Context, userID string) ([]models.Ad
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var userAdapters []models.AdapterResource
+	userAdapters := make([]models.AdapterResource, 0)
 	for _, adapter := range s.adapters {
 		if adapter.CreatedBy == userID {
 			userAdapters = append(userAdapters, adapter)
@@ -225,7 +225,7 @@ func (s *InMemoryAdapterStore) List(ctx context.Context, userID string) ([]model
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var userAdapters []models.AdapterResource
+	userAdapters := make([]models.AdapterResource, 0)
 	for _, adapter := range s.adapters {
 		if adapter.CreatedBy == userID {
 			userAdapters = append(userAdapters, adapter)

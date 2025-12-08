@@ -1,5 +1,70 @@
 [
   {
+    "id": "suse-trento",
+    "name": "SUSE Trento",
+    "description": "Official SUSE MCP server for SAP system monitoring and management through Trento Project. Enables AI assistants to monitor cluster health, system configurations, and SAP landscapes through natural language queries.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "trento-server",
+        "transport": {
+          "type": "http"
+        },
+        "environmentVariables": [
+          {
+            "name": "TRENTO_CONFIG",
+            "description": "Trento configuration in format: TRENTO_URL={url},TOKEN={pat}",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          }
+        ]
+      },
+      {
+        "registryType": "stdio",
+        "identifier": "mcp-server-trento",
+        "transport": {
+          "type": "stdio"
+        },
+        "environmentVariables": [
+          {
+            "name": "TRENTO_URL",
+            "description": "Target Trento server URL (e.g., https://trento.example.com)",
+            "format": "string",
+            "isSecret": false,
+            "default": ""
+          },
+          {
+            "name": "TRENTO_PAT",
+            "description": "Trento Personal Access Token for authentication",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          }
+        ]
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "suse",
+      "badges": ["SUSE", "CERTIFIED"],
+      "priority": 200,
+      "logo": "suse-logo",
+      "featured": true,
+      "category": "sap-management",
+      "tags": ["trento", "sap", "hana", "cluster-monitoring", "system-management", "suse"],
+      "hosted": false,
+      "transportType": "remote-http",
+      "deploymentOptions": ["helm", "docker", "systemd", "local"],
+      "helmChart": "oci://registry.suse.com/trento/trento-server",
+      "helmCommand": "helm upgrade --install trento-server oci://registry.suse.com/trento/trento-server --set trento-mcp-server.enabled=true --set trento-mcp-server.mcpServer.trentoURL={TRENTO_URL}",
+      "documentation": "https://github.com/trento-project/mcp-server",
+      "setupInstructions": "Requires Trento server 3.x+ and Personal Access Token. Supports both remote HTTP and local stdio deployment modes."
+    }
+  },
+  {
     "id": "github",
     "name": "GitHub",
     "description": "GitHub's official MCP Server for repository management, issue tracking, and code analysis",
@@ -632,6 +697,177 @@
       "hosted": true,
       "transportType": "remote-http",
       "endpoint": "https://mcp-on-edge.edgeone.site/mcp-server"
+    }
+  },
+  {
+    "id": "suse-uyuni",
+    "name": "SUSE Uyuni",
+    "description": "Official SUSE MCP server for Uyuni server management, patch deployment, and system administration. Requires a local config file with server credentials and SSH keys.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "uyuni-server",
+        "transport": {
+          "type": "http"
+        },
+        "environmentVariables": [
+          {
+            "name": "UYUNI_SERVER",
+            "description": "Uyuni server URL (e.g., http://uyuni.example.com)",
+            "format": "string",
+            "isSecret": false,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_USER",
+            "description": "Uyuni server username",
+            "format": "string",
+            "isSecret": false,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_PASS",
+            "description": "Uyuni server password",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_MCP_SSL_VERIFY",
+            "description": "Disable SSL certificate verification (default: true)",
+            "format": "boolean",
+            "isSecret": false,
+            "default": "true"
+          },
+          {
+            "name": "UYUNI_MCP_WRITE_TOOLS_ENABLED",
+            "description": "Enable write operations (system modifications, updates)",
+            "format": "boolean",
+            "isSecret": false,
+            "default": "false"
+          }
+        ]
+      },
+      {
+        "registryType": "stdio",
+        "identifier": "mcp-server-uyuni",
+        "transport": {
+          "type": "stdio"
+        },
+        "environmentVariables": [
+          {
+            "name": "UYUNI_SERVER",
+            "description": "Uyuni server URL (e.g., http://uyuni.example.com)",
+            "format": "string",
+            "isSecret": false,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_USER",
+            "description": "Uyuni server username",
+            "format": "string",
+            "isSecret": false,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_PASS",
+            "description": "Uyuni server password",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_SSH_PRIV_KEY",
+            "description": "SSH private key for system registration (base64 encoded)",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          },
+          {
+            "name": "UYUNI_SSH_PRIV_KEY_PASS",
+            "description": "SSH private key passphrase",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          }
+        ]
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "suse",
+      "badges": ["SUSE", "CERTIFIED"],
+      "priority": 100,
+      "userAuthRequired": true,
+      "authType": "basic",
+      "category": "system-management",
+      "documentation": "https://github.com/uyuni-project/mcp-server-uyuni",
+      "tags": ["uyuni", "patch-management", "linux", "system-administration", "suse"],
+      "hosted": false,
+      "transportType": "remote-http",
+      "logo": "suse-logo",
+      "featured": true,
+      "configFileRequired": true,
+      "configFileTemplate": "# Required: Basic server parameters.\nUYUNI_SERVER=192.168.1.124:8443\nUYUNI_USER=admin\nUYUNI_PASS=admin\n\n# Optional: Set to 'false' to disable SSL certificate verification. Defaults to 'true'.\n# UYUNI_MCP_SSL_VERIFY=false\n\n# Optional: Set to 'true' to enable tools that perform write actions (e.g., POST requests). Defaults to 'false'.\n# UYUNI_MCP_WRITE_TOOLS_ENABLED=false\n\n# Optional: Set the transport protocol. Can be 'stdio' (default) or 'http'.\n# UYUNI_MCP_TRANSPORT=stdio\n\n# Optional: Set the path for the server log file. Defaults to logging to the console.\n# UYUNI_MCP_LOG_FILE_PATH=/var/log/mcp-server-uyuni.log\n\n# Required to bootstrap new systems into Uyuni via the `add_system` tool.\nUYUNI_SSH_PRIV_KEY=\"-----BEGIN OPENSSH PRIVATE KEY-----\\n...\"\nUYUNI_SSH_PRIV_KEY_PASS=\"\"",
+      "configFileWarning": "Security Note: Enabling UYUNI_MCP_WRITE_TOOLS_ENABLED allows execution of state-changing actions. Use only in trusted environments."
+    }
+  },
+  {
+    "id": "suse-bugzilla",
+    "name": "SUSE Bugzilla",
+    "description": "Official SUSE MCP server for Bugzilla issue tracking and management.",
+    "version": "1.0.0",
+    "packages": [
+      {
+        "registryType": "remote-http",
+        "identifier": "bugzilla-server",
+        "transport": {
+          "type": "http"
+        },
+        "environmentVariables": [
+          {
+            "name": "BUGZILLA_CONFIG",
+            "description": "Bugzilla configuration in format: BUGZILLA_SERVER={url},APIKEY={api_key}",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          }
+        ]
+      },
+      {
+        "registryType": "stdio",
+        "identifier": "mcp-bugzilla",
+        "transport": {
+          "type": "stdio"
+        },
+        "environmentVariables": [
+          {
+            "name": "BUGZILLA_CONFIG",
+            "description": "Bugzilla configuration in format: BUGZILLA_SERVER={url},APIKEY={api_key}",
+            "format": "string",
+            "isSecret": true,
+            "default": ""
+          }
+        ]
+      }
+    ],
+    "validationStatus": "approved",
+    "discoveredAt": "2025-01-01T00:00:00Z",
+    "_meta": {
+      "source": "suse",
+      "badges": ["SUSE", "CERTIFIED"],
+      "priority": 99,
+      "userAuthRequired": true,
+      "authType": "apikey",
+      "category": "issue-tracking",
+      "documentation": "https://github.com/openSUSE/mcp-bugzilla",
+      "tags": ["bugzilla", "issue-tracking", "bug-reports", "suse"],
+      "hosted": false,
+      "transportType": "remote-http",
+      "logo": "suse-logo",
+      "featured": true
     }
   },
   {

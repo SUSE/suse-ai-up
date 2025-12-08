@@ -13,8 +13,8 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Get allowed origins from environment variable
 		allowedOriginsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
 		if allowedOriginsStr == "" {
-			// Default for development
-			allowedOriginsStr = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000"
+			// Default for development - allow localhost and any HTTPS origins for public access
+			allowedOriginsStr = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,*"
 		}
 
 		allowedOrigins := strings.Split(allowedOriginsStr, ",")

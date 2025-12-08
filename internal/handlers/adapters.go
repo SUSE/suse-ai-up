@@ -35,6 +35,7 @@ type CreateAdapterRequest struct {
 	Description          string                    `json:"description"`
 	EnvironmentVariables map[string]string         `json:"environmentVariables"`
 	Authentication       *models.AdapterAuthConfig `json:"authentication"`
+	DeploymentMethod     string                    `json:"deploymentMethod,omitempty"` // "helm", "docker", "systemd", "local"
 }
 
 // CreateAdapterResponse represents the response for adapter creation
@@ -45,6 +46,50 @@ type CreateAdapterResponse struct {
 	Capabilities    *models.MCPFunctionality `json:"capabilities"`
 	Status          string                   `json:"status"`
 	CreatedAt       time.Time                `json:"createdAt"`
+}
+
+// parseTrentoConfig parses TRENTO_CONFIG format: "TRENTO_URL={url},TOKEN={pat}"
+func parseTrentoConfig(config string) (trentoURL, token string, err error) {
+	if config == "" {
+		return "", "", fmt.Errorf("TRENTO_CONFIG cannot be empty")
+	}
+
+	// Parse format: TRENTO_URL={url},TOKEN={pat}
+	parts := strings.Split(config, ",")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid TRENTO_CONFIG format, expected 'TRENTO_URL={url},TOKEN={pat}'")
+	}
+
+	var urlPart, tokenPart string
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "TRENTO_URL=") {
+			urlPart = strings.TrimPrefix(part, "TRENTO_URL=")
+		} else if strings.HasPrefix(part, "TOKEN=") {
+			tokenPart = strings.TrimPrefix(part, "TOKEN=")
+		}
+	}
+
+	if urlPart == "" {
+		return "", "", fmt.Errorf("TRENTO_URL not found in TRENTO_CONFIG")
+	}
+	if tokenPart == "" {
+		return "", "", fmt.Errorf("TOKEN not found in TRENTO_CONFIG")
+	}
+
+	return urlPart, tokenPart, nil
+}
+
+// HandleAdapters handles both listing and creating adapters
+func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.ListAdapters(w, r)
+	case http.MethodPost:
+		h.CreateAdapter(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // CreateAdapter creates a new adapter from a registry server
@@ -74,6 +119,34 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("X-User-ID")
 	if userID == "" {
 		userID = "default-user" // For development
+	}
+
+	// Handle Trento-specific configuration
+	if req.MCPServerID == "suse-trento" {
+		if trentoConfig, exists := req.EnvironmentVariables["TRENTO_CONFIG"]; exists && trentoConfig != "" {
+			// Parse Trento configuration
+			trentoURL, token, err := parseTrentoConfig(trentoConfig)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid TRENTO_CONFIG format: " + err.Error()})
+				return
+			}
+
+			// Set up proper environment variables for Trento
+			req.EnvironmentVariables["TRENTO_URL"] = trentoURL
+			delete(req.EnvironmentVariables, "TRENTO_CONFIG") // Remove the combined config
+
+			// Set up authentication with Trento PAT
+			if req.Authentication == nil {
+				req.Authentication = &models.AdapterAuthConfig{}
+			}
+			req.Authentication.Type = "bearer"
+			req.Authentication.BearerToken = &models.BearerTokenConfig{
+				Token:   token,
+				Dynamic: false, // Static token for Trento PAT
+			}
+		}
 	}
 
 	// Create the adapter
