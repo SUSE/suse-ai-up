@@ -25,20 +25,26 @@ import (
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/services"
 
 	adaptersvc "suse-ai-up/pkg/services/adapters"
 )
 
 // Service represents the registry service
 type Service struct {
-	config         *Config
-	server         *http.Server
-	store          clients.MCPServerStore
-	adapterStore   clients.AdapterResourceStore
-	adapterService *adaptersvc.AdapterService
-	syncManager    *SyncManager
-	shutdownCh     chan struct{}
-	mu             sync.RWMutex
+	config                 *Config
+	server                 *http.Server
+	store                  clients.MCPServerStore
+	adapterStore           clients.AdapterResourceStore
+	adapterService         *adaptersvc.AdapterService
+	userStore              clients.UserStore
+	groupStore             clients.GroupStore
+	userGroupService       *services.UserGroupService
+	userGroupHandler       *handlers.UserGroupHandler
+	routeAssignmentHandler *handlers.RouteAssignmentHandler
+	syncManager            *SyncManager
+	shutdownCh             chan struct{}
+	mu                     sync.RWMutex
 }
 
 // Config holds registry service configuration
@@ -50,6 +56,16 @@ type Config struct {
 	AutoTLS           bool   `json:"auto_tls"`
 	CertFile          string `json:"cert_file"`
 	KeyFile           string `json:"key_file"`
+}
+
+// GetMCPServer gets an MCP server by ID (implements RegistryStore interface)
+func (s *Service) GetMCPServer(id string) (*models.MCPServer, error) {
+	return s.store.GetMCPServer(id)
+}
+
+// UpdateMCPServer updates an MCP server (implements RegistryStore interface)
+func (s *Service) UpdateMCPServer(id string, updated *models.MCPServer) error {
+	return s.store.UpdateMCPServer(id, updated)
 }
 
 // NewService creates a new registry service
@@ -67,8 +83,17 @@ func NewService(config *Config) *Service {
 		config:       config,
 		store:        clients.NewInMemoryMCPServerStore(),
 		adapterStore: clients.NewInMemoryAdapterStore(),
+		userStore:    clients.NewInMemoryUserStore(),
+		groupStore:   clients.NewInMemoryGroupStore(),
 		shutdownCh:   make(chan struct{}),
 	}
+
+	// Initialize user/group service
+	service.userGroupService = services.NewUserGroupService(service.userStore, service.groupStore)
+
+	// Initialize handlers
+	service.userGroupHandler = handlers.NewUserGroupHandler(service.userGroupService)
+	service.routeAssignmentHandler = handlers.NewRouteAssignmentHandler(service.userGroupService, service)
 
 	// Initialize sync manager
 	service.syncManager = NewSyncManager(service.store)
@@ -130,6 +155,76 @@ func (s *Service) Start() error {
 			if len(parts) > 1 && parts[1] == "sync" {
 				r.URL.Path = "/api/v1/adapters/" + adapterID + "/sync"
 				adapterHandler.SyncAdapterCapabilities(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	})))
+
+	// User and group management routes
+	mux.HandleFunc("/api/v1/users", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.userGroupHandler.HandleUsers)))
+	mux.HandleFunc("/api/v1/users/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/users/")
+		if path == "" {
+			if r.Method == "GET" {
+				s.userGroupHandler.ListUsers(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+
+		// Extract user ID from path
+		userID := strings.Split(path, "/")[0]
+
+		switch r.Method {
+		case "GET":
+			r.URL.Path = "/api/v1/users/" + userID
+			s.userGroupHandler.GetUser(w, r)
+		case "PUT":
+			r.URL.Path = "/api/v1/users/" + userID
+			s.userGroupHandler.UpdateUser(w, r)
+		case "DELETE":
+			r.URL.Path = "/api/v1/users/" + userID
+			s.userGroupHandler.DeleteUser(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})))
+
+	// Group management routes
+	mux.HandleFunc("/api/v1/groups", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.userGroupHandler.HandleGroups)))
+	mux.HandleFunc("/api/v1/groups/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/groups/")
+		if path == "" {
+			if r.Method == "GET" {
+				s.userGroupHandler.ListGroups(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+
+		// Extract group ID from path
+		parts := strings.Split(path, "/")
+		groupID := parts[0]
+
+		switch r.Method {
+		case "GET":
+			r.URL.Path = "/api/v1/groups/" + groupID
+			s.userGroupHandler.GetGroup(w, r)
+		case "PUT":
+			r.URL.Path = "/api/v1/groups/" + groupID
+			s.userGroupHandler.UpdateGroup(w, r)
+		case "DELETE":
+			r.URL.Path = "/api/v1/groups/" + groupID
+			s.userGroupHandler.DeleteGroup(w, r)
+		case "POST":
+			if len(parts) > 1 && parts[1] == "members" {
+				r.URL.Path = "/api/v1/groups/" + groupID + "/members"
+				s.userGroupHandler.AddUserToGroup(w, r)
 			} else {
 				http.NotFound(w, r)
 			}
@@ -536,14 +631,47 @@ func (s *Service) matchesFilters(server *models.MCPServer, query, category, tran
 	return true
 }
 
-// handleRegistryByID handles requests for specific registry entries
+// handleRegistryByID handles requests for specific registry entries and route assignments
 func (s *Service) handleRegistryByID(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/registry/")
-	if id == "" {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/registry/")
+	if path == "" {
 		http.NotFound(w, r)
 		return
 	}
 
+	parts := strings.Split(path, "/")
+	if len(parts) >= 2 && parts[1] == "routes" {
+		// Handle route assignment routes
+		serverID := parts[0]
+		switch r.Method {
+		case http.MethodGet:
+			r.URL.Path = "/api/v1/registry/" + serverID + "/routes"
+			s.routeAssignmentHandler.ListRouteAssignments(w, r)
+		case http.MethodPost:
+			r.URL.Path = "/api/v1/registry/" + serverID + "/routes"
+			s.routeAssignmentHandler.CreateRouteAssignment(w, r)
+		case http.MethodPut:
+			if len(parts) >= 3 {
+				r.URL.Path = "/api/v1/registry/" + serverID + "/routes/" + parts[2]
+				s.routeAssignmentHandler.UpdateRouteAssignment(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+		case http.MethodDelete:
+			if len(parts) >= 3 {
+				r.URL.Path = "/api/v1/registry/" + serverID + "/routes/" + parts[2]
+				s.routeAssignmentHandler.DeleteRouteAssignment(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+		return
+	}
+
+	// Handle regular registry routes
+	id := parts[0]
 	switch r.Method {
 	case http.MethodGet:
 		s.handleGetRegistryByID(w, r, id)

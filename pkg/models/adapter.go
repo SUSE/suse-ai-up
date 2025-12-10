@@ -173,6 +173,8 @@ type MCPServer struct {
 	URL              string                 `json:"url,omitempty"` // Legacy URL field for remote servers
 	Meta             map[string]interface{} `json:"_meta,omitempty"`
 	GitHubConfig     *GitHubConfig          `json:"github_config,omitempty"`
+	RouteAssignments []RouteAssignment      `json:"routeAssignments,omitempty"` // User/group access control
+	AutoSpawn        *AutoSpawnConfig       `json:"autoSpawn,omitempty"`        // Auto-spawning configuration
 }
 
 // Repository represents repository information for an MCP server
@@ -383,4 +385,49 @@ type CapabilityValidation struct {
 	ResourcesValid bool     `json:"resources_valid"`
 	PromptsValid   bool     `json:"prompts_valid"`
 	Issues         []string `json:"issues"`
+}
+
+// User represents a system user
+type User struct {
+	ID        string    `json:"id" example:"user123"`
+	Name      string    `json:"name" example:"John Doe"`
+	Email     string    `json:"email" example:"john@example.com"`
+	Groups    []string  `json:"groups" example:"[\"mcp-users\",\"weather-team\"]"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// Group represents a user group with permissions
+type Group struct {
+	ID          string    `json:"id" example:"mcp-users"`
+	Name        string    `json:"name" example:"MCP Users"`
+	Description string    `json:"description" example:"Users with access to MCP servers"`
+	Members     []string  `json:"members" example:"[\"user123\",\"user456\"]"`
+	Permissions []string  `json:"permissions" example:"[\"server:read\",\"adapter:create\"]"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// RouteAssignment represents user/group assignment to server routes
+type RouteAssignment struct {
+	ID          string    `json:"id" example:"assignment-123"`
+	ServerID    string    `json:"serverId" example:"mcp-bugzilla"`
+	UserIDs     []string  `json:"userIds,omitempty" example:"[\"user123\"]"`
+	GroupIDs    []string  `json:"groupIds,omitempty" example:"[\"mcp-users\"]"`
+	AutoSpawn   bool      `json:"autoSpawn" example:"true"`
+	Permissions string    `json:"permissions" example:"read"` // "read", "write", "admin"
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// AutoSpawnConfig represents auto-spawning configuration for servers
+type AutoSpawnConfig struct {
+	Enabled          bool              `json:"enabled"`
+	ConnectionType   ConnectionType    `json:"connectionType"`             // "LocalStdio" or "StreamableHttp"
+	Command          string            `json:"command,omitempty"`          // for stdio
+	Args             []string          `json:"args,omitempty"`             // for stdio
+	ImageName        string            `json:"imageName,omitempty"`        // for containers
+	ImageVersion     string            `json:"imageVersion,omitempty"`     // for containers
+	DefaultEnv       map[string]string `json:"defaultEnv,omitempty"`       // default env vars
+	DeploymentMethod string            `json:"deploymentMethod,omitempty"` // "docker", "local"
 }

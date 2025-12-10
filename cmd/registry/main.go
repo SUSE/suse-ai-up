@@ -20,9 +20,7 @@ func main() {
 
 func Main() {
 	config := &registry.Config{
-		Port:           8913,
-		EnableOfficial: true,
-		EnableDocker:   true,
+		Port: 8913,
 	}
 
 	service := registry.NewService(config)

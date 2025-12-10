@@ -59,6 +59,23 @@ func (sm *SyncManager) SyncOfficialRegistry(ctx context.Context) error {
 					},
 				},
 			},
+			RouteAssignments: []models.RouteAssignment{
+				{
+					ID:          "filesystem-default",
+					UserIDs:     []string{}, // No specific users
+					GroupIDs:    []string{"mcp-users"},
+					AutoSpawn:   true,
+					Permissions: "read",
+					CreatedAt:   time.Now(),
+					UpdatedAt:   time.Now(),
+				},
+			},
+			AutoSpawn: &models.AutoSpawnConfig{
+				Enabled:        true,
+				ConnectionType: models.ConnectionTypeLocalStdio,
+				Command:        "npx",
+				Args:           []string{"@modelcontextprotocol/server-filesystem", "--help"},
+			},
 			ValidationStatus: "approved",
 			Meta: map[string]interface{}{
 				"source":   "well-known",

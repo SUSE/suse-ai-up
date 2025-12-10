@@ -766,6 +766,288 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
 				},
 			},
+			"/api/v1/users": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "List Users",
+					"description": "Get a list of all users (Registry Service - Port 8913)",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of users",
+							"schema": map[string]interface{}{
+								"type":  "array",
+								"items": map[string]interface{}{"$ref": "#/definitions/User"},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "Create User",
+					"description": "Create a new user (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "user", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/CreateUserRequest"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "User created",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/User"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/users/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "Get User",
+					"description": "Get a specific user by ID (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "User details",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/User"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"put": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "Update User",
+					"description": "Update an existing user (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "user", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/User"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "User updated",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/User"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "Delete User",
+					"description": "Delete a user (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "User deleted",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/groups": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "List Groups",
+					"description": "Get a list of all groups (Registry Service - Port 8913)",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of groups",
+							"schema": map[string]interface{}{
+								"type":  "array",
+								"items": map[string]interface{}{"$ref": "#/definitions/Group"},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Create Group",
+					"description": "Create a new group (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "group", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/CreateGroupRequest"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Group created",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/Group"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/groups/{id}": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Get Group",
+					"description": "Get a specific group by ID (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Group details",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/Group"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"put": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Update Group",
+					"description": "Update an existing group (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "group", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/Group"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Group updated",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/Group"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Delete Group",
+					"description": "Delete a group (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "Group deleted",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/groups/{id}/members": map[string]interface{}{
+				"post": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Add User to Group",
+					"description": "Add a user to a group (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "member", "in": "body", "required": true, "schema": map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"userId": map[string]interface{}{"type": "string", "example": "user123"},
+							},
+							"required": []string{"userId"},
+						}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "User added to group",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"status":  map[string]interface{}{"type": "string"},
+									"message": map[string]interface{}{"type": "string"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/groups/{id}/members/{userId}": map[string]interface{}{
+				"delete": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Remove User from Group",
+					"description": "Remove a user from a group (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "id", "in": "path", "required": true, "type": "string"},
+						{"name": "userId", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "User removed from group",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"status":  map[string]interface{}{"type": "string"},
+									"message": map[string]interface{}{"type": "string"},
+								},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/{serverId}/routes": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Route Management"},
+					"summary":     "List Route Assignments",
+					"description": "Get route assignments for a server (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "serverId", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of route assignments",
+							"schema": map[string]interface{}{
+								"type":  "array",
+								"items": map[string]interface{}{"$ref": "#/definitions/RouteAssignment"},
+							},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"Route Management"},
+					"summary":     "Create Route Assignment",
+					"description": "Create a route assignment for a server (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "serverId", "in": "path", "required": true, "type": "string"},
+						{"name": "assignment", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/CreateRouteAssignmentRequest"}},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Route assignment created",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/RouteAssignment"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
+			"/api/v1/registry/{serverId}/routes/{assignmentId}": map[string]interface{}{
+				"put": map[string]interface{}{
+					"tags":        []string{"Route Management"},
+					"summary":     "Update Route Assignment",
+					"description": "Update a route assignment for a server (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "serverId", "in": "path", "required": true, "type": "string"},
+						{"name": "assignmentId", "in": "path", "required": true, "type": "string"},
+						{"name": "assignment", "in": "body", "required": true, "schema": map[string]interface{}{"$ref": "#/definitions/CreateRouteAssignmentRequest"}},
+					},
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "Route assignment updated",
+							"schema":      map[string]interface{}{"$ref": "#/definitions/RouteAssignment"},
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+				"delete": map[string]interface{}{
+					"tags":        []string{"Route Management"},
+					"summary":     "Delete Route Assignment",
+					"description": "Delete a route assignment for a server (Registry Service - Port 8913)",
+					"parameters": []map[string]interface{}{
+						{"name": "serverId", "in": "path", "required": true, "type": "string"},
+						{"name": "assignmentId", "in": "path", "required": true, "type": "string"},
+					},
+					"responses": map[string]interface{}{
+						"204": map[string]interface{}{
+							"description": "Route assignment deleted",
+						},
+					},
+					"security": []map[string]interface{}{{"apiKey": []interface{}{}}},
+				},
+			},
 			"/api/v1/scan": map[string]interface{}{
 				"post": map[string]interface{}{
 					"tags":        []string{"Discovery"},
@@ -989,6 +1271,71 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 					"createdBy":            map[string]interface{}{"type": "string", "example": "user@example.com"},
 					"createdAt":            map[string]interface{}{"type": "string", "format": "date-time"},
 					"lastUpdatedAt":        map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"User": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":        map[string]interface{}{"type": "string", "example": "user123"},
+					"name":      map[string]interface{}{"type": "string", "example": "John Doe"},
+					"email":     map[string]interface{}{"type": "string", "example": "john@example.com"},
+					"groups":    map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"mcp-users"}},
+					"createdAt": map[string]interface{}{"type": "string", "format": "date-time"},
+					"updatedAt": map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"Group": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":          map[string]interface{}{"type": "string", "example": "mcp-users"},
+					"name":        map[string]interface{}{"type": "string", "example": "MCP Users"},
+					"description": map[string]interface{}{"type": "string", "example": "Users with access to MCP servers"},
+					"members":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"user123"}},
+					"permissions": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"server:read"}},
+					"createdAt":   map[string]interface{}{"type": "string", "format": "date-time"},
+					"updatedAt":   map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"RouteAssignment": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":          map[string]interface{}{"type": "string", "example": "assignment-123"},
+					"serverId":    map[string]interface{}{"type": "string", "example": "mcp-bugzilla"},
+					"userIds":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"user123"}},
+					"groupIds":    map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"mcp-users"}},
+					"autoSpawn":   map[string]interface{}{"type": "boolean", "example": true},
+					"permissions": map[string]interface{}{"type": "string", "example": "read"},
+					"createdAt":   map[string]interface{}{"type": "string", "format": "date-time"},
+					"updatedAt":   map[string]interface{}{"type": "string", "format": "date-time"},
+				},
+			},
+			"CreateUserRequest": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":     map[string]interface{}{"type": "string", "example": "user123"},
+					"name":   map[string]interface{}{"type": "string", "example": "John Doe"},
+					"email":  map[string]interface{}{"type": "string", "example": "john@example.com"},
+					"groups": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"mcp-users"}},
+				},
+				"required": []string{"id", "name", "email"},
+			},
+			"CreateGroupRequest": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":          map[string]interface{}{"type": "string", "example": "weather-team"},
+					"name":        map[string]interface{}{"type": "string", "example": "Weather Team"},
+					"description": map[string]interface{}{"type": "string", "example": "Team with access to weather APIs"},
+					"permissions": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"server:weather-*"}},
+				},
+				"required": []string{"id", "name"},
+			},
+			"CreateRouteAssignmentRequest": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"userIds":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"user123"}},
+					"groupIds":    map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "example": []string{"weather-team"}},
+					"autoSpawn":   map[string]interface{}{"type": "boolean", "example": true},
+					"permissions": map[string]interface{}{"type": "string", "example": "read"},
 				},
 			},
 			"CreateAdapterRequest": map[string]interface{}{
