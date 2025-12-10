@@ -12,6 +12,7 @@ const (
 	ConnectionTypeStreamableHttp ConnectionType = "StreamableHttp"
 	ConnectionTypeRemoteHttp     ConnectionType = "RemoteHttp"
 	ConnectionTypeLocalStdio     ConnectionType = "LocalStdio"
+	ConnectionTypeSidecarStdio   ConnectionType = "SidecarStdio"
 )
 
 // ServerProtocol represents the protocol used by the adapter
@@ -20,6 +21,15 @@ type ServerProtocol string
 const (
 	ServerProtocolMCP ServerProtocol = "MCP"
 )
+
+// SidecarConfig represents configuration for sidecar container deployment
+type SidecarConfig struct {
+	GitRepository string `json:"gitRepository" example:"https://github.com/example/mcp-server"`
+	Command       string `json:"command" example:"uv run mcp-server --host 127.0.0.1 --port 8000"`
+	Runtime       string `json:"runtime" example:"uv"` // "npx", "python", "uv", etc.
+	BaseImage     string `json:"baseImage" example:"python:3.11-slim"`
+	Port          int    `json:"port" example:"8000"` // Randomly assigned port
+}
 
 // AdapterData represents the data for creating or updating an adapter
 type AdapterData struct {
@@ -47,6 +57,8 @@ type AdapterData struct {
 	Authentication *AdapterAuthConfig `json:"authentication,omitempty"`
 	// MCP Functionality (discovered from server)
 	MCPFunctionality *MCPFunctionality `json:"mcpFunctionality,omitempty"`
+	// For sidecar stdio deployment
+	SidecarConfig *SidecarConfig `json:"sidecarConfig,omitempty"`
 }
 
 // NewAdapterData creates a new AdapterData with defaults
@@ -64,6 +76,7 @@ func NewAdapterData(name, imageName, imageVersion string) *AdapterData {
 		RemoteUrl:            "",
 		Command:              "",
 		Args:                 []string{},
+		SidecarConfig:        nil,
 	}
 }
 

@@ -92,9 +92,24 @@ func runProxy() {
 }
 
 func runDiscovery() {
+	port := 8912     // Default port
+	tlsPort := 38912 // Default TLS port
+
+	// Read environment variables if set
+	if envPort := os.Getenv("DISCOVERY_PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+	if envTLSPort := os.Getenv("DISCOVERY_TLS_PORT"); envTLSPort != "" {
+		if p, err := strconv.Atoi(envTLSPort); err == nil {
+			tlsPort = p
+		}
+	}
+
 	config := &discovery.Config{
-		Port:           8912,
-		TLSPort:        38912,           // HTTPS port
+		Port:           port,
+		TLSPort:        tlsPort,         // HTTPS port
 		DefaultTimeout: 30 * 1000000000, // 30 seconds in nanoseconds
 		MaxConcurrency: 10,
 		ExcludeProxy:   true,
@@ -109,9 +124,24 @@ func runDiscovery() {
 }
 
 func runRegistry() {
+	port := 8913     // Default port
+	tlsPort := 38913 // Default TLS port
+
+	// Read environment variables if set
+	if envPort := os.Getenv("REGISTRY_PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+	if envTLSPort := os.Getenv("REGISTRY_TLS_PORT"); envTLSPort != "" {
+		if p, err := strconv.Atoi(envTLSPort); err == nil {
+			tlsPort = p
+		}
+	}
+
 	config := &registry.Config{
-		Port:              8913,
-		TLSPort:           38913, // HTTPS port
+		Port:              port,
+		TLSPort:           tlsPort, // HTTPS port
 		RemoteServersFile: "config/remote_mcp_servers.json",
 		AutoTLS:           true, // Enable auto-generated TLS certificates
 	}
@@ -124,9 +154,24 @@ func runRegistry() {
 }
 
 func runPlugins() {
+	port := 8914     // Default port
+	tlsPort := 38914 // Default TLS port
+
+	// Read environment variables if set
+	if envPort := os.Getenv("PLUGINS_PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+	if envTLSPort := os.Getenv("PLUGINS_TLS_PORT"); envTLSPort != "" {
+		if p, err := strconv.Atoi(envTLSPort); err == nil {
+			tlsPort = p
+		}
+	}
+
 	config := &plugins.Config{
-		Port:           8914,
-		TLSPort:        38914,           // HTTPS port
+		Port:           port,
+		TLSPort:        tlsPort,         // HTTPS port
 		HealthInterval: 30 * 1000000000, // 30 seconds in nanoseconds
 		AutoTLS:        true,            // Enable auto-generated TLS certificates
 	}
@@ -231,6 +276,9 @@ func startServiceProcess(svc ServiceConfig, processes map[string]*os.Process, er
 	// Create the command
 	cmd := exec.Command(svc.Cmd[0], svc.Cmd[1:]...)
 
+	// Inherit environment variables
+	cmd.Env = os.Environ()
+
 	// Set up prefixed output
 	cmd.Stdout = &prefixedWriter{prefix: fmt.Sprintf("[%s] ", strings.ToUpper(svc.Name)), writer: os.Stdout}
 	cmd.Stderr = &prefixedWriter{prefix: fmt.Sprintf("[%s] ", strings.ToUpper(svc.Name)), writer: os.Stderr}
@@ -277,7 +325,25 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // handleDocs serves the Swagger UI
 func handleDocs(w http.ResponseWriter, r *http.Request) {
-	swaggerHTML := `<!DOCTYPE html>
+	// Get service ports from environment variables or use defaults
+	proxyPort := os.Getenv("PROXY_PORT")
+	if proxyPort == "" {
+		proxyPort = "8911"
+	}
+	registryPort := os.Getenv("REGISTRY_PORT")
+	if registryPort == "" {
+		registryPort = "8913"
+	}
+	discoveryPort := os.Getenv("DISCOVERY_PORT")
+	if discoveryPort == "" {
+		discoveryPort = "8912"
+	}
+	pluginsPort := os.Getenv("PLUGINS_PORT")
+	if pluginsPort == "" {
+		pluginsPort = "8914"
+	}
+
+	swaggerHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
     <title>SUSE AI Universal Proxy API Documentation</title>
@@ -286,6 +352,33 @@ func handleDocs(w http.ResponseWriter, r *http.Request) {
         html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
         *, *:before, *:after { box-sizing: inherit; }
         body { margin:0; background: #fafafa; }
+        .service-badge {
+            font-family: monospace;
+            text-transform: uppercase;
+            background: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .help-section {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .help-section h4 {
+            margin: 0 0 10px 0;
+            color: #0056b3;
+        }
+        .help-section ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -306,41 +399,89 @@ func handleDocs(w http.ResponseWriter, r *http.Request) {
                     SwaggerUIBundle.plugins.DownloadUrl
                 ],
                 layout: "StandaloneLayout",
-                servers: [
-                    {
-                        url: 'http://192.168.64.17:8911',
-                        description: 'Proxy Service'
-                    }
-                ],
+                showServersDropdown: true,
                 onComplete: function() {
-                    // Add custom server selection for different operations
+                    // Simple service badge system
                     setTimeout(function() {
-                        // Find all operations and set appropriate servers
-                        const operations = document.querySelectorAll('.opblock-summary-method');
-                        operations.forEach(function(op) {
-                            const path = op.closest('.opblock').querySelector('.opblock-summary-path').textContent.trim();
-                            if (path.startsWith('/api/v1/registry')) {
-                                // This should use registry service
-                                console.log('Registry operation:', path);
-                            } else if (path.startsWith('/api/v1/scan') || path.startsWith('/api/v1/servers')) {
-                                // This should use discovery service
-                                console.log('Discovery operation:', path);
-                            } else if (path.startsWith('/api/v1/plugins')) {
-                                // This should use plugins service
-                                console.log('Plugins operation:', path);
-                            }
-                        });
+                        addServiceBadges();
+                        addHelpSection();
+                        expandServerDropdown();
                     }, 1000);
                 }
             });
         };
+
+        function expandServerDropdown() {
+            // Ensure server dropdown is visible and expanded
+            const serverWrapper = document.querySelector('.servers');
+            if (serverWrapper) {
+                serverWrapper.style.display = 'block';
+                const title = serverWrapper.querySelector('label');
+                if (title) {
+                    title.click(); // Expand the server dropdown
+                }
+            }
+        }
+
+        // Service mapping for badges
+        const serviceMap = {
+            '/adapters': { name: 'Proxy', color: '#007bff' },
+            '/registry': { name: 'Registry', color: '#28a745' },
+            '/discovery': { name: 'Discovery', color: '#17a2b8' },
+            '/plugins': { name: 'Plugins', color: '#ffc107' },
+            'default': { name: 'Proxy', color: '#007bff' }
+        };
+
+        function getServiceInfo(path) {
+            for (const prefix in serviceMap) {
+                if (prefix !== 'default' && path.startsWith(prefix)) {
+                    return serviceMap[prefix];
+                }
+            }
+            return serviceMap.default;
+        }
+
+        function addServiceBadges() {
+            const operations = document.querySelectorAll('.opblock');
+            operations.forEach(function(op) {
+                const pathElement = op.querySelector('.opblock-summary-path');
+                if (!pathElement) return;
+
+                const path = pathElement.textContent.trim();
+                const serviceInfo = getServiceInfo(path);
+
+                // Add service badge
+                const badge = document.createElement('span');
+                badge.className = 'service-badge';
+                badge.textContent = serviceInfo.name;
+                badge.style.cssText = 'background: ' + serviceInfo.color + '; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; margin-left: 8px;';
+
+                const summary = op.querySelector('.opblock-summary');
+                if (summary && !summary.querySelector('.service-badge')) {
+                    summary.appendChild(badge);
+                }
+            });
+        }
+
+        function addHelpSection() {
+            setTimeout(function() {
+                const info = document.querySelector('.info');
+                if (info && !document.querySelector('.help-section')) {
+                    const helpSection = document.createElement('div');
+                    helpSection.className = 'help-section';
+                    helpSection.innerHTML = '<h4>How to Use This API Documentation</h4><ul><li><strong>Service Badges:</strong> Each operation shows which service it belongs to</li><li><strong>Automatic Server Selection:</strong> Each operation automatically uses the correct server based on its path</li><li><strong>Try It Out:</strong> Click "Try it out" on any operation to test it</li></ul>';
+                    info.appendChild(helpSection);
+                }
+            }, 1500);
+        }
     </script>
 </body>
-</html>`
+</html>`)
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(swaggerHTML))
 }
 
+// generateSwaggerSpec generates a Swagger spec for a specific service
 // handleSwaggerJSON serves the Swagger JSON specification
 func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 	// Determine the host dynamically based on the request
@@ -349,19 +490,63 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 		host = "192.168.64.17:8911"
 	}
 
+	// Get service ports from environment variables or use defaults
+	proxyPort := os.Getenv("PROXY_PORT")
+	if proxyPort == "" {
+		proxyPort = "8911"
+	}
+	registryPort := os.Getenv("REGISTRY_PORT")
+	if registryPort == "" {
+		registryPort = "8913"
+	}
+	discoveryPort := os.Getenv("DISCOVERY_PORT")
+	if discoveryPort == "" {
+		discoveryPort = "8912"
+	}
+	pluginsPort := os.Getenv("PLUGINS_PORT")
+	if pluginsPort == "" {
+		pluginsPort = "8914"
+	}
+
+	// Extract hostname from request
+	hostname := r.Host
+	if colonIndex := strings.LastIndex(hostname, ":"); colonIndex != -1 {
+		hostname = hostname[:colonIndex]
+	}
+	if hostname == "" {
+		hostname = "192.168.64.17"
+	}
+
 	// Create the swagger spec as a Go map for easier manipulation
 	swagger := map[string]interface{}{
 		"swagger": "2.0",
 		"info": map[string]interface{}{
 			"title":       "SUSE AI Universal Proxy API",
-			"description": "Complete API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system with registry, discovery, and plugin management",
+			"description": "Complete API documentation for the SUSE AI Universal Proxy - A comprehensive MCP proxy system.\n\n**Service Ports:**\n- **Proxy**: Port " + proxyPort + " (MCP communication)\n- **Registry**: Port " + registryPort + " (Server management, adapters, users/groups)\n- **Discovery**: Port " + discoveryPort + " (Network scanning)\n- **Plugins**: Port " + pluginsPort + " (Plugin management)\n\n**Note**: Use the server dropdown to select the appropriate service for testing APIs.",
 			"version":     "1.0.0",
 			"contact": map[string]interface{}{
 				"name":  "SUSE AI Team",
 				"email": "ai@suse.com",
 			},
 		},
-		"host":     host,
+		"servers": []map[string]interface{}{
+			{
+				"url":         "http://" + hostname + ":" + proxyPort,
+				"description": "Proxy Service - MCP Communication (Port " + proxyPort + ")",
+			},
+			{
+				"url":         "http://" + hostname + ":" + registryPort,
+				"description": "Registry Service - Server Management (Port " + registryPort + ")",
+			},
+			{
+				"url":         "http://" + hostname + ":" + discoveryPort,
+				"description": "Discovery Service - Network Scanning (Port " + discoveryPort + ")",
+			},
+			{
+				"url":         "http://" + hostname + ":" + pluginsPort,
+				"description": "Plugins Service - Plugin Management (Port " + pluginsPort + ")",
+			},
+		},
 		"basePath": "/",
 		"schemes":  []string{"http", "https"},
 		"consumes": []string{"application/json"},
@@ -372,6 +557,9 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 			{"name": "Discovery", "description": "Network discovery and server scanning (Port 8912)"},
 			{"name": "Plugins", "description": "Plugin management and registration (Port 8914)"},
 			{"name": "Health", "description": "Health check endpoints"},
+			{"name": "User Management", "description": "User account management (Registry Service - Port 8913)"},
+			{"name": "Group Management", "description": "User group management (Registry Service - Port 8913)"},
+			{"name": "Route Management", "description": "Server access route assignments (Registry Service - Port 8913)"},
 		},
 		"paths": map[string]interface{}{
 			"/health": map[string]interface{}{
@@ -524,8 +712,8 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 			"/api/v1/registry/browse": map[string]interface{}{
 				"get": map[string]interface{}{
 					"tags":        []string{"Registry"},
-					"summary":     "Browse MCP Server Registry",
-					"description": "Get a filtered list of MCP servers from the registry (Registry Service - Port 8913)",
+					"summary":     "Browse MCP Servers",
+					"description": "Get a list of all available MCP servers in the registry **(Registry Service - Port 8913)**",
 					"parameters": []map[string]interface{}{
 						{"name": "q", "in": "query", "description": "Search query", "type": "string"},
 						{"name": "category", "in": "query", "description": "Category filter (development, productivity, etc.)", "type": "string"},
@@ -770,7 +958,7 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 				"get": map[string]interface{}{
 					"tags":        []string{"User Management"},
 					"summary":     "List Users",
-					"description": "Get a list of all users (Registry Service - Port 8913)",
+					"description": "Get a list of all users **(Registry Service - Port 8913)**",
 					"responses": map[string]interface{}{
 						"200": map[string]interface{}{
 							"description": "List of users",
@@ -1589,6 +1777,21 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func startHealthCheckServer(errors chan<- error) error {
+	healthPort := 8911    // Default port
+	healthTLSPort := 3911 // Default TLS port
+
+	// Read environment variables if set
+	if envPort := os.Getenv("HEALTH_PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			healthPort = p
+		}
+	}
+	if envTLSPort := os.Getenv("HEALTH_TLS_PORT"); envTLSPort != "" {
+		if p, err := strconv.Atoi(envTLSPort); err == nil {
+			healthTLSPort = p
+		}
+	}
+
 	// Simple health check server that checks all services and serves Swagger UI
 	mux := http.NewServeMux()
 
@@ -1603,12 +1806,12 @@ func startHealthCheckServer(errors chan<- error) error {
 
 	// Start HTTP server
 	httpServer := &http.Server{
-		Addr:    ":8911",
+		Addr:    fmt.Sprintf(":%d", healthPort),
 		Handler: mux,
 	}
 
 	go func() {
-		fmt.Println("[HEALTH] Health check and API docs HTTP server starting on port 8911")
+		fmt.Printf("[HEALTH] Health check and API docs HTTP server starting on port %d\n", healthPort)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("HTTP server error: %v", err)
 		}
@@ -1627,13 +1830,13 @@ func startHealthCheckServer(errors chan<- error) error {
 	tlsConfig.Certificates = []tls.Certificate{*cert}
 
 	httpsServer := &http.Server{
-		Addr:      ":3911",
+		Addr:      fmt.Sprintf(":%d", healthTLSPort),
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
 
 	go func() {
-		fmt.Println("[HEALTH] Health check and API docs HTTPS server starting on port 3911")
+		fmt.Printf("[HEALTH] Health check and API docs HTTPS server starting on port %d\n", healthTLSPort)
 		if err := httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			log.Printf("HTTPS server error: %v", err)
 		}

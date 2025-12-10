@@ -8,6 +8,7 @@ import (
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/proxy"
 )
 
 // AdapterService manages adapters for remote MCP servers
@@ -15,14 +16,16 @@ type AdapterService struct {
 	store               clients.AdapterResourceStore
 	registryStore       clients.MCPServerStore
 	capabilityDiscovery *mcp.CapabilityDiscoveryService
+	sidecarManager      *proxy.SidecarManager
 }
 
 // NewAdapterService creates a new adapter service
-func NewAdapterService(store clients.AdapterResourceStore, registryStore clients.MCPServerStore) *AdapterService {
+func NewAdapterService(store clients.AdapterResourceStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager) *AdapterService {
 	return &AdapterService{
 		store:               store,
 		registryStore:       registryStore,
 		capabilityDiscovery: mcp.NewCapabilityDiscoveryService(),
+		sidecarManager:      sidecarManager,
 	}
 }
 
@@ -42,15 +45,36 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		}
 	}
 
+	// Determine connection type and sidecar configuration
+	connectionType := models.ConnectionTypeStreamableHttp
+	var sidecarConfig *models.SidecarConfig
+
+	// Check if server has stdio packages and sidecar configuration
+	if as.hasStdioPackage(server) {
+		if sidecarMeta := as.getSidecarMeta(server); sidecarMeta != nil {
+			connectionType = models.ConnectionTypeSidecarStdio
+			sidecarConfig = &models.SidecarConfig{
+				GitRepository: sidecarMeta.GitRepository,
+				Command:       sidecarMeta.Command,
+				Runtime:       sidecarMeta.Runtime,
+				BaseImage:     sidecarMeta.BaseImage,
+			}
+		} else {
+			// Fall back to local stdio if no sidecar config
+			connectionType = models.ConnectionTypeLocalStdio
+		}
+	}
+
 	// Create adapter data
 	adapterData := &models.AdapterData{
 		Name:                 name,
 		Description:          fmt.Sprintf("Adapter for %s", server.Name),
 		Protocol:             models.ServerProtocolMCP,
-		ConnectionType:       models.ConnectionTypeStreamableHttp,
+		ConnectionType:       connectionType,
 		EnvironmentVariables: envVars,
 		RemoteUrl:            server.URL, // Use the OAuth URL as remote URL
 		Authentication:       auth,
+		SidecarConfig:        sidecarConfig,
 	}
 
 	// Discover capabilities
@@ -67,7 +91,81 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		return nil, fmt.Errorf("failed to store adapter: %w", err)
 	}
 
+	// Deploy sidecar if needed
+	if adapter.ConnectionType == models.ConnectionTypeSidecarStdio {
+		if as.sidecarManager == nil {
+			// Fall back to local stdio if no sidecar manager is available
+			adapter.ConnectionType = models.ConnectionTypeLocalStdio
+			adapter.SidecarConfig = nil
+			// Update the stored adapter
+			as.store.Update(ctx, *adapter)
+		} else {
+			if err := as.sidecarManager.DeploySidecar(ctx, *adapter); err != nil {
+				// If sidecar deployment fails, we should clean up the adapter
+				as.store.Delete(ctx, adapter.ID)
+				return nil, fmt.Errorf("failed to deploy sidecar: %w", err)
+			}
+		}
+	}
+
 	return adapter, nil
+}
+
+// hasStdioPackage checks if the server has stdio packages
+func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
+	for _, pkg := range server.Packages {
+		if pkg.RegistryType == "stdio" {
+			return true
+		}
+	}
+	return false
+}
+
+// sidecarMeta represents sidecar configuration from server metadata
+type sidecarMeta struct {
+	GitRepository string
+	Command       string
+	Runtime       string
+	BaseImage     string
+}
+
+// getSidecarMeta extracts sidecar configuration from server metadata
+func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta {
+	if server.Meta == nil {
+		return nil
+	}
+
+	sidecarConfig, ok := server.Meta["sidecarConfig"]
+	if !ok {
+		return nil
+	}
+
+	configMap, ok := sidecarConfig.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	meta := &sidecarMeta{}
+
+	if gitRepo, ok := configMap["gitRepository"].(string); ok {
+		meta.GitRepository = gitRepo
+	}
+	if command, ok := configMap["command"].(string); ok {
+		meta.Command = command
+	}
+	if runtime, ok := configMap["runtime"].(string); ok {
+		meta.Runtime = runtime
+	}
+	if baseImage, ok := configMap["baseImage"].(string); ok {
+		meta.BaseImage = baseImage
+	}
+
+	// Return nil if required fields are missing
+	if meta.GitRepository == "" || meta.Command == "" {
+		return nil
+	}
+
+	return meta
 }
 
 // GetAdapter gets an adapter by ID for a specific user

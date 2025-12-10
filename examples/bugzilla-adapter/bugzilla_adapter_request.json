@@ -1,0 +1,9 @@
+{
+  "mcpServerId": "suse-bugzilla",
+  "name": "my-bugzilla-adapter",
+  "description": "Personal Bugzilla adapter for SUSE bug tracking and issue management",
+  "environmentVariables": {
+    "BUGZILLA_CONFIG": "BUGZILLA_SERVER=https://bugzilla.suse.com,APIKEY=8SU3oVHyRa98rs8eTvTGBf8BCJhqc4MzEF6mQna"
+  },
+  "deploymentMethod": "local"
+}

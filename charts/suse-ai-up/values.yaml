@@ -329,3 +329,68 @@ deploymentAnnotations: {}
 
 # Service annotations
 serviceAnnotations: {}
+
+# Sidecar Configuration for MCP servers
+sidecar:
+  enabled: true
+  image:
+    registry: python
+    repository: "3.11-slim"
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Resource limits for sidecar containers
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Port range for sidecar containers
+  portRange:
+    min: 8000
+    max: 9000
+
+  # Runtime configurations
+  runtimes:
+    npx:
+      enabled: true
+      packages: ["nodejs", "npm"]
+    python:
+      enabled: true
+      packages: ["python3", "python3-pip"]
+    uv:
+      enabled: true
+      packages: ["python3", "python3-pip"]
+
+  # Git configuration
+  git:
+    enabled: true
+    packages: ["git"]
+
+  # Security context for sidecar containers
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    capabilities:
+      drop:
+        - ALL
+
+  # Health check configuration
+  healthCheck:
+    enabled: true
+    path: "/health"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Node selector, tolerations, and affinity for sidecar pods
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

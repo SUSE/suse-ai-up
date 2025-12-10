@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"strings"
 	"suse-ai-up/pkg/middleware"
+	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
 	"syscall"
 	"time"
@@ -100,7 +101,14 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(s.proxyToRegistry))
 	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(s.proxyToRegistry))
 	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(s.proxyToRegistry))
-	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(s.proxyToRegistry))
+	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		// Check if this is an MCP request (contains /mcp in the path)
+		if strings.Contains(r.URL.Path, "/mcp") {
+			s.HandleAdapterMCP(w, r)
+		} else {
+			s.proxyToRegistry(w, r)
+		}
+	}))
 	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(s.proxyToDiscovery))
 	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
 	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
@@ -1213,6 +1221,100 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseData)
+}
+
+// HandleAdapterMCP handles MCP requests for adapters
+func (s *Service) HandleAdapterMCP(w http.ResponseWriter, r *http.Request) {
+	// Extract adapter ID from URL: /api/v1/adapters/{id}/mcp
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	adapterID := strings.TrimSuffix(path, "/mcp")
+
+	if adapterID == "" {
+		http.Error(w, "Adapter ID not found in path", http.StatusBadRequest)
+		return
+	}
+
+	// Get adapter from registry (proxy to registry service)
+	registryURL := fmt.Sprintf("http://127.0.0.1:8913/api/v1/adapters/%s", adapterID)
+	resp, err := http.Get(registryURL)
+	if err != nil {
+		log.Printf("Failed to get adapter %s: %v", adapterID, err)
+		http.Error(w, "Adapter not found", http.StatusNotFound)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Adapter %s not found (status: %d)", adapterID, resp.StatusCode)
+		http.Error(w, "Adapter not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse adapter response
+	var adapter models.AdapterResource
+	if err := json.NewDecoder(resp.Body).Decode(&adapter); err != nil {
+		log.Printf("Failed to parse adapter response: %v", err)
+		http.Error(w, "Failed to parse adapter", http.StatusInternalServerError)
+		return
+	}
+
+	// Route based on connection type
+	switch adapter.ConnectionType {
+	case models.ConnectionTypeLocalStdio:
+		// Handle local stdio (existing logic)
+		s.handleLocalStdioMCP(w, r, adapter)
+	case models.ConnectionTypeSidecarStdio:
+		// Handle sidecar stdio
+		s.handleSidecarMCP(w, r, adapter)
+	case models.ConnectionTypeRemoteHttp:
+		// Handle remote HTTP
+		s.handleRemoteHttpMCP(w, r, adapter)
+	case models.ConnectionTypeStreamableHttp:
+		// Handle streamable HTTP
+		s.handleStreamableHttpMCP(w, r, adapter)
+	default:
+		http.Error(w, fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType), http.StatusBadRequest)
+	}
+}
+
+// handleLocalStdioMCP handles MCP requests for local stdio adapters
+func (s *Service) handleLocalStdioMCP(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
+	// For now, proxy to the existing MCP handler
+	// This would need to be integrated with the existing local stdio plugin
+	http.Error(w, "Local stdio MCP not yet implemented", http.StatusNotImplemented)
+}
+
+// handleSidecarMCP handles MCP requests for sidecar adapters
+func (s *Service) handleSidecarMCP(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
+	if adapter.SidecarConfig == nil {
+		http.Error(w, "Sidecar configuration missing", http.StatusInternalServerError)
+		return
+	}
+
+	// Construct sidecar service URL
+	sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.default.svc.cluster.local:%d/mcp",
+		adapter.ID, adapter.SidecarConfig.Port)
+
+	// Proxy the request to the sidecar
+	s.proxyRequest(w, r, sidecarURL, "/api/v1/adapters/"+adapter.ID+"/mcp")
+}
+
+// handleRemoteHttpMCP handles MCP requests for remote HTTP adapters
+func (s *Service) handleRemoteHttpMCP(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
+	if adapter.RemoteUrl == "" {
+		http.Error(w, "Remote URL not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Proxy to remote URL
+	s.proxyRequest(w, r, adapter.RemoteUrl, "/api/v1/adapters/"+adapter.ID+"/mcp")
+}
+
+// handleStreamableHttpMCP handles MCP requests for streamable HTTP adapters
+func (s *Service) handleStreamableHttpMCP(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
+	// For streamable HTTP, construct the service URL
+	serviceURL := fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:8000/mcp", adapter.Name)
+	s.proxyRequest(w, r, serviceURL, "/api/v1/adapters/"+adapter.ID+"/mcp")
 }
 
 // proxyToRegistry forwards requests to the registry service

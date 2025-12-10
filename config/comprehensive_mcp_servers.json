@@ -61,7 +61,13 @@
       "helmChart": "oci://registry.suse.com/trento/trento-server",
       "helmCommand": "helm upgrade --install trento-server oci://registry.suse.com/trento/trento-server --set trento-mcp-server.enabled=true --set trento-mcp-server.mcpServer.trentoURL={TRENTO_URL}",
       "documentation": "https://github.com/trento-project/mcp-server",
-      "setupInstructions": "Requires Trento server 3.x+ and Personal Access Token. Supports both remote HTTP and local stdio deployment modes."
+      "setupInstructions": "Requires Trento server 3.x+ and Personal Access Token. Supports both remote HTTP and local stdio deployment modes.",
+      "sidecarConfig": {
+        "gitRepository": "https://github.com/trento-project/mcp-server",
+        "command": "python -m mcp_server_trento --trento-url $TRENTO_URL --api-key $TRENTO_PAT",
+        "runtime": "python",
+        "baseImage": "python:3.11-slim"
+      }
     }
   },
   {
@@ -867,7 +873,13 @@
       "hosted": false,
       "transportType": "remote-http",
       "logo": "suse-logo",
-      "featured": true
+      "featured": true,
+      "sidecarConfig": {
+        "gitRepository": "https://github.com/openSUSE/mcp-bugzilla",
+        "command": "uv run mcp-bugzilla --bugzilla-server https://bugzilla.suse.com --host 127.0.0.1 --port 8000",
+        "runtime": "uv",
+        "baseImage": "python:3.11-slim"
+      }
     }
   },
   {

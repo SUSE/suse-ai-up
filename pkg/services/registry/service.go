@@ -98,8 +98,8 @@ func NewService(config *Config) *Service {
 	// Initialize sync manager
 	service.syncManager = NewSyncManager(service.store)
 
-	// Initialize adapter service
-	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store)
+	// Initialize adapter service (sidecar manager will be set later if available)
+	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store, nil)
 
 	return service
 }
@@ -111,6 +111,10 @@ func (s *Service) Start() error {
 	// Setup HTTP routes with CORS middleware
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+
+	// Swagger UI and JSON endpoints for registry service
+	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleRegistryDocs))
+	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleRegistrySwaggerJSON))
 	mux.HandleFunc("/api/v1/registry/browse", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleBrowse)))
 	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleRegistryByID)))
 	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleUpload)))
@@ -629,6 +633,189 @@ func (s *Service) matchesFilters(server *models.MCPServer, query, category, tran
 	}
 
 	return true
+}
+
+// handleRegistryDocs serves the Swagger UI for registry service
+func (s *Service) handleRegistryDocs(w http.ResponseWriter, r *http.Request) {
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <title>SUSE AI Universal Proxy - Registry API</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui.css" />
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@3.25.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
+                url: '/swagger.json',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+</body>
+</html>`
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
+// handleRegistrySwaggerJSON serves the Swagger JSON for registry service
+func (s *Service) handleRegistrySwaggerJSON(w http.ResponseWriter, r *http.Request) {
+	// Determine the host for registry service (port 8913)
+	host := r.Host
+	if host == "" {
+		host = "192.168.64.17:8913"
+	} else {
+		// Replace port with 8913
+		hostParts := strings.Split(host, ":")
+		host = hostParts[0] + ":8913"
+	}
+
+	log.Printf("Registry Swagger requested from host: %s, setting host to: %s", r.Host, host)
+
+	// Create a minimal swagger spec focused on registry operations
+	swagger := map[string]interface{}{
+		"swagger": "2.0",
+		"info": map[string]interface{}{
+			"title":       "SUSE AI Universal Proxy - Registry API",
+			"description": "Registry service APIs for server management, adapters, and user/group management (Port 8913)",
+			"version":     "1.0.0",
+		},
+		"host":     host,
+		"basePath": "/",
+		"schemes":  []string{"http", "https"},
+		"consumes": []string{"application/json"},
+		"produces": []string{"application/json"},
+		"tags": []map[string]interface{}{
+			{"name": "Registry", "description": "MCP server registry management"},
+			{"name": "Adapters", "description": "Adapter management"},
+			{"name": "User Management", "description": "User account management"},
+			{"name": "Group Management", "description": "User group management"},
+			{"name": "Route Management", "description": "Server access route assignments"},
+		},
+		"paths": map[string]interface{}{
+			"/api/v1/registry/browse": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Registry"},
+					"summary":     "Browse MCP Servers",
+					"description": "Get a list of all available MCP servers in the registry",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of MCP servers",
+							"schema": map[string]interface{}{
+								"type": "array",
+								"items": map[string]interface{}{
+									"$ref": "#/definitions/MCPServer",
+								},
+							},
+						},
+					},
+				},
+			},
+			"/api/v1/adapters": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Adapters"},
+					"summary":     "List Adapters",
+					"description": "Get a list of all adapters for the current user",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of adapters",
+							"schema": map[string]interface{}{
+								"type": "array",
+								"items": map[string]interface{}{
+									"type": "object",
+								},
+							},
+						},
+					},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"Adapters"},
+					"summary":     "Create Adapter",
+					"description": "Create a new adapter from a registry server",
+					"parameters": []map[string]interface{}{
+						{
+							"name": "adapter",
+							"in":   "body",
+							"schema": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"mcpServerId": map[string]interface{}{"type": "string"},
+									"name":        map[string]interface{}{"type": "string"},
+								},
+							},
+						},
+					},
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Adapter created",
+						},
+					},
+				},
+			},
+			"/api/v1/users": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "List Users",
+					"description": "Get a list of all users",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of users",
+						},
+					},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"User Management"},
+					"summary":     "Create User",
+					"description": "Create a new user",
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "User created",
+						},
+					},
+				},
+			},
+			"/api/v1/groups": map[string]interface{}{
+				"get": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "List Groups",
+					"description": "Get a list of all groups",
+					"responses": map[string]interface{}{
+						"200": map[string]interface{}{
+							"description": "List of groups",
+						},
+					},
+				},
+				"post": map[string]interface{}{
+					"tags":        []string{"Group Management"},
+					"summary":     "Create Group",
+					"description": "Create a new group",
+					"responses": map[string]interface{}{
+						"201": map[string]interface{}{
+							"description": "Group created",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(swagger); err != nil {
+		log.Printf("Failed to encode registry swagger JSON: %v", err)
+		http.Error(w, "Failed to generate Swagger documentation", http.StatusInternalServerError)
+	}
 }
 
 // handleRegistryByID handles requests for specific registry entries and route assignments

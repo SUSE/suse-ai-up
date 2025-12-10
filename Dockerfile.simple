@@ -1,0 +1,34 @@
+# Build stage - use pre-built binary
+FROM alpine:latest
+
+# Install only essential runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata
+
+# Create non-root user
+RUN adduser -D -s /bin/sh -u 1000 mcpuser
+
+# Set working directory
+WORKDIR /home/mcpuser/
+
+# Copy the pre-built binary
+COPY suse-ai-up-linux ./suse-ai-up
+
+# Copy docs and config
+COPY docs ./docs
+COPY config ./config
+
+# Change ownership to non-root user
+RUN chown -R mcpuser:mcpuser suse-ai-up docs config
+
+# Switch to non-root user
+USER 1000
+
+# Health check - check if the proxy port is responding
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD nc -z localhost 8911 || exit 1
+
+# Expose all service ports (proxy now uses 8911/3911, removed old 8080/38080)
+EXPOSE 8911 8912-8914 3911 38912-38914
+
+# Run the binary
+CMD ["./suse-ai-up", "all"]
