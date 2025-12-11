@@ -92,7 +92,6 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
 
 	// Health and docs
-	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
 	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
 	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
 
@@ -1235,7 +1234,7 @@ func (s *Service) HandleAdapterMCP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get adapter from registry (proxy to registry service)
-	registryURL := fmt.Sprintf("http://127.0.0.1:8913/api/v1/adapters/%s", adapterID)
+	registryURL := fmt.Sprintf("http://localhost:8913/api/v1/adapters/%s", adapterID)
 	resp, err := http.Get(registryURL)
 	if err != nil {
 		log.Printf("Failed to get adapter %s: %v", adapterID, err)
@@ -1260,9 +1259,6 @@ func (s *Service) HandleAdapterMCP(w http.ResponseWriter, r *http.Request) {
 
 	// Route based on connection type
 	switch adapter.ConnectionType {
-	case models.ConnectionTypeLocalStdio:
-		// Handle local stdio (existing logic)
-		s.handleLocalStdioMCP(w, r, adapter)
 	case models.ConnectionTypeSidecarStdio:
 		// Handle sidecar stdio
 		s.handleSidecarMCP(w, r, adapter)

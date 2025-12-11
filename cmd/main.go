@@ -1777,8 +1777,8 @@ func handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func startHealthCheckServer(errors chan<- error) error {
-	healthPort := 8911    // Default port
-	healthTLSPort := 3911 // Default TLS port
+	healthPort := 8915    // Default port (changed to avoid conflict with proxy)
+	healthTLSPort := 3915 // Default TLS port
 
 	// Read environment variables if set
 	if envPort := os.Getenv("HEALTH_PORT"); envPort != "" {

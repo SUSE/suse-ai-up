@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Build Commands
-- **Go**: `go build -o service ./cmd/service`
+- **Go**: `go build -o service ./cmd`
 - **Python**: `cd examples/local-mcp && pip install -r requirements.txt`
 - **Swagger**: `swag init -g cmd/service/main.go`
 

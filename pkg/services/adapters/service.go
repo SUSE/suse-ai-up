@@ -54,10 +54,17 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		if sidecarMeta := as.getSidecarMeta(server); sidecarMeta != nil {
 			connectionType = models.ConnectionTypeSidecarStdio
 			sidecarConfig = &models.SidecarConfig{
-				GitRepository: sidecarMeta.GitRepository,
-				Command:       sidecarMeta.Command,
-				Runtime:       sidecarMeta.Runtime,
-				BaseImage:     sidecarMeta.BaseImage,
+				DockerImage:      sidecarMeta.DockerImage,
+				DockerCommand:    sidecarMeta.DockerCommand,
+				DockerEntrypoint: sidecarMeta.DockerEntrypoint,
+			}
+			// For Uyuni, add HTTP transport configuration
+			if mcpServerID == "suse-uyuni" {
+				if envVars == nil {
+					envVars = make(map[string]string)
+				}
+				envVars["UYUNI_MCP_TRANSPORT"] = "http"
+				envVars["MCP_HOST"] = "0.0.0.0"
 			}
 		} else {
 			// Fall back to local stdio if no sidecar config
@@ -123,10 +130,9 @@ func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
 
 // sidecarMeta represents sidecar configuration from server metadata
 type sidecarMeta struct {
-	GitRepository string
-	Command       string
-	Runtime       string
-	BaseImage     string
+	DockerImage      string
+	DockerCommand    string
+	DockerEntrypoint string
 }
 
 // getSidecarMeta extracts sidecar configuration from server metadata
@@ -147,21 +153,18 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 
 	meta := &sidecarMeta{}
 
-	if gitRepo, ok := configMap["gitRepository"].(string); ok {
-		meta.GitRepository = gitRepo
+	if dockerImage, ok := configMap["dockerImage"].(string); ok {
+		meta.DockerImage = dockerImage
 	}
-	if command, ok := configMap["command"].(string); ok {
-		meta.Command = command
+	if dockerCommand, ok := configMap["dockerCommand"].(string); ok {
+		meta.DockerCommand = dockerCommand
 	}
-	if runtime, ok := configMap["runtime"].(string); ok {
-		meta.Runtime = runtime
-	}
-	if baseImage, ok := configMap["baseImage"].(string); ok {
-		meta.BaseImage = baseImage
+	if dockerEntrypoint, ok := configMap["dockerEntrypoint"].(string); ok {
+		meta.DockerEntrypoint = dockerEntrypoint
 	}
 
 	// Return nil if required fields are missing
-	if meta.GitRepository == "" || meta.Command == "" {
+	if meta.DockerImage == "" {
 		return nil
 	}
 

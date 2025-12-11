@@ -8,8 +8,7 @@ The SUSE AI Universal Proxy includes a comprehensive MCP (Model Context Protocol
 
 ## Files
 
-- `bugzilla_adapter_example.sh` - Complete interactive script for creating and testing a Bugzilla adapter
-- `create_bugzilla_adapter.sh` - Simple script for quick adapter creation
+- `create_bugzilla_adapter.sh` - Interactive script for creating a Bugzilla adapter
 - `bugzilla_adapter_request.json` - JSON template for adapter creation requests
 - `BUGZILLA_ADAPTER_README.md` - Comprehensive documentation and troubleshooting guide
 
@@ -21,35 +20,35 @@ The SUSE AI Universal Proxy includes a comprehensive MCP (Model Context Protocol
 
 ## Quick Start
 
-### Option 1: Complete Example
+### Using the Interactive Script
 ```bash
 cd /path/to/suse-ai-up
-echo "http://your-proxy-host:8911" | bash examples/bugzilla-adapter/bugzilla_adapter_example.sh
+./examples/bugzilla-adapter/create_bugzilla_adapter.sh
 ```
 
-### Option 2: Simple Creation
-```bash
-cd /path/to/suse-ai-up
-echo "http://your-proxy-host:8911" | bash examples/bugzilla-adapter/create_bugzilla_adapter.sh
-```
+The script will prompt you for:
+- SUSE AI Universal Proxy registry URL
+- Your user ID
+- Adapter name
+- Bugzilla server URL
 
-## What the Scripts Do
+## What the Script Does
 
-1. **URL Configuration**: Prompts for your SUSE AI Universal Proxy URL
+1. **URL Configuration**: Prompts for your SUSE AI Universal Proxy registry URL
 2. **Registry Check**: Verifies the Bugzilla MCP server is available
-3. **Adapter Creation**: Creates a new adapter with proper configuration
+3. **Adapter Creation**: Creates a new adapter that automatically deploys as a Docker sidecar
 4. **Cleanup**: Removes any existing adapters with the same name
-5. **Verification**: Confirms the adapter was created successfully
+5. **Verification**: Confirms the adapter was created and sidecar deployed
 6. **Instructions**: Provides clear next steps for MCP client configuration
 
 ## Adapter Configuration
 
 The created adapter will have:
 - **Server ID**: `suse-bugzilla`
-- **Name**: `my-bugzilla-adapter`
-- **Owner**: `developer-user`
-- **Environment**: Bugzilla server URL and API key
-- **Deployment**: Local stdio execution
+- **Name**: User-specified (e.g., `my-bugzilla-adapter`)
+- **Owner**: User-specified
+- **Environment**: Bugzilla server URL
+- **Deployment**: Automatic Docker sidecar container using `kskarthik/mcp-bugzilla:latest`
 
 ## MCP Client Setup
 

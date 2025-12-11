@@ -17,14 +17,18 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/services"
 
 	adaptersvc "suse-ai-up/pkg/services/adapters"
@@ -43,8 +47,8 @@ type Service struct {
 	userGroupHandler       *handlers.UserGroupHandler
 	routeAssignmentHandler *handlers.RouteAssignmentHandler
 	syncManager            *SyncManager
+	sidecarManager         *proxy.SidecarManager
 	shutdownCh             chan struct{}
-	mu                     sync.RWMutex
 }
 
 // Config holds registry service configuration
@@ -70,22 +74,48 @@ func (s *Service) UpdateMCPServer(id string, updated *models.MCPServer) error {
 
 // NewService creates a new registry service
 func NewService(config *Config) *Service {
-	if config.RemoteServersFile == "" {
-		// Check environment variable first, then default
-		if envFile := os.Getenv("REMOTE_SERVERS_FILE"); envFile != "" {
-			config.RemoteServersFile = envFile
+	// Initialize Kubernetes client and SidecarManager
+	var sidecarManager *proxy.SidecarManager
+	log.Printf("Initializing SidecarManager...")
+	kubeConfig, err := rest.InClusterConfig()
+	if err != nil {
+		log.Printf("Failed to get in-cluster config: %v", err)
+		kubeconfigPath := os.Getenv("KUBECONFIG")
+		log.Printf("Trying kubeconfig from KUBECONFIG env var: %s", kubeconfigPath)
+		if kubeconfigPath == "" {
+			kubeconfigPath = "/Users/alessandrofesta/.lima/rancher/copied-from-guest/kubeconfig.yaml"
+			log.Printf("KUBECONFIG not set, trying default path: %s", kubeconfigPath)
+		}
+		// Try to load from kubeconfig file
+		kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			log.Printf("Failed to get Kubernetes config from file: %v", err)
+			log.Printf("Sidecar functionality will not be available")
 		} else {
-			config.RemoteServersFile = "config/remote_mcp_servers.json"
+			log.Printf("Successfully loaded kubeconfig from: %s", kubeconfigPath)
+		}
+	} else {
+		log.Printf("Successfully loaded in-cluster config")
+	}
+
+	if kubeConfig != nil {
+		kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+		if err != nil {
+			log.Printf("Failed to create Kubernetes client: %v", err)
+		} else {
+			sidecarManager = proxy.NewSidecarManager(kubeClient, "default")
+			log.Printf("SidecarManager initialized successfully")
 		}
 	}
 
 	service := &Service{
-		config:       config,
-		store:        clients.NewInMemoryMCPServerStore(),
-		adapterStore: clients.NewInMemoryAdapterStore(),
-		userStore:    clients.NewInMemoryUserStore(),
-		groupStore:   clients.NewInMemoryGroupStore(),
-		shutdownCh:   make(chan struct{}),
+		config:         config,
+		store:          clients.NewInMemoryMCPServerStore(),
+		adapterStore:   clients.NewInMemoryAdapterStore(),
+		userStore:      clients.NewInMemoryUserStore(),
+		groupStore:     clients.NewInMemoryGroupStore(),
+		sidecarManager: sidecarManager,
+		shutdownCh:     make(chan struct{}),
 	}
 
 	// Initialize user/group service
@@ -99,7 +129,7 @@ func NewService(config *Config) *Service {
 	service.syncManager = NewSyncManager(service.store)
 
 	// Initialize adapter service (sidecar manager will be set later if available)
-	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store, nil)
+	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.store, service.sidecarManager)
 
 	return service
 }

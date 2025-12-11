@@ -24,11 +24,13 @@ const (
 
 // SidecarConfig represents configuration for sidecar container deployment
 type SidecarConfig struct {
-	GitRepository string `json:"gitRepository" example:"https://github.com/example/mcp-server"`
-	Command       string `json:"command" example:"uv run mcp-server --host 127.0.0.1 --port 8000"`
-	Runtime       string `json:"runtime" example:"uv"` // "npx", "python", "uv", etc.
-	BaseImage     string `json:"baseImage" example:"python:3.11-slim"`
-	Port          int    `json:"port" example:"8000"` // Randomly assigned port
+	// Docker image-based deployment
+	DockerImage      string `json:"dockerImage" example:"kskarthik/mcp-bugzilla:latest"`
+	DockerCommand    string `json:"dockerCommand" example:"--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000"`
+	DockerEntrypoint string `json:"dockerEntrypoint,omitempty" example:"python"`
+
+	// Port assignment
+	Port int `json:"port" example:"8000"` // Randomly assigned port
 }
 
 // AdapterData represents the data for creating or updating an adapter

@@ -108,8 +108,8 @@ func (sm *SidecarManager) createDeployment(adapter models.AdapterResource) *apps
 		Value: strconv.Itoa(config.Port),
 	})
 
-	// Build the command script
-	command := sm.buildCommandScript(config)
+	// Determine container spec based on deployment type
+	container := sm.buildContainer(config, envVars)
 
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,46 +126,59 @@ func (sm *SidecarManager) createDeployment(adapter models.AdapterResource) *apps
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mcp-server",
-							Image: sm.getBaseImage(config),
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: int32(config.Port),
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							Env:     envVars,
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{command},
-							Resources: corev1.ResourceRequirements{
-								Limits: sm.defaultLimits,
-							},
-							LivenessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/health",
-										Port: intstr.FromInt(config.Port),
-									},
-								},
-								InitialDelaySeconds: 30,
-								PeriodSeconds:       10,
-							},
-							ReadinessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/health",
-										Port: intstr.FromInt(config.Port),
-									},
-								},
-								InitialDelaySeconds: 5,
-								PeriodSeconds:       5,
-							},
-						},
-					},
+					Containers: []corev1.Container{container},
 				},
 			},
+		},
+	}
+}
+
+// buildContainer builds the container spec for Docker deployment
+func (sm *SidecarManager) buildContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
+	return sm.buildDockerContainer(config, envVars)
+}
+
+// buildDockerContainer builds container spec for Docker image deployment
+func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
+	// Build the command array
+	var command []string
+
+	if config.DockerCommand != "" {
+		// Use the full command as specified
+		command = strings.Fields(config.DockerCommand)
+	}
+
+	return corev1.Container{
+		Name:  "mcp-server",
+		Image: config.DockerImage,
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: int32(config.Port),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		Env:     envVars,
+		Command: command,
+		Resources: corev1.ResourceRequirements{
+			Limits: sm.defaultLimits,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 30,
+			PeriodSeconds:       10,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
 		},
 	}
 }
@@ -196,70 +209,6 @@ func (sm *SidecarManager) createService(adapter models.AdapterResource) *corev1.
 			},
 			Type: corev1.ServiceTypeClusterIP,
 		},
-	}
-}
-
-// buildCommandScript builds the shell script to run in the container
-func (sm *SidecarManager) buildCommandScript(config *models.SidecarConfig) string {
-	var script strings.Builder
-
-	// Install git if not present
-	script.WriteString("apt-get update && apt-get install -y git ")
-	script.WriteString(sm.getRuntimePackage(config.Runtime))
-	script.WriteString(" && ")
-
-	// Clone repository
-	script.WriteString(fmt.Sprintf("git clone %s /app && ", config.GitRepository))
-
-	// Change to app directory
-	script.WriteString("cd /app && ")
-
-	// Install dependencies based on runtime
-	switch config.Runtime {
-	case "uv":
-		script.WriteString("pip install uv && ")
-	case "npx":
-		// npx is included with nodejs
-	case "python":
-		// Python dependencies handled by requirements.txt if present
-		if strings.Contains(config.Command, "pip install") == false {
-			script.WriteString("if [ -f requirements.txt ]; then pip install -r requirements.txt; fi && ")
-		}
-	}
-
-	// Execute the command
-	script.WriteString(config.Command)
-
-	return script.String()
-}
-
-// getRuntimePackage returns the package name for the runtime
-func (sm *SidecarManager) getRuntimePackage(runtime string) string {
-	switch runtime {
-	case "npx":
-		return "nodejs npm"
-	case "uv":
-		return "python3-pip"
-	case "python":
-		return "python3-pip"
-	default:
-		return ""
-	}
-}
-
-// getBaseImage returns the appropriate base image for the runtime
-func (sm *SidecarManager) getBaseImage(config *models.SidecarConfig) string {
-	if config.BaseImage != "" {
-		return config.BaseImage
-	}
-
-	switch config.Runtime {
-	case "npx":
-		return "node:18-slim"
-	case "uv", "python":
-		return "python:3.11-slim"
-	default:
-		return sm.baseImage
 	}
 }
 

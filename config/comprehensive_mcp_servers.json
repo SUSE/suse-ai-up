@@ -4,6 +4,10 @@
     "name": "SUSE Trento",
     "description": "Official SUSE MCP server for SAP system monitoring and management through Trento Project. Enables AI assistants to monitor cluster health, system configurations, and SAP landscapes through natural language queries.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -16,8 +20,7 @@
             "name": "TRENTO_CONFIG",
             "description": "Trento configuration in format: TRENTO_URL={url},TOKEN={pat}",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           }
         ]
       },
@@ -31,43 +34,49 @@
           {
             "name": "TRENTO_URL",
             "description": "Target Trento server URL (e.g., https://trento.example.com)",
-            "format": "string",
-            "isSecret": false,
-            "default": ""
+            "format": "string"
           },
           {
             "name": "TRENTO_PAT",
             "description": "Trento Personal Access Token for authentication",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           }
         ]
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "suse",
-      "badges": ["SUSE", "CERTIFIED"],
-      "priority": 200,
-      "logo": "suse-logo",
-      "featured": true,
+      "badges": [
+        "SUSE",
+        "CERTIFIED"
+      ],
       "category": "sap-management",
-      "tags": ["trento", "sap", "hana", "cluster-monitoring", "system-management", "suse"],
-      "hosted": false,
-      "transportType": "remote-http",
-      "deploymentOptions": ["helm", "docker", "systemd", "local"],
+      "deploymentOptions": [
+        "helm",
+        "docker",
+        "systemd",
+        "local"
+      ],
+      "documentation": "https://github.com/trento-project/mcp-server",
+      "featured": true,
       "helmChart": "oci://registry.suse.com/trento/trento-server",
       "helmCommand": "helm upgrade --install trento-server oci://registry.suse.com/trento/trento-server --set trento-mcp-server.enabled=true --set trento-mcp-server.mcpServer.trentoURL={TRENTO_URL}",
-      "documentation": "https://github.com/trento-project/mcp-server",
+      "hosted": false,
+      "logo": "suse-logo",
+      "priority": 200,
       "setupInstructions": "Requires Trento server 3.x+ and Personal Access Token. Supports both remote HTTP and local stdio deployment modes.",
-      "sidecarConfig": {
-        "gitRepository": "https://github.com/trento-project/mcp-server",
-        "command": "python -m mcp_server_trento --trento-url $TRENTO_URL --api-key $TRENTO_PAT",
-        "runtime": "python",
-        "baseImage": "python:3.11-slim"
-      }
+      "source": "suse",
+      "tags": [
+        "trento",
+        "sap",
+        "hana",
+        "cluster-monitoring",
+        "system-management",
+        "suse"
+      ],
+      "transportType": "remote-http"
     }
   },
   {
@@ -75,6 +84,10 @@
     "name": "GitHub",
     "description": "GitHub's official MCP Server for repository management, issue tracking, and code analysis",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -84,19 +97,25 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://api.githubcopilot.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "development",
       "documentation": "https://github.com/github/github-mcp-server",
-      "tags": ["git", "repository", "issues", "pull-requests", "code-search"],
+      "endpoint": "https://api.githubcopilot.com/mcp/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "git",
+        "repository",
+        "issues",
+        "pull-requests",
+        "code-search"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://api.githubcopilot.com/mcp/"
+      "userAuthRequired": true
     }
   },
   {
@@ -104,6 +123,10 @@
     "name": "Notion",
     "description": "Notion is a collaboration and productivity tool.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -113,19 +136,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.notion.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "productivity",
       "documentation": "https://developers.notion.com/docs/get-started-with-mcp",
-      "tags": ["collaboration", "productivity", "notes", "databases"],
+      "endpoint": "https://mcp.notion.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "collaboration",
+        "productivity",
+        "notes",
+        "databases"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.notion.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -133,6 +161,10 @@
     "name": "Sentry",
     "description": "Sentry is a developer-first error tracking and performance monitoring platform.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -142,19 +174,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.sentry.dev/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "monitoring",
       "documentation": "https://mcp.sentry.dev/",
-      "tags": ["error-tracking", "performance", "monitoring", "debugging"],
+      "endpoint": "https://mcp.sentry.dev/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "error-tracking",
+        "performance",
+        "monitoring",
+        "debugging"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.sentry.dev/"
+      "userAuthRequired": true
     }
   },
   {
@@ -162,6 +199,10 @@
     "name": "Linear",
     "description": "Linear is a project management tool.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -171,19 +212,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.linear.app/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "productivity",
       "documentation": "https://linear.app/changelog/2025-05-01-mcp",
-      "tags": ["project-management", "issues", "sprints", "agile"],
+      "endpoint": "https://mcp.linear.app/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "project-management",
+        "issues",
+        "sprints",
+        "agile"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.linear.app/"
+      "userAuthRequired": true
     }
   },
   {
@@ -191,6 +237,10 @@
     "name": "Figma",
     "description": "Figma is a collaborative design and prototyping platform.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -200,19 +250,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.figma.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "design",
       "documentation": "https://www.figma.com/blog/design-context-everywhere-you-build/",
-      "tags": ["design", "prototyping", "collaboration", "ui-ux"],
+      "endpoint": "https://mcp.figma.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "design",
+        "prototyping",
+        "collaboration",
+        "ui-ux"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.figma.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -220,6 +275,10 @@
     "name": "Intercom",
     "description": "Intercom is a customer support platform.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -229,19 +288,23 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.intercom.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "support",
       "documentation": "https://www.intercom.com/blog/introducing-model-context-protocol-fin/",
-      "tags": ["customer-support", "communication", "helpdesk"],
+      "endpoint": "https://mcp.intercom.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "customer-support",
+        "communication",
+        "helpdesk"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.intercom.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -249,6 +312,10 @@
     "name": "Neon",
     "description": "Neon is a fully managed serverless PostgreSQL.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -258,19 +325,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.neon.tech/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "database",
       "documentation": "https://neon.tech/docs/ai/neon-mcp-server",
-      "tags": ["postgresql", "database", "serverless", "sql"],
+      "endpoint": "https://mcp.neon.tech/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "postgresql",
+        "database",
+        "serverless",
+        "sql"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.neon.tech/"
+      "userAuthRequired": true
     }
   },
   {
@@ -278,6 +350,10 @@
     "name": "Supabase",
     "description": "Supabase is an open-source Firebase alternative.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -287,19 +363,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.supabase.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "database",
       "documentation": "https://supabase.com/blog/remote-mcp-server",
-      "tags": ["database", "backend", "api", "postgresql"],
+      "endpoint": "https://mcp.supabase.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "database",
+        "backend",
+        "api",
+        "postgresql"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.supabase.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -307,6 +388,10 @@
     "name": "PayPal",
     "description": "PayPal is a global online payment system.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -316,19 +401,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.paypal.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "payments",
       "documentation": "https://developer.paypal.com/limited-release/agents/",
-      "tags": ["payments", "finance", "transactions", "commerce"],
+      "endpoint": "https://mcp.paypal.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "payments",
+        "finance",
+        "transactions",
+        "commerce"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.paypal.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -336,6 +426,10 @@
     "name": "Square",
     "description": "Square is a payment processing platform.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -345,19 +439,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.squareup.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "payments",
       "documentation": "https://developer.squareup.com/docs/mcp",
-      "tags": ["payments", "pos", "commerce", "transactions"],
+      "endpoint": "https://mcp.squareup.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "payments",
+        "pos",
+        "commerce",
+        "transactions"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.squareup.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -365,6 +464,10 @@
     "name": "CoinGecko",
     "description": "CoinGecko is a cryptocurrency data platform.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -374,19 +477,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.api.coingecko.com/",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": false,
       "authType": "none",
       "category": "cryptocurrency",
       "documentation": "https://mcp.api.coingecko.com/",
-      "tags": ["cryptocurrency", "market-data", "trading", "finance"],
+      "endpoint": "https://mcp.api.coingecko.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "cryptocurrency",
+        "market-data",
+        "trading",
+        "finance"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.api.coingecko.com/"
+      "userAuthRequired": false
     }
   },
   {
@@ -394,6 +502,10 @@
     "name": "Ahrefs",
     "description": "Ahrefs is an SEO platform for website analysis and keyword research.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -403,19 +515,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://api.ahrefs.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "marketing",
       "documentation": "https://docs.ahrefs.com/docs/mcp/",
-      "tags": ["seo", "analytics", "keywords", "backlinks"],
+      "endpoint": "https://api.ahrefs.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "seo",
+        "analytics",
+        "keywords",
+        "backlinks"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://api.ahrefs.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -423,6 +540,10 @@
     "name": "Asana",
     "description": "Asana is a project management tool.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -432,19 +553,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.asana.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "productivity",
       "documentation": "https://developers.asana.com/docs/using-asanas-mcp-server",
-      "tags": ["project-management", "tasks", "collaboration", "workflows"],
+      "endpoint": "https://mcp.asana.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "project-management",
+        "tasks",
+        "collaboration",
+        "workflows"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.asana.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -452,6 +578,10 @@
     "name": "Atlassian",
     "description": "Collaboration software for software, IT and business teams",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -461,19 +591,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.atlassian.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "productivity",
       "documentation": "https://www.atlassian.com/platform/remote-mcp-server",
-      "tags": ["collaboration", "jira", "confluence", "bitbucket"],
+      "endpoint": "https://mcp.atlassian.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "collaboration",
+        "jira",
+        "confluence",
+        "bitbucket"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.atlassian.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -481,6 +616,10 @@
     "name": "Wix",
     "description": "Wix is a website builder.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -490,19 +629,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.wix.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "website",
       "documentation": "https://www.wix.com/studio/developers/mcp-server",
-      "tags": ["website-builder", "cms", "design", "hosting"],
+      "endpoint": "https://mcp.wix.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "website-builder",
+        "cms",
+        "design",
+        "hosting"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.wix.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -510,6 +654,10 @@
     "name": "Webflow",
     "description": "Visual website builder",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -519,19 +667,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.webflow.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "website",
       "documentation": "https://developers.webflow.com/data/docs/ai-tools",
-      "tags": ["website-builder", "cms", "design", "no-code"],
+      "endpoint": "https://mcp.webflow.com/",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "website-builder",
+        "cms",
+        "design",
+        "no-code"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.webflow.com/"
+      "userAuthRequired": true
     }
   },
   {
@@ -539,6 +692,10 @@
     "name": "Globalping",
     "description": "Remote MCP server that gives LLMs access to run network commands with Globalping",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -548,19 +705,25 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.globalping.dev/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "networking",
       "documentation": "https://github.com/jsdelivr/globalping-mcp-server",
-      "tags": ["networking", "ping", "traceroute", "dns", "monitoring"],
+      "endpoint": "https://mcp.globalping.dev/mcp",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "networking",
+        "ping",
+        "traceroute",
+        "dns",
+        "monitoring"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.globalping.dev/mcp"
+      "userAuthRequired": true
     }
   },
   {
@@ -568,6 +731,10 @@
     "name": "Semgrep",
     "description": "Semgrep is a static analysis tool for code security and quality.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -577,19 +744,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.semgrep.ai/mcp",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": false,
       "authType": "none",
       "category": "security",
       "documentation": "https://github.com/semgrep/semgrep/tree/develop/cli/src/semgrep/mcp",
-      "tags": ["security", "code-analysis", "vulnerabilities", "static-analysis"],
+      "endpoint": "https://mcp.semgrep.ai/mcp",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "security",
+        "code-analysis",
+        "vulnerabilities",
+        "static-analysis"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.semgrep.ai/mcp"
+      "userAuthRequired": false
     }
   },
   {
@@ -597,6 +769,10 @@
     "name": "DeepWiki",
     "description": "DeepWiki automatically generates architecture diagrams, documentation, and links to source code to help you understand unfamiliar codebases quickly.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "stdio",
@@ -606,18 +782,23 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": true,
       "authType": "apikey",
       "category": "documentation",
       "documentation": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
-      "tags": ["documentation", "architecture", "code-analysis", "diagrams"],
       "hosted": false,
+      "requiresInstallation": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "documentation",
+        "architecture",
+        "code-analysis",
+        "diagrams"
+      ],
       "transportType": "stdio",
-      "requiresInstallation": true
+      "userAuthRequired": true
     }
   },
   {
@@ -625,6 +806,10 @@
     "name": "Fetch",
     "description": "An MCP server that provides web content fetching capabilities. This server enables LLMs to retrieve and process content from web pages, converting HTML to markdown for easier consumption.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "stdio",
@@ -634,18 +819,23 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": false,
       "authType": "none",
       "category": "web",
       "documentation": "https://github.com/zcaceres/fetch-mcp",
-      "tags": ["web-scraping", "content-fetching", "markdown", "html"],
       "hosted": false,
+      "requiresInstallation": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "web-scraping",
+        "content-fetching",
+        "markdown",
+        "html"
+      ],
       "transportType": "stdio",
-      "requiresInstallation": true
+      "userAuthRequired": false
     }
   },
   {
@@ -653,6 +843,10 @@
     "name": "Sequential Thinking",
     "description": "An MCP server implementation that provides a tool for dynamic and reflective problem-solving through a structured thinking process.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "stdio",
@@ -662,18 +856,23 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": false,
       "authType": "none",
       "category": "ai",
       "documentation": "https://github.com/arben-adm/mcp-sequential-thinking",
-      "tags": ["ai", "reasoning", "problem-solving", "thinking"],
       "hosted": false,
+      "requiresInstallation": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "ai",
+        "reasoning",
+        "problem-solving",
+        "thinking"
+      ],
       "transportType": "stdio",
-      "requiresInstallation": true
+      "userAuthRequired": false
     }
   },
   {
@@ -681,6 +880,10 @@
     "name": "EdgeOne Pages",
     "description": "An MCP service designed for deploying HTML content to EdgeOne Pages and obtaining an accessible public URL.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -690,19 +893,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp-on-edge.edgeone.site/mcp-server",
     "_meta": {
-      "source": "mcpservers.org",
-      "userAuthRequired": false,
       "authType": "none",
       "category": "hosting",
       "documentation": "https://github.com/TencentEdgeOne/edgeone-pages-mcp",
-      "tags": ["hosting", "deployment", "cdn", "static-sites"],
+      "endpoint": "https://mcp-on-edge.edgeone.site/mcp-server",
       "hosted": true,
+      "source": "mcpservers.org",
+      "tags": [
+        "hosting",
+        "deployment",
+        "cdn",
+        "static-sites"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp-on-edge.edgeone.site/mcp-server"
+      "userAuthRequired": false
     }
   },
   {
@@ -710,6 +918,10 @@
     "name": "SUSE Uyuni",
     "description": "Official SUSE MCP server for Uyuni server management, patch deployment, and system administration. Requires a local config file with server credentials and SSH keys.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -721,36 +933,29 @@
           {
             "name": "UYUNI_SERVER",
             "description": "Uyuni server URL (e.g., http://uyuni.example.com)",
-            "format": "string",
-            "isSecret": false,
-            "default": ""
+            "format": "string"
           },
           {
             "name": "UYUNI_USER",
             "description": "Uyuni server username",
-            "format": "string",
-            "isSecret": false,
-            "default": ""
+            "format": "string"
           },
           {
             "name": "UYUNI_PASS",
             "description": "Uyuni server password",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           },
           {
             "name": "UYUNI_MCP_SSL_VERIFY",
             "description": "Disable SSL certificate verification (default: true)",
             "format": "boolean",
-            "isSecret": false,
             "default": "true"
           },
           {
             "name": "UYUNI_MCP_WRITE_TOOLS_ENABLED",
             "description": "Enable write operations (system modifications, updates)",
             "format": "boolean",
-            "isSecret": false,
             "default": "false"
           }
         ]
@@ -765,59 +970,67 @@
           {
             "name": "UYUNI_SERVER",
             "description": "Uyuni server URL (e.g., http://uyuni.example.com)",
-            "format": "string",
-            "isSecret": false,
-            "default": ""
+            "format": "string"
           },
           {
             "name": "UYUNI_USER",
             "description": "Uyuni server username",
-            "format": "string",
-            "isSecret": false,
-            "default": ""
+            "format": "string"
           },
           {
             "name": "UYUNI_PASS",
             "description": "Uyuni server password",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           },
           {
             "name": "UYUNI_SSH_PRIV_KEY",
             "description": "SSH private key for system registration (base64 encoded)",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           },
           {
             "name": "UYUNI_SSH_PRIV_KEY_PASS",
             "description": "SSH private key passphrase",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           }
         ]
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "suse",
-      "badges": ["SUSE", "CERTIFIED"],
-      "priority": 100,
-      "userAuthRequired": true,
       "authType": "basic",
+      "badges": [
+        "SUSE",
+        "CERTIFIED"
+      ],
       "category": "system-management",
-      "documentation": "https://github.com/uyuni-project/mcp-server-uyuni",
-      "tags": ["uyuni", "patch-management", "linux", "system-administration", "suse"],
-      "hosted": false,
-      "transportType": "remote-http",
-      "logo": "suse-logo",
-      "featured": true,
       "configFileRequired": true,
       "configFileTemplate": "# Required: Basic server parameters.\nUYUNI_SERVER=192.168.1.124:8443\nUYUNI_USER=admin\nUYUNI_PASS=admin\n\n# Optional: Set to 'false' to disable SSL certificate verification. Defaults to 'true'.\n# UYUNI_MCP_SSL_VERIFY=false\n\n# Optional: Set to 'true' to enable tools that perform write actions (e.g., POST requests). Defaults to 'false'.\n# UYUNI_MCP_WRITE_TOOLS_ENABLED=false\n\n# Optional: Set the transport protocol. Can be 'stdio' (default) or 'http'.\n# UYUNI_MCP_TRANSPORT=stdio\n\n# Optional: Set the path for the server log file. Defaults to logging to the console.\n# UYUNI_MCP_LOG_FILE_PATH=/var/log/mcp-server-uyuni.log\n\n# Required to bootstrap new systems into Uyuni via the `add_system` tool.\nUYUNI_SSH_PRIV_KEY=\"-----BEGIN OPENSSH PRIVATE KEY-----\\n...\"\nUYUNI_SSH_PRIV_KEY_PASS=\"\"",
-      "configFileWarning": "Security Note: Enabling UYUNI_MCP_WRITE_TOOLS_ENABLED allows execution of state-changing actions. Use only in trusted environments."
+       "configFileWarning": "Security Note: Enabling UYUNI_MCP_WRITE_TOOLS_ENABLED allows execution of state-changing actions. Use only in trusted environments.",
+       "documentation": "https://github.com/uyuni-project/mcp-server-uyuni",
+       "featured": true,
+      "hosted": false,
+      "logo": "suse-logo",
+      "priority": 100,
+      "sidecarConfig": {
+        "dockerCommand": "mcp-server-uyuni",
+        "dockerImage": "ghcr.io/uyuni-project/mcp-server-uyuni:latest",
+        "lastUpdated": "2025-12-10T19:45:00+01:00",
+        "source": "manual-configuration"
+      },
+       "source": "suse",
+      "tags": [
+        "uyuni",
+        "patch-management",
+        "linux",
+        "system-administration",
+        "suse"
+      ],
+      "transportType": "remote-http",
+      "userAuthRequired": true
     }
   },
   {
@@ -825,6 +1038,10 @@
     "name": "SUSE Bugzilla",
     "description": "Official SUSE MCP server for Bugzilla issue tracking and management.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -837,8 +1054,7 @@
             "name": "BUGZILLA_CONFIG",
             "description": "Bugzilla configuration in format: BUGZILLA_SERVER={url},APIKEY={api_key}",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           }
         ]
       },
@@ -853,33 +1069,38 @@
             "name": "BUGZILLA_CONFIG",
             "description": "Bugzilla configuration in format: BUGZILLA_SERVER={url},APIKEY={api_key}",
             "format": "string",
-            "isSecret": true,
-            "default": ""
+            "isSecret": true
           }
         ]
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "_meta": {
-      "source": "suse",
-      "badges": ["SUSE", "CERTIFIED"],
-      "priority": 99,
-      "userAuthRequired": true,
       "authType": "apikey",
+      "badges": [
+        "SUSE",
+        "CERTIFIED"
+      ],
       "category": "issue-tracking",
       "documentation": "https://github.com/openSUSE/mcp-bugzilla",
-      "tags": ["bugzilla", "issue-tracking", "bug-reports", "suse"],
-      "hosted": false,
-      "transportType": "remote-http",
-      "logo": "suse-logo",
       "featured": true,
+      "hosted": false,
+      "logo": "suse-logo",
+      "priority": 99,
       "sidecarConfig": {
-        "gitRepository": "https://github.com/openSUSE/mcp-bugzilla",
-        "command": "uv run mcp-bugzilla --bugzilla-server https://bugzilla.suse.com --host 127.0.0.1 --port 8000",
-        "runtime": "uv",
-        "baseImage": "python:3.11-slim"
-      }
+        "dockerCommand": "uv run mcp-bugzilla --bugzilla-server https://bugzilla.suse.com --host 0.0.0.0 --port 8000",
+        "dockerImage": "kskarthik/mcp-bugzilla:latest"
+      },
+      "source": "suse",
+      "tags": [
+        "bugzilla",
+        "issue-tracking",
+        "bug-reports",
+        "suse"
+      ],
+      "transportType": "remote-http",
+      "userAuthRequired": true
     }
   },
   {
@@ -887,6 +1108,10 @@
     "name": "Postman MCP",
     "description": "Official Postman MCP server for API testing and development workflows.",
     "version": "1.0.0",
+    "repository": {
+      "url": "",
+      "source": ""
+    },
     "packages": [
       {
         "registryType": "remote-http",
@@ -896,19 +1121,24 @@
         }
       }
     ],
-    "validationStatus": "approved",
-    "discoveredAt": "2025-01-01T00:00:00Z",
+    "validation_status": "",
+    "discovered_at": "0001-01-01T00:00:00Z",
     "url": "https://mcp.postman.com/.well-known/oauth-authorization-server",
     "_meta": {
-      "source": "postman.com",
-      "userAuthRequired": true,
       "authType": "oauth",
       "category": "api",
       "documentation": "https://www.postman.com/explore/mcp-servers",
-      "tags": ["api", "testing", "development", "workflows"],
+      "endpoint": "https://mcp.postman.com/",
       "hosted": true,
+      "source": "postman.com",
+      "tags": [
+        "api",
+        "testing",
+        "development",
+        "workflows"
+      ],
       "transportType": "remote-http",
-      "endpoint": "https://mcp.postman.com/"
+      "userAuthRequired": true
     }
   }
 ]

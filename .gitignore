@@ -29,3 +29,10 @@ proxy.pid
 suse-ai-up
 suse-ai-up-test
 suse-ai-up
+registry.pid
+registry
+registry-service
+test_sidecar
+test_sidecar.go
+update_docker_commands
+AGENTS.md

@@ -50,15 +50,15 @@ curl -X POST http://your-registry-host:8913/api/v1/adapters \
 |-----------|-------------|---------|
 | `mcpServerId` | Server ID from registry | `"suse-bugzilla"` |
 | `name` | Unique adapter name | `"my-bugzilla-adapter"` |
-| `BUGZILLA_CONFIG` | Server URL and API key | `"BUGZILLA_SERVER=https://bugzilla.suse.com,APIKEY=abc123..."` |
+| `BUGZILLA_SERVER` | Bugzilla instance URL | `"https://bugzilla.suse.com"` |
 
 ### Environment Variables
 
-The `BUGZILLA_CONFIG` environment variable combines:
-- **BUGZILLA_SERVER**: Your Bugzilla instance URL
-- **APIKEY**: Your Bugzilla API key
+The adapter accepts environment variables for Bugzilla configuration:
+- **BUGZILLA_SERVER**: Your Bugzilla instance URL (e.g., `https://bugzilla.suse.com`)
+- **BUGZILLA_API_KEY**: Your Bugzilla API key (optional, can be set via MCP client)
 
-Format: `BUGZILLA_SERVER={url},APIKEY={api_key}`
+**Note**: The adapter will automatically deploy as a Docker sidecar container using the `kskarthik/mcp-bugzilla` image.
 
 ## Complete Example
 
@@ -68,9 +68,8 @@ Format: `BUGZILLA_SERVER={url},APIKEY={api_key}`
   "name": "suse-bugzilla-prod",
   "description": "Production Bugzilla adapter for SUSE issue tracking",
   "environmentVariables": {
-    "BUGZILLA_CONFIG": "BUGZILLA_SERVER=https://bugzilla.suse.com,APIKEY=your-actual-api-key-here"
-  },
-  "deploymentMethod": "local"
+    "BUGZILLA_SERVER": "https://bugzilla.suse.com"
+  }
 }
 ```
 
@@ -133,7 +132,7 @@ Once connected, the Bugzilla adapter provides:
 
 **"Authentication failed"**
 - Ensure your API key has the necessary permissions
-- Check the BUGZILLA_CONFIG format is correct
+- Check the BUGZILLA_SERVER environment variable is set correctly
 - Verify the Bugzilla server accepts your API key
 
 ### Debug Commands
@@ -167,7 +166,7 @@ curl -X POST http://localhost:8913/api/v1/adapters \
     "mcpServerId": "suse-bugzilla",
     "name": "suse-bugzilla",
     "environmentVariables": {
-      "BUGZILLA_CONFIG": "BUGZILLA_SERVER=https://bugzilla.suse.com,APIKEY=suse-key"
+      "BUGZILLA_SERVER": "https://bugzilla.suse.com"
     }
   }'
 
@@ -179,7 +178,7 @@ curl -X POST http://localhost:8913/api/v1/adapters \
     "mcpServerId": "suse-bugzilla",
     "name": "custom-bugzilla",
     "environmentVariables": {
-      "BUGZILLA_CONFIG": "BUGZILLA_SERVER=https://bugzilla.example.com,APIKEY=custom-key"
+      "BUGZILLA_SERVER": "https://bugzilla.example.com"
     }
   }'
 ```

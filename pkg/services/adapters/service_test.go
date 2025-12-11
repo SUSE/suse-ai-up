@@ -43,10 +43,8 @@ func TestAdapterService_getSidecarMeta(t *testing.T) {
 	serverWithSidecar := &models.MCPServer{
 		Meta: map[string]interface{}{
 			"sidecarConfig": map[string]interface{}{
-				"gitRepository": "https://github.com/example/mcp-server",
-				"command":       "uv run mcp-server",
-				"runtime":       "uv",
-				"baseImage":     "python:3.11-slim",
+				"dockerImage":   "kskarthik/mcp-bugzilla:latest",
+				"dockerCommand": "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000",
 			},
 		},
 	}
@@ -60,11 +58,11 @@ func TestAdapterService_getSidecarMeta(t *testing.T) {
 	if meta == nil {
 		t.Error("Expected to get sidecar meta")
 	}
-	if meta.GitRepository != "https://github.com/example/mcp-server" {
-		t.Errorf("Expected git repository to be 'https://github.com/example/mcp-server', got '%s'", meta.GitRepository)
+	if meta.DockerImage != "kskarthik/mcp-bugzilla:latest" {
+		t.Errorf("Expected docker image to be 'kskarthik/mcp-bugzilla:latest', got '%s'", meta.DockerImage)
 	}
-	if meta.Command != "uv run mcp-server" {
-		t.Errorf("Expected command to be 'uv run mcp-server', got '%s'", meta.Command)
+	if meta.DockerCommand != "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000" {
+		t.Errorf("Expected docker command to be correct, got '%s'", meta.DockerCommand)
 	}
 
 	meta2 := service.getSidecarMeta(serverWithoutSidecar)
@@ -87,10 +85,8 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 		},
 		Meta: map[string]interface{}{
 			"sidecarConfig": map[string]interface{}{
-				"gitRepository": "https://github.com/example/mcp-server",
-				"command":       "uv run mcp-server",
-				"runtime":       "uv",
-				"baseImage":     "python:3.11-slim",
+				"dockerImage":   "kskarthik/mcp-bugzilla:latest",
+				"dockerCommand": "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000",
 			},
 		},
 	}

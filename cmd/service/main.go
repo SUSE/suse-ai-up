@@ -19,6 +19,9 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
@@ -288,6 +291,30 @@ func main() {
 	remoteHTTPPlugin := proxy.NewRemoteHttpProxyPlugin()
 	log.Printf("remoteHTTPPlugin initialized: %v", remoteHTTPPlugin != nil)
 
+	// Initialize Kubernetes client and SidecarManager
+	kubeConfig, err := rest.InClusterConfig()
+	if err != nil {
+		log.Printf("Failed to get in-cluster config, trying kubeconfig: %v", err)
+		// Try to load from kubeconfig file
+		kubeConfig, err = clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+		if err != nil {
+			log.Printf("Failed to get Kubernetes config: %v", err)
+			log.Printf("Sidecar functionality will not be available")
+		}
+	}
+
+	var sidecarManager *proxy.SidecarManager
+	if kubeConfig != nil {
+		kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+		if err != nil {
+			log.Printf("Failed to create Kubernetes client: %v", err)
+		} else {
+			sidecarManager = proxy.NewSidecarManager(kubeClient, "default")
+			log.Printf("SidecarManager initialized successfully")
+		}
+	}
+	_ = sidecarManager // TODO: Use sidecarManager for adapter creation
+
 	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
 		ScanRanges:    []string{"192.168.1.0/24"},
@@ -391,7 +418,11 @@ func main() {
 			// CRUD operations
 			adapters.GET("", func(c *gin.Context) {
 				// List all adapters
-				allAdapters := adapterStore.List()
+				allAdapters, err := adapterStore.List(c.Request.Context(), "")
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
 				c.JSON(http.StatusOK, allAdapters)
 			})
 			adapters.POST("", func(c *gin.Context) {
@@ -422,7 +453,7 @@ func main() {
 
 				adapter := &models.AdapterResource{}
 				adapter.Create(data, "system", time.Now())
-				if err := adapterStore.Create(adapter); err != nil {
+				if err := adapterStore.Create(c.Request.Context(), *adapter); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
@@ -430,7 +461,7 @@ func main() {
 			})
 			adapters.GET("/:name", func(c *gin.Context) {
 				// Get adapter
-				adapter, err := adapterStore.TryGetAsync(c.Param("name"), c.Request.Context())
+				adapter, err := adapterStore.Get(c.Request.Context(), c.Param("name"))
 				if err != nil {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 					return
@@ -444,7 +475,7 @@ func main() {
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
-				adapter, err := adapterStore.TryGetAsync(c.Param("name"), c.Request.Context())
+				adapter, err := adapterStore.Get(c.Request.Context(), c.Param("name"))
 				if err != nil {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 					return
@@ -464,7 +495,7 @@ func main() {
 					reconfigureVirtualMCPAdapter(&adapter.AdapterData)
 				}
 
-				if err := adapterStore.Update(adapter); err != nil {
+				if err := adapterStore.Update(c.Request.Context(), *adapter); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
@@ -472,7 +503,7 @@ func main() {
 			})
 			adapters.DELETE("/:name", func(c *gin.Context) {
 				// Delete adapter
-				if err := adapterStore.Delete(c.Param("name")); err != nil {
+				if err := adapterStore.Delete(c.Request.Context(), c.Param("name")); err != nil {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 					return
 				}
@@ -654,7 +685,7 @@ func handleMCPToolsList(c *gin.Context, adapterStore clients.AdapterResourceStor
 	adapterName := c.Param("name")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -723,7 +754,7 @@ func handleMCPToolCall(c *gin.Context, adapterStore clients.AdapterResourceStore
 	toolName := c.Param("toolName")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -801,7 +832,7 @@ func handleMCPResourcesList(c *gin.Context, adapterStore clients.AdapterResource
 	adapterName := c.Param("name")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -870,7 +901,7 @@ func handleMCPResourceRead(c *gin.Context, adapterStore clients.AdapterResourceS
 	resourceURI := c.Param("uri")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -940,7 +971,7 @@ func handleMCPPromptsList(c *gin.Context, adapterStore clients.AdapterResourceSt
 	adapterName := c.Param("name")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -1009,7 +1040,7 @@ func handleMCPPromptGet(c *gin.Context, adapterStore clients.AdapterResourceStor
 	promptName := c.Param("promptName")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
@@ -1192,7 +1223,7 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, s
 	adapterName := c.Param("name")
 
 	// Get adapter
-	adapter, err := adapterStore.TryGetAsync(adapterName, c.Request.Context())
+	adapter, err := adapterStore.Get(c.Request.Context(), adapterName)
 	if err != nil || adapter == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
