@@ -78,6 +78,23 @@ questions:
   - label: "NodePort (expose on node IPs)"
     value: "NodePort"
 
+# RBAC Configuration
+- variable: rbac.create
+  label: "Enable RBAC for Sidecar Deployments"
+  description: "Create RBAC resources (ServiceAccount, Role, RoleBinding) to allow the proxy to deploy MCP server sidecars"
+  type: boolean
+  default: true
+  group: "RBAC Configuration"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: serviceAccount.name
+    label: "Service Account Name"
+    description: "Name of the service account to create for the proxy (used for sidecar deployments)"
+    type: string
+    default: "suse-ai-up-proxy-sa"
+    required: true
+
 # Authentication Configuration
 - variable: auth.method
   label: "Authentication Method"

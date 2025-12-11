@@ -4,11 +4,28 @@ This document provides examples of how to test various MCP (Model Context Protoc
 
 ## Prerequisites
 
-1. **Running SUSE AI Universal Proxy**: Make sure the proxy service is running and accessible
+1. **Running SUSE AI Universal Proxy**: Make sure the proxy service is running and accessible with RBAC enabled for sidecar deployments
 2. **mcpinspector**: Install mcpinspector for testing MCP connections:
    ```bash
    npm install -g @modelcontextprotocol/inspector
    ```
+
+### Helm Chart Installation with RBAC
+
+Ensure RBAC is enabled when installing the Helm chart:
+
+```bash
+# Install with RBAC enabled (default)
+helm install suse-ai-up charts/suse-ai-up
+
+# Or upgrade existing installation
+helm upgrade suse-ai-up charts/suse-ai-up --set rbac.create=true
+
+# Optional: Customize service account name
+helm install suse-ai-up charts/suse-ai-up \
+  --set rbac.create=true \
+  --set serviceAccount.name=my-custom-sa
+```
 
 ## Example MCP Servers
 
@@ -160,7 +177,8 @@ curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q={search-term}" \
 ### Adapter Creation Fails
 - Check that the MCP server exists in the registry
 - Verify environment variables are correctly set
-- Ensure the proxy service has proper RBAC permissions for sidecar deployments
+- Ensure RBAC is enabled in the Helm chart (`rbac.create=true`)
+- Check that the service account has permissions to create deployments in the `suse-ai-up-mcp` namespace
 
 ### Connection Issues
 - Verify the adapter is in "running" state
