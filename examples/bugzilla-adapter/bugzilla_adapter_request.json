@@ -1,8 +1,0 @@
-{
-  "mcpServerId": "suse-bugzilla",
-  "name": "my-bugzilla-adapter",
-  "description": "Personal Bugzilla adapter for SUSE bug tracking and issue management",
-  "environmentVariables": {
-    "BUGZILLA_SERVER": "https://bugzilla.suse.com"
-  }
-}
