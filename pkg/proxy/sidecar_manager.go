@@ -175,7 +175,7 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 		Image: config.DockerImage,
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: int32(config.Port),
+				ContainerPort: 8000, // Container always listens on port 8000
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -187,7 +187,7 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(config.Port),
+					Port: intstr.FromInt(8000), // Container listens on port 8000
 				},
 			},
 			InitialDelaySeconds: 30,
@@ -196,7 +196,7 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(config.Port),
+					Port: intstr.FromInt(8000), // Container listens on port 8000
 				},
 			},
 			InitialDelaySeconds: 5,
