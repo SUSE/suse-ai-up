@@ -1045,10 +1045,18 @@ func (s *Service) handleReloadRemoteServers(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Clear existing servers and reload from comprehensive list
-	// Note: In a real implementation, you might want to be more selective
-	// For now, we'll reload all servers
+	// Clear existing servers before reloading
+	log.Println("Clearing existing MCP servers before reload")
+	existingServers := s.store.ListMCPServers()
+	for _, server := range existingServers {
+		if err := s.store.DeleteMCPServer(server.ID); err != nil {
+			log.Printf("Failed to delete server %s during reload: %v", server.ID, err)
+			// Continue with other servers
+		}
+	}
+	log.Printf("Cleared %d existing servers", len(existingServers))
 
+	// Reload from comprehensive list
 	if err := s.loadComprehensiveServers(); err != nil {
 		log.Printf("Failed to reload comprehensive servers: %v", err)
 		http.Error(w, "Failed to reload MCP servers", http.StatusInternalServerError)

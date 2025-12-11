@@ -18,13 +18,13 @@ This document provides examples of how to test various MCP (Model Context Protoc
 
 **Search for the MCP in Registry**:
 ```bash
-curl -X GET "http://localhost:8913/api/v1/registry/search?q=bugzilla" \
+curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q=bugzilla" \
   -H "Content-Type: application/json" | jq .
 ```
 
 **Create Adapter**:
 ```bash
-curl -X POST "http://localhost:8911/api/v1/adapters" \
+curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "bugzilla-adapter",
@@ -37,7 +37,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
 
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://localhost:8911/api/v1/adapters/bugzilla-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/bugzilla-adapter/connect"
 ```
 
 ### 2. SUSE Uyuni MCP
@@ -74,13 +74,13 @@ UYUNI_SSH_PRIV_KEY_PASS="your-key-passphrase"
 
 **Search for the MCP in Registry**:
 ```bash
-curl -X GET "http://localhost:8913/api/v1/registry/search?q=uyuni" \
+curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q=uyuni" \
   -H "Content-Type: application/json" | jq .
 ```
 
 **Create Adapter**:
 ```bash
-curl -X POST "http://localhost:8911/api/v1/adapters" \
+curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "uyuni-adapter",
@@ -97,7 +97,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
 
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://localhost:8911/api/v1/adapters/uyuni-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/uyuni-adapter/connect"
 ```
 
 ### 3. Sequential Thinking MCP
@@ -106,7 +106,7 @@ mcpinspector "http://localhost:8911/api/v1/adapters/uyuni-adapter/connect"
 
 **Search for the MCP in Registry**:
 ```bash
-curl -X GET "http://localhost:8913/api/v1/registry/search?q=sequential-thinking" \
+curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q=sequential-thinking" \
   -H "Content-Type: application/json" | jq .
 ```
 
@@ -116,7 +116,7 @@ curl -X GET "http://localhost:8913/api/v1/registry/search?q=sequential-thinking"
 npm install -g mcp-sequential-thinking
 
 # Then create the adapter
-curl -X POST "http://localhost:8911/api/v1/adapters" \
+curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sequential-thinking-adapter",
@@ -126,32 +126,32 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
 
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://localhost:8911/api/v1/adapters/sequential-thinking-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/sequential-thinking-adapter/connect"
 ```
 
 ## Common Operations
 
 ### List All Adapters
 ```bash
-curl -X GET "http://localhost:8911/api/v1/adapters" \
+curl -X GET "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### Get Adapter Details
 ```bash
-curl -X GET "http://localhost:8911/api/v1/adapters/{adapter-name}" \
+curl -X GET "http://192.168.64.17:8911/api/v1/adapters/{adapter-name}" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### Delete Adapter
 ```bash
-curl -X DELETE "http://localhost:8911/api/v1/adapters/{adapter-name}" \
+curl -X DELETE "http://192.168.64.17:8911/api/v1/adapters/{adapter-name}" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### Search Registry
 ```bash
-curl -X GET "http://localhost:8913/api/v1/registry/search?q={search-term}" \
+curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q={search-term}" \
   -H "Content-Type: application/json" | jq .
 ```
 
@@ -176,7 +176,7 @@ curl -X GET "http://localhost:8913/api/v1/registry/search?q={search-term}" \
 
 ### Custom Environment Variables
 ```bash
-curl -X POST "http://localhost:8911/api/v1/adapters" \
+curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "custom-adapter",
