@@ -19,7 +19,7 @@ This document provides examples of how to test various MCP (Model Context Protoc
 **Search for the MCP in Registry**:
 ```bash
 curl -X GET "http://localhost:8913/api/v1/registry/search?q=bugzilla" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 **Create Adapter**:
@@ -32,7 +32,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
     "environmentVariables": {
       "BUGZILLA_URL": "https://bugzilla.suse.com"
     }
-  }'
+  }' | jq .
 ```
 
 **Connect using mcpinspector**:
@@ -75,7 +75,7 @@ UYUNI_SSH_PRIV_KEY_PASS="your-key-passphrase"
 **Search for the MCP in Registry**:
 ```bash
 curl -X GET "http://localhost:8913/api/v1/registry/search?q=uyuni" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 **Create Adapter**:
@@ -92,7 +92,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
       "UYUNI_MCP_SSL_VERIFY": "false",
       "UYUNI_MCP_TRANSPORT": "http"
     }
-  }'
+  }' | jq .
 ```
 
 **Connect using mcpinspector**:
@@ -107,7 +107,7 @@ mcpinspector "http://localhost:8911/api/v1/adapters/uyuni-adapter/connect"
 **Search for the MCP in Registry**:
 ```bash
 curl -X GET "http://localhost:8913/api/v1/registry/search?q=sequential-thinking" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 **Create Adapter** (Local Stdio - requires installation)**:
@@ -121,7 +121,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
   -d '{
     "name": "sequential-thinking-adapter",
     "serverId": "sequential-thinking"
-  }'
+  }' | jq .
 ```
 
 **Connect using mcpinspector**:
@@ -134,25 +134,25 @@ mcpinspector "http://localhost:8911/api/v1/adapters/sequential-thinking-adapter/
 ### List All Adapters
 ```bash
 curl -X GET "http://localhost:8911/api/v1/adapters" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 ### Get Adapter Details
 ```bash
 curl -X GET "http://localhost:8911/api/v1/adapters/{adapter-name}" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 ### Delete Adapter
 ```bash
 curl -X DELETE "http://localhost:8911/api/v1/adapters/{adapter-name}" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 ### Search Registry
 ```bash
 curl -X GET "http://localhost:8913/api/v1/registry/search?q={search-term}" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" | jq .
 ```
 
 ## Troubleshooting
@@ -185,7 +185,7 @@ curl -X POST "http://localhost:8911/api/v1/adapters" \
       "CUSTOM_VAR": "value",
       "ANOTHER_VAR": "another-value"
     }
-  }'
+  }' | jq .
 ```
 
 ### Using Different MCP Servers
