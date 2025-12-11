@@ -81,7 +81,7 @@ questions:
 # RBAC Configuration
 - variable: rbac.create
   label: "Enable RBAC for Sidecar Deployments"
-  description: "Create RBAC resources (ServiceAccount, Role, RoleBinding) to allow the proxy to deploy MCP server sidecars"
+  description: "Create RBAC resources (ServiceAccount, Role, RoleBinding) to allow the proxy to deploy MCP server sidecars. Note: The suse-ai-up-mcp namespace must exist before installation."
   type: boolean
   default: true
   group: "RBAC Configuration"

@@ -12,9 +12,12 @@ This document provides examples of how to test various MCP (Model Context Protoc
 
 ### Helm Chart Installation with RBAC
 
-Ensure RBAC is enabled when installing the Helm chart:
+Ensure the namespace exists and RBAC is enabled when installing the Helm chart:
 
 ```bash
+# Create the namespace for sidecar deployments (if it doesn't exist)
+kubectl create namespace suse-ai-up-mcp
+
 # Install with RBAC enabled (default)
 helm install suse-ai-up charts/suse-ai-up
 
@@ -177,6 +180,7 @@ curl -X GET "http://192.168.64.17:8913/api/v1/registry/browse?q={search-term}" \
 ### Adapter Creation Fails
 - Check that the MCP server exists in the registry
 - Verify environment variables are correctly set
+- Ensure the `suse-ai-up-mcp` namespace exists: `kubectl get namespace suse-ai-up-mcp`
 - Ensure RBAC is enabled in the Helm chart (`rbac.create=true`)
 - Check that the service account has permissions to create deployments in the `suse-ai-up-mcp` namespace
 
