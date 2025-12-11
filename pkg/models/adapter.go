@@ -24,9 +24,17 @@ const (
 
 // SidecarConfig represents configuration for sidecar container deployment
 type SidecarConfig struct {
-	// Docker image-based deployment
-	DockerImage      string `json:"dockerImage" example:"kskarthik/mcp-bugzilla:latest"`
-	DockerCommand    string `json:"dockerCommand" example:"--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000"`
+	// Command execution type
+	CommandType string `json:"commandType" example:"docker"` // "docker", "npx", "python", "uv"
+
+	// Generic command execution (new)
+	BaseImage string   `json:"baseImage,omitempty" example:"registry.suse.com/bci/nodejs:22"`
+	Command   string   `json:"command" example:"npx"`
+	Args      []string `json:"args,omitempty" example:"@package/name,--arg1,--arg2"`
+
+	// Docker image-based deployment (legacy, for backward compatibility)
+	DockerImage      string `json:"dockerImage,omitempty" example:"kskarthik/mcp-bugzilla:latest"`
+	DockerCommand    string `json:"dockerCommand,omitempty" example:"--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000"`
 	DockerEntrypoint string `json:"dockerEntrypoint,omitempty" example:"python"`
 
 	// Port assignment

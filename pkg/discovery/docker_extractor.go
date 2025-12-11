@@ -114,6 +114,43 @@ func (e *DockerCommandExtractor) fetchREADME(ctx context.Context, apiURL string)
 	return string(content), nil
 }
 
+// extractCommands parses README content for various command types
+func (e *DockerCommandExtractor) extractCommands(content string) (*CommandConfig, error) {
+	// Try different command types in order of preference
+	if config, err := e.extractDockerCommands(content); err == nil && config != nil {
+		return &CommandConfig{
+			CommandType:   "docker",
+			DockerImage:   config.Image,
+			DockerCommand: config.Command,
+		}, nil
+	}
+
+	if config, err := e.extractNpxCommands(content); err == nil && config != nil {
+		return config, nil
+	}
+
+	if config, err := e.extractPythonCommands(content); err == nil && config != nil {
+		return config, nil
+	}
+
+	if config, err := e.extractUvCommands(content); err == nil && config != nil {
+		return config, nil
+	}
+
+	return nil, nil // No commands found
+}
+
+// CommandConfig represents extracted command configuration
+type CommandConfig struct {
+	CommandType   string   `json:"commandType"`
+	BaseImage     string   `json:"baseImage,omitempty"`
+	Command       string   `json:"command"`
+	Args          []string `json:"args,omitempty"`
+	DockerImage   string   `json:"dockerImage,omitempty"`
+	DockerCommand string   `json:"dockerCommand,omitempty"`
+	Source        string   `json:"source,omitempty"`
+}
+
 // extractDockerCommands parses README content for Docker commands
 func (e *DockerCommandExtractor) extractDockerCommands(content string) (*DockerConfig, error) {
 	// Look for docker run commands
@@ -182,33 +219,134 @@ func (e *DockerCommandExtractor) cleanDockerCommand(command string) string {
 	return cleaned
 }
 
-// UpdateRegistryWithDockerCommands updates the registry with Docker commands for stdio servers
-func (e *DockerCommandExtractor) UpdateRegistryWithDockerCommands(ctx context.Context, registry *[]models.MCPServer) error {
+// extractNpxCommands parses README content for npx commands
+func (e *DockerCommandExtractor) extractNpxCommands(content string) (*CommandConfig, error) {
+	// Look for npx commands
+	npxPattern := regexp.MustCompile(`(?m)npx\s+(@?[a-zA-Z0-9/-]+)([^\n]*)`)
+	matches := npxPattern.FindAllStringSubmatch(content, -1)
+
+	if len(matches) == 0 {
+		return nil, nil // No npx commands found
+	}
+
+	// Use the first command found
+	match := matches[0]
+	packageName := strings.TrimSpace(match[1])
+	args := strings.TrimSpace(match[2])
+
+	// Parse arguments
+	var argList []string
+	if args != "" {
+		argList = strings.Fields(args)
+	}
+
+	return &CommandConfig{
+		CommandType: "npx",
+		BaseImage:   "registry.suse.com/bci/nodejs:22",
+		Command:     packageName,
+		Args:        argList,
+	}, nil
+}
+
+// extractPythonCommands parses README content for python commands
+func (e *DockerCommandExtractor) extractPythonCommands(content string) (*CommandConfig, error) {
+	// Look for python commands
+	pythonPattern := regexp.MustCompile(`(?m)python\s+([a-zA-Z0-9_.-]+\.py)([^\n]*)`)
+	matches := pythonPattern.FindAllStringSubmatch(content, -1)
+
+	if len(matches) == 0 {
+		return nil, nil // No python commands found
+	}
+
+	// Use the first command found
+	match := matches[0]
+	scriptName := strings.TrimSpace(match[1])
+	args := strings.TrimSpace(match[2])
+
+	// Parse arguments
+	var argList []string
+	if args != "" {
+		argList = strings.Fields(args)
+	}
+
+	return &CommandConfig{
+		CommandType: "python",
+		BaseImage:   "registry.suse.com/bci/python:3.12",
+		Command:     scriptName,
+		Args:        argList,
+	}, nil
+}
+
+// extractUvCommands parses README content for uv commands
+func (e *DockerCommandExtractor) extractUvCommands(content string) (*CommandConfig, error) {
+	// Look for uv run commands
+	uvPattern := regexp.MustCompile(`(?m)uv\s+run\s+([a-zA-Z0-9_.-]+)([^\n]*)`)
+	matches := uvPattern.FindAllStringSubmatch(content, -1)
+
+	if len(matches) == 0 {
+		return nil, nil // No uv commands found
+	}
+
+	// Use the first command found
+	match := matches[0]
+	commandName := strings.TrimSpace(match[1])
+	args := strings.TrimSpace(match[2])
+
+	// Parse arguments
+	var argList []string
+	if args != "" {
+		argList = strings.Fields(args)
+	}
+
+	return &CommandConfig{
+		CommandType: "uv",
+		BaseImage:   "registry.suse.com/bci/python:3.12",
+		Command:     commandName,
+		Args:        argList,
+	}, nil
+}
+
+// UpdateRegistryWithCommands updates the registry with command configurations for stdio servers
+func (e *DockerCommandExtractor) UpdateRegistryWithCommands(ctx context.Context, registry *[]models.MCPServer) error {
 	updated := 0
 
 	for i, server := range *registry {
-		// Only process stdio servers that don't already have sidecar config
-		if e.hasStdioPackage(server) && server.Meta["sidecarConfig"] == nil {
-			if config, err := e.extractDockerConfigForServer(ctx, server); err == nil && config != nil {
+		// Only process stdio servers that don't already have sidecar config and have GitHub documentation
+		if e.hasStdioPackage(server) && server.Meta["sidecarConfig"] == nil && e.hasGitHubDocumentation(server) {
+			if config, err := e.extractCommandConfigForServer(ctx, server); err == nil && config != nil {
 				// Add sidecar config to server metadata
 				if (*registry)[i].Meta == nil {
 					(*registry)[i].Meta = make(map[string]interface{})
 				}
 
-				(*registry)[i].Meta["sidecarConfig"] = map[string]interface{}{
-					"dockerImage":   config.Image,
-					"dockerCommand": config.Command,
-					"source":        config.Source,
-					"lastUpdated":   time.Now().Format(time.RFC3339),
+				sidecarConfig := map[string]interface{}{
+					"commandType": config.CommandType,
+					"command":     config.Command,
+					"args":        config.Args,
+					"source":      "auto-extracted from GitHub",
+					"lastUpdated": time.Now().Format(time.RFC3339),
 				}
 
+				// Add type-specific fields
+				if config.BaseImage != "" {
+					sidecarConfig["baseImage"] = config.BaseImage
+				}
+				if config.DockerImage != "" {
+					sidecarConfig["dockerImage"] = config.DockerImage
+				}
+				if config.DockerCommand != "" {
+					sidecarConfig["dockerCommand"] = config.DockerCommand
+				}
+
+				(*registry)[i].Meta["sidecarConfig"] = sidecarConfig
+
 				updated++
-				fmt.Printf("✅ Updated %s with Docker config\n", server.ID)
+				fmt.Printf("✅ Updated %s with %s config\n", server.ID, config.CommandType)
 			}
 		}
 	}
 
-	fmt.Printf("📊 Updated %d/%d servers with Docker configurations\n", updated, len(*registry))
+	fmt.Printf("📊 Updated %d/%d servers with command configurations\n", updated, len(*registry))
 	return nil
 }
 
@@ -237,6 +375,59 @@ func (e *DockerCommandExtractor) extractDockerConfigForServer(ctx context.Contex
 
 	// For non-GitHub URLs, we can't automatically extract
 	return nil, fmt.Errorf("non-GitHub documentation URL: %s", docURL)
+}
+
+// hasGitHubDocumentation checks if server has GitHub documentation URL
+func (e *DockerCommandExtractor) hasGitHubDocumentation(server models.MCPServer) bool {
+	if server.Meta == nil {
+		return false
+	}
+
+	docURL, ok := server.Meta["documentation"].(string)
+	if !ok {
+		return false
+	}
+
+	return strings.Contains(docURL, "github.com")
+}
+
+// extractCommandConfigForServer extracts command config for a specific server
+func (e *DockerCommandExtractor) extractCommandConfigForServer(ctx context.Context, server models.MCPServer) (*CommandConfig, error) {
+	// Get documentation URL
+	docURL, ok := server.Meta["documentation"].(string)
+	if !ok {
+		return nil, fmt.Errorf("no documentation URL found")
+	}
+
+	// Only process GitHub URLs
+	if !strings.Contains(docURL, "github.com") {
+		return nil, fmt.Errorf("non-GitHub documentation URL: %s", docURL)
+	}
+
+	// Extract repo from GitHub URL
+	repo, err := e.extractRepoFromURL(docURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract repo from URL %s: %w", docURL, err)
+	}
+
+	// Fetch README content
+	readmeURL := fmt.Sprintf("https://api.github.com/repos/%s/readme", repo)
+	readme, err := e.fetchREADME(ctx, readmeURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch README for %s: %w", repo, err)
+	}
+
+	// Extract commands
+	config, err := e.extractCommands(readme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract commands from %s: %w", repo, err)
+	}
+
+	if config != nil {
+		config.Source = fmt.Sprintf("auto-extracted from %s", docURL)
+	}
+
+	return config, nil
 }
 
 // ValidateDockerConfig validates that a Docker config is usable

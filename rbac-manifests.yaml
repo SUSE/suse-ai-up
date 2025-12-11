@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: suse-ai-up-mcp
+  labels:
+    name: suse-ai-up-mcp
+    app.kubernetes.io/name: suse-ai-up
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: suse-ai-up-proxy-sa
+  namespace: default
+  labels:
+    app.kubernetes.io/name: suse-ai-up
+    app.kubernetes.io/component: proxy
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: suse-ai-up-sidecar-role
+  namespace: suse-ai-up-mcp
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: suse-ai-up-sidecar-binding
+  namespace: suse-ai-up-mcp
+subjects:
+- kind: ServiceAccount
+  name: suse-ai-up-proxy-sa
+  namespace: default
+roleRef:
+  kind: Role
+  name: suse-ai-up-sidecar-role
+  apiGroup: rbac.authorization.k8s.io

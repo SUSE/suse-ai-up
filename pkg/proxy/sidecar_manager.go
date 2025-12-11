@@ -37,9 +37,11 @@ func (sm *SidecarManager) init() {
 
 // NewSidecarManager creates a new sidecar manager
 func NewSidecarManager(kubeClient *kubernetes.Clientset, namespace string) *SidecarManager {
+	// Use dedicated namespace for MCP sidecars
+	sidecarNamespace := "suse-ai-up-mcp"
 	sm := &SidecarManager{
 		kubeClient:  kubeClient,
-		namespace:   namespace,
+		namespace:   sidecarNamespace,
 		portManager: NewPortManager(8000, 9000), // Port range 8000-9000
 		baseImage:   "python:3.11-slim",
 	}
@@ -133,9 +135,21 @@ func (sm *SidecarManager) createDeployment(adapter models.AdapterResource) *apps
 	}
 }
 
-// buildContainer builds the container spec for Docker deployment
+// buildContainer builds the container spec based on command type
 func (sm *SidecarManager) buildContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
-	return sm.buildDockerContainer(config, envVars)
+	switch config.CommandType {
+	case "docker":
+		return sm.buildDockerContainer(config, envVars)
+	case "npx":
+		return sm.buildNpxContainer(config, envVars)
+	case "python":
+		return sm.buildPythonContainer(config, envVars)
+	case "uv":
+		return sm.buildUvContainer(config, envVars)
+	default:
+		// Default to docker for backward compatibility
+		return sm.buildDockerContainer(config, envVars)
+	}
 }
 
 // buildDockerContainer builds container spec for Docker image deployment
@@ -159,6 +173,117 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 		},
 		Env:     envVars,
 		Command: command,
+		Resources: corev1.ResourceRequirements{
+			Limits: sm.defaultLimits,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 30,
+			PeriodSeconds:       10,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+		},
+	}
+}
+
+// buildNpxContainer builds container spec for npx command execution
+func (sm *SidecarManager) buildNpxContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
+	return corev1.Container{
+		Name:    "mcp-server",
+		Image:   config.BaseImage,
+		Command: append([]string{"npx", config.Command}, config.Args...),
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: int32(config.Port),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		Env: envVars,
+		Resources: corev1.ResourceRequirements{
+			Limits: sm.defaultLimits,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 30,
+			PeriodSeconds:       10,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+		},
+	}
+}
+
+// buildPythonContainer builds container spec for python command execution
+func (sm *SidecarManager) buildPythonContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
+	return corev1.Container{
+		Name:    "mcp-server",
+		Image:   config.BaseImage,
+		Command: append([]string{"python", config.Command}, config.Args...),
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: int32(config.Port),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		Env: envVars,
+		Resources: corev1.ResourceRequirements{
+			Limits: sm.defaultLimits,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 30,
+			PeriodSeconds:       10,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(config.Port),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+		},
+	}
+}
+
+// buildUvContainer builds container spec for uv command execution
+func (sm *SidecarManager) buildUvContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
+	return corev1.Container{
+		Name:    "mcp-server",
+		Image:   config.BaseImage,
+		Command: append([]string{"uv", config.Command}, config.Args...),
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: int32(config.Port),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		Env: envVars,
 		Resources: corev1.ResourceRequirements{
 			Limits: sm.defaultLimits,
 		},

@@ -312,9 +312,9 @@ priorityClassName: ""
 
 # Service account
 serviceAccount:
-  create: false
+  create: true
   annotations: {}
-  name: ""
+  name: "suse-ai-up-proxy-sa"
 
 # RBAC configuration
 rbac:

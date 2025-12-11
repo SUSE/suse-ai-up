@@ -54,9 +54,23 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		if sidecarMeta := as.getSidecarMeta(server); sidecarMeta != nil {
 			connectionType = models.ConnectionTypeSidecarStdio
 			sidecarConfig = &models.SidecarConfig{
+				CommandType:      sidecarMeta.CommandType,
+				BaseImage:        sidecarMeta.BaseImage,
+				Command:          sidecarMeta.Command,
+				Args:             sidecarMeta.Args,
 				DockerImage:      sidecarMeta.DockerImage,
 				DockerCommand:    sidecarMeta.DockerCommand,
 				DockerEntrypoint: sidecarMeta.DockerEntrypoint,
+			}
+
+			// Set default base images based on command type
+			if sidecarConfig.BaseImage == "" {
+				switch sidecarConfig.CommandType {
+				case "npx":
+					sidecarConfig.BaseImage = "registry.suse.com/bci/nodejs:22"
+				case "python", "uv":
+					sidecarConfig.BaseImage = "registry.suse.com/bci/python:3.12"
+				}
 			}
 			// For Uyuni, add HTTP transport configuration
 			if mcpServerID == "suse-uyuni" {
@@ -130,6 +144,10 @@ func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
 
 // sidecarMeta represents sidecar configuration from server metadata
 type sidecarMeta struct {
+	CommandType      string
+	BaseImage        string
+	Command          string
+	Args             []string
 	DockerImage      string
 	DockerCommand    string
 	DockerEntrypoint string
@@ -153,6 +171,30 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 
 	meta := &sidecarMeta{}
 
+	// Extract command type
+	if commandType, ok := configMap["commandType"].(string); ok {
+		meta.CommandType = commandType
+	} else {
+		// Default to docker for backward compatibility
+		meta.CommandType = "docker"
+	}
+
+	// Extract new fields
+	if baseImage, ok := configMap["baseImage"].(string); ok {
+		meta.BaseImage = baseImage
+	}
+	if command, ok := configMap["command"].(string); ok {
+		meta.Command = command
+	}
+	if argsInterface, ok := configMap["args"].([]interface{}); ok {
+		for _, arg := range argsInterface {
+			if argStr, ok := arg.(string); ok {
+				meta.Args = append(meta.Args, argStr)
+			}
+		}
+	}
+
+	// Extract legacy Docker fields for backward compatibility
 	if dockerImage, ok := configMap["dockerImage"].(string); ok {
 		meta.DockerImage = dockerImage
 	}
