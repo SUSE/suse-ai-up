@@ -336,7 +336,7 @@ func (sm *SidecarManager) createService(adapter models.AdapterResource) *corev1.
 				{
 					Name:       "http",
 					Port:       int32(config.Port),
-					TargetPort: intstr.FromInt(config.Port),
+					TargetPort: intstr.FromInt(8000), // Containers always listen on port 8000
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
