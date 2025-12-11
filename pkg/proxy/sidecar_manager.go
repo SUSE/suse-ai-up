@@ -158,8 +158,16 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 	var command []string
 
 	if config.DockerCommand != "" {
-		// Use the full command as specified
-		command = strings.Fields(config.DockerCommand)
+		// Check if command contains shell operators that require shell execution
+		if strings.Contains(config.DockerCommand, "&&") || strings.Contains(config.DockerCommand, "||") ||
+			strings.Contains(config.DockerCommand, "|") || strings.Contains(config.DockerCommand, ";") ||
+			strings.Contains(config.DockerCommand, "&") {
+			// Use shell to execute complex commands
+			command = []string{"sh", "-c", config.DockerCommand}
+		} else {
+			// Use the command split by fields for simple commands
+			command = strings.Fields(config.DockerCommand)
+		}
 	}
 
 	return corev1.Container{
@@ -344,23 +352,39 @@ func (sm *SidecarManager) GetSidecarEndpoint(adapterID string) string {
 
 // CleanupSidecar removes the sidecar deployment and service
 func (sm *SidecarManager) CleanupSidecar(ctx context.Context, adapterID string) error {
+	fmt.Printf("DEBUG: CleanupSidecar called for adapter %s in namespace %s\n", adapterID, sm.namespace)
+
 	wrapper := clients.NewKubeClientWrapper(sm.kubeClient, sm.namespace)
 
 	// Delete deployment
 	deploymentName := fmt.Sprintf("mcp-sidecar-%s", adapterID)
+	fmt.Printf("DEBUG: Attempting to delete deployment: %s\n", deploymentName)
 	if err := wrapper.DeleteDeployment(deploymentName, sm.namespace, ctx); err != nil && !errors.IsNotFound(err) {
+		fmt.Printf("DEBUG: Failed to delete deployment %s: %v\n", deploymentName, err)
 		return fmt.Errorf("failed to delete deployment: %w", err)
+	} else if errors.IsNotFound(err) {
+		fmt.Printf("DEBUG: Deployment %s not found (already deleted)\n", deploymentName)
+	} else {
+		fmt.Printf("DEBUG: Successfully deleted deployment %s\n", deploymentName)
 	}
 
 	// Delete service
 	serviceName := fmt.Sprintf("mcp-sidecar-%s", adapterID)
+	fmt.Printf("DEBUG: Attempting to delete service: %s\n", serviceName)
 	if err := wrapper.DeleteService(serviceName, sm.namespace, ctx); err != nil && !errors.IsNotFound(err) {
+		fmt.Printf("DEBUG: Failed to delete service %s: %v\n", serviceName, err)
 		return fmt.Errorf("failed to delete service: %w", err)
+	} else if errors.IsNotFound(err) {
+		fmt.Printf("DEBUG: Service %s not found (already deleted)\n", serviceName)
+	} else {
+		fmt.Printf("DEBUG: Successfully deleted service %s\n", serviceName)
 	}
 
 	// Release port
+	fmt.Printf("DEBUG: Releasing port for adapter %s\n", adapterID)
 	sm.portManager.ReleasePort(adapterID)
 
+	fmt.Printf("DEBUG: CleanupSidecar completed for adapter %s\n", adapterID)
 	return nil
 }
 

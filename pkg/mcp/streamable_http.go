@@ -344,7 +344,17 @@ func (sht *StreamableHTTPTransport) buildTargetURL(adapter models.AdapterResourc
 		// Default port for MCP servers
 		port := 8000
 
-		// Try multiple URL patterns for better compatibility
+		// For sidecar-based adapters, use sidecar service URL
+		if adapter.SidecarConfig != nil {
+			if adapter.SidecarConfig.Port > 0 {
+				port = adapter.SidecarConfig.Port
+			}
+			serviceURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/mcp", adapter.ID, port)
+			log.Printf("StreamableHTTP: Using sidecar URL: %s", serviceURL)
+			return serviceURL, nil
+		}
+
+		// Fallback for non-sidecar adapters
 		serviceURL := fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:%d/mcp", adapter.Name, port)
 
 		// For local development, also try direct service name

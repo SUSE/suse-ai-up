@@ -176,9 +176,15 @@ func (s *Service) Start() error {
 
 		switch r.Method {
 		case "GET":
-			// Set adapter ID in URL params for handler
-			r.URL.Path = "/api/v1/adapters/" + adapterID
-			adapterHandler.GetAdapter(w, r)
+			if len(parts) > 1 && parts[1] == "mcp" {
+				// Handle MCP protocol requests - proxy to sidecar
+				r.URL.Path = "/api/v1/adapters/" + adapterID + "/mcp"
+				adapterHandler.HandleMCPProtocol(w, r)
+			} else {
+				// Regular GET request for adapter info
+				r.URL.Path = "/api/v1/adapters/" + adapterID
+				adapterHandler.GetAdapter(w, r)
+			}
 		case "PUT":
 			r.URL.Path = "/api/v1/adapters/" + adapterID
 			adapterHandler.UpdateAdapter(w, r)
@@ -189,6 +195,10 @@ func (s *Service) Start() error {
 			if len(parts) > 1 && parts[1] == "sync" {
 				r.URL.Path = "/api/v1/adapters/" + adapterID + "/sync"
 				adapterHandler.SyncAdapterCapabilities(w, r)
+			} else if len(parts) > 1 && parts[1] == "mcp" {
+				// Handle MCP protocol POST requests - proxy to sidecar
+				r.URL.Path = "/api/v1/adapters/" + adapterID + "/mcp"
+				adapterHandler.HandleMCPProtocol(w, r)
 			} else {
 				http.NotFound(w, r)
 			}

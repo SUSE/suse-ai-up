@@ -115,17 +115,24 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	// Deploy sidecar if needed
 	if adapter.ConnectionType == models.ConnectionTypeSidecarStdio {
 		if as.sidecarManager == nil {
+			fmt.Printf("DEBUG: SidecarManager is nil, falling back to LocalStdio\n")
 			// Fall back to local stdio if no sidecar manager is available
 			adapter.ConnectionType = models.ConnectionTypeLocalStdio
 			adapter.SidecarConfig = nil
 			// Update the stored adapter
 			as.store.Update(ctx, *adapter)
 		} else {
+			fmt.Printf("DEBUG: Attempting to deploy sidecar for adapter %s\n", adapter.ID)
 			if err := as.sidecarManager.DeploySidecar(ctx, *adapter); err != nil {
+				fmt.Printf("DEBUG: Sidecar deployment failed: %v\n", err)
 				// If sidecar deployment fails, we should clean up the adapter
 				as.store.Delete(ctx, adapter.ID)
 				return nil, fmt.Errorf("failed to deploy sidecar: %w", err)
 			}
+			fmt.Printf("DEBUG: Sidecar deployment successful for adapter %s\n", adapter.ID)
+			// Change connection type to StreamableHttp since we're proxying to sidecar
+			adapter.ConnectionType = models.ConnectionTypeStreamableHttp
+			as.store.Update(ctx, *adapter)
 		}
 	}
 
@@ -250,19 +257,46 @@ func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adap
 	return as.store.Update(ctx, adapter)
 }
 
-// DeleteAdapter deletes an adapter
+// DeleteAdapter deletes an adapter and its associated resources
 func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID string) error {
-	// Check if adapter belongs to user
-	existing, err := as.store.Get(ctx, adapterID)
+	fmt.Printf("DEBUG: DeleteAdapter called for adapter %s by user %s\n", adapterID, userID)
+
+	// Get adapter before deletion to check if it has sidecar resources
+	adapter, err := as.store.Get(ctx, adapterID)
 	if err != nil {
-		return err
+		fmt.Printf("DEBUG: Failed to get adapter %s: %v\n", adapterID, err)
+	} else if adapter != nil {
+		fmt.Printf("DEBUG: Found adapter %s with connection type: %s\n", adapterID, adapter.ConnectionType)
+
+		// If this is a sidecar adapter (either SidecarStdio or StreamableHttp with sidecar config), clean up the sidecar resources
+		if adapter.ConnectionType == models.ConnectionTypeSidecarStdio ||
+			(adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil) {
+			if as.sidecarManager == nil {
+				fmt.Printf("DEBUG: SidecarManager is nil, cannot cleanup sidecar for adapter %s\n", adapterID)
+			} else {
+				fmt.Printf("DEBUG: Attempting to cleanup sidecar for adapter %s\n", adapterID)
+				if cleanupErr := as.sidecarManager.CleanupSidecar(ctx, adapterID); cleanupErr != nil {
+					// Log the error but don't fail the adapter deletion
+					fmt.Printf("Warning: Failed to cleanup sidecar for adapter %s: %v\n", adapterID, cleanupErr)
+				} else {
+					fmt.Printf("DEBUG: Successfully initiated sidecar cleanup for adapter %s\n", adapterID)
+				}
+			}
+		} else {
+			fmt.Printf("DEBUG: Adapter %s is not a sidecar adapter (type: %s), skipping sidecar cleanup\n", adapterID, adapter.ConnectionType)
+		}
+	} else {
+		fmt.Printf("DEBUG: Adapter %s not found in store\n", adapterID)
 	}
 
-	if existing.CreatedBy != userID {
-		return fmt.Errorf("adapter not found")
+	// Delete the adapter from store
+	if err := as.store.Delete(ctx, adapterID); err != nil {
+		fmt.Printf("DEBUG: Failed to delete adapter %s from store: %v\n", adapterID, err)
+		return fmt.Errorf("failed to delete adapter from store: %w", err)
 	}
 
-	return as.store.Delete(ctx, adapterID)
+	fmt.Printf("DEBUG: Successfully deleted adapter %s from store\n", adapterID)
+	return nil
 }
 
 // SyncAdapterCapabilities syncs capabilities for an adapter

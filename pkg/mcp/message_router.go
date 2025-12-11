@@ -315,7 +315,15 @@ func (mr *MessageRouter) buildTargetURL(adapter models.AdapterResource) (string,
 		if adapter.RemoteUrl != "" {
 			return adapter.RemoteUrl, nil
 		}
-		// Default to Kubernetes service URL
+		// For sidecar-based adapters, use sidecar service URL
+		if adapter.SidecarConfig != nil {
+			port := adapter.SidecarConfig.Port
+			if port == 0 {
+				port = 8000
+			}
+			return fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/mcp", adapter.ID, port), nil
+		}
+		// Fallback for non-sidecar adapters
 		return fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:8000/mcp", adapter.Name), nil
 	case models.ConnectionTypeLocalStdio:
 		// For local stdio, we need to handle differently

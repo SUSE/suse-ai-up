@@ -115,6 +115,9 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(s.proxyToPlugins))
 	mux.HandleFunc("/api/v1/health/", middleware.CORSMiddleware(s.proxyToPlugins))
 
+	// Health check endpoint for Kubernetes probes
+	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+
 	// Start HTTP server
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
@@ -1308,9 +1311,13 @@ func (s *Service) handleRemoteHttpMCP(w http.ResponseWriter, r *http.Request, ad
 
 // handleStreamableHttpMCP handles MCP requests for streamable HTTP adapters
 func (s *Service) handleStreamableHttpMCP(w http.ResponseWriter, r *http.Request, adapter models.AdapterResource) {
-	// For streamable HTTP, construct the service URL
-	serviceURL := fmt.Sprintf("http://%s-service.adapter.svc.cluster.local:8000/mcp", adapter.Name)
-	s.proxyRequest(w, r, serviceURL, "/api/v1/adapters/"+adapter.ID+"/mcp")
+	// For sidecar-based streamable HTTP adapters, construct the sidecar service URL
+	port := 8000 // default
+	if adapter.SidecarConfig != nil {
+		port = adapter.SidecarConfig.Port
+	}
+	serviceURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d", adapter.ID, port)
+	s.proxyRequest(w, r, serviceURL, "/api/v1/adapters/"+adapter.ID)
 }
 
 // proxyToRegistry forwards requests to the registry service

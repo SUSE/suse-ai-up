@@ -55,9 +55,11 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   }' | jq .
 ```
 
+**Note**: For MCP servers with sidecar configurations, this will automatically deploy a Kubernetes sidecar container.
+
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://192.168.64.17:8911/api/v1/adapters/bugzilla-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/bugzilla-adapter/mcp"
 ```
 
 ### 2. SUSE Uyuni MCP
@@ -117,7 +119,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
 
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://192.168.64.17:8911/api/v1/adapters/uyuni-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/uyuni-adapter/mcp"
 ```
 
 ### 3. Sequential Thinking MCP
@@ -146,7 +148,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
 
 **Connect using mcpinspector**:
 ```bash
-mcpinspector "http://192.168.64.17:8911/api/v1/adapters/sequential-thinking-adapter/connect"
+mcpinspector "http://192.168.64.17:8911/api/v1/adapters/sequential-thinking-adapter/mcp"
 ```
 
 ## Common Operations
@@ -168,6 +170,8 @@ curl -X GET "http://192.168.64.17:8911/api/v1/adapters/{adapter-name}" \
 curl -X DELETE "http://192.168.64.17:8911/api/v1/adapters/{adapter-name}" \
   -H "Content-Type: application/json" | jq .
 ```
+
+**Note**: When deleting adapters with sidecar deployments, the associated Kubernetes deployment and service resources are automatically cleaned up.
 
 ### Search Registry
 ```bash
