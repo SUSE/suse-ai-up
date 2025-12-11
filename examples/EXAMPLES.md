@@ -28,7 +28,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "bugzilla-adapter",
-    "serverId": "suse-bugzilla",
+    "mcpServerId": "suse-bugzilla",
     "environmentVariables": {
       "BUGZILLA_URL": "https://bugzilla.suse.com"
     }
@@ -84,7 +84,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "uyuni-adapter",
-    "serverId": "suse-uyuni",
+    "mcpServerId": "suse-uyuni",
     "environmentVariables": {
       "UYUNI_SERVER": "your-uyuni-server.example.com:443",
       "UYUNI_USER": "admin",
@@ -120,7 +120,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sequential-thinking-adapter",
-    "serverId": "sequential-thinking"
+    "mcpServerId": "sequential-thinking"
   }' | jq .
 ```
 
@@ -180,7 +180,7 @@ curl -X POST "http://192.168.64.17:8911/api/v1/adapters" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "custom-adapter",
-    "serverId": "server-id",
+    "mcpServerId": "server-id",
     "environmentVariables": {
       "CUSTOM_VAR": "value",
       "ANOTHER_VAR": "another-value"
