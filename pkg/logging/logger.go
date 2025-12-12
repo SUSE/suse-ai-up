@@ -145,19 +145,22 @@ func InitGlobalLoggers() {
 
 // ServiceBanner prints a colored banner for service startup
 func ServiceBanner(service ServiceType, message string, port int, tlsPort int) {
+	// Create each line with proper padding (76 characters content width)
+	serviceText := fmt.Sprintf("%s%-20s%s Service Started Successfully", colorBold+colorCyan, service, colorReset)
+	emptyLine := ""
+	httpText := fmt.Sprintf("HTTP  Port: %s%d%s", colorGreen, port, colorReset)
+	httpsText := fmt.Sprintf("HTTPS Port: %s%d%s", colorGreen, tlsPort, colorReset)
+
 	banner := fmt.Sprintf(`
 ╔══════════════════════════════════════════════════════════════╗
-║ %s%-20s%s Service Started Successfully              ║
-║                                                              ║
-║ HTTP  Port: %s%-5d%s                                           ║
-║ HTTPS Port: %s%-5d%s                                           ║
-║                                                              ║
-║ %s                                                            ║
+║ %-76s ║
+║ %-76s ║
+║ %-76s ║
+║ %-76s ║
+║ %-76s ║
+║ %-76s ║
 ╚══════════════════════════════════════════════════════════════╝
-`, colorBold+colorCyan, service, colorReset,
-		colorGreen, port, colorReset,
-		colorGreen, tlsPort, colorReset,
-		message)
+`, serviceText, emptyLine, httpText, httpsText, emptyLine, message)
 
 	fmt.Print(banner)
 }

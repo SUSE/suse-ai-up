@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -9,26 +10,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
-	"syscall"
 	"time"
 )
 
 // Service represents the proxy service
 type Service struct {
-	config     *Config
-	server     *proxy.MCPProxyServer
-	shutdownCh chan struct{}
+	config      *Config
+	server      *proxy.MCPProxyServer
+	httpServer  *http.Server
+	httpsServer *http.Server
+	shutdownCh  chan struct{}
 }
 
 // Config holds proxy service configuration
@@ -120,7 +119,7 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
 
 	// Start HTTP server
-	httpServer := &http.Server{
+	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
 		Handler: mux,
 	}
@@ -128,7 +127,7 @@ func (s *Service) Start() error {
 	// Start HTTP server in goroutine
 	go func() {
 		logging.ProxyLogger.Success("HTTP server listening on port %d", s.config.Port)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logging.ProxyLogger.Error("HTTP server error: %v", err)
 		}
 	}()
@@ -163,7 +162,7 @@ func (s *Service) Start() error {
 		}
 
 		if len(tlsConfig.Certificates) > 0 {
-			httpsServer := &http.Server{
+			s.httpsServer = &http.Server{
 				Addr:      fmt.Sprintf("0.0.0.0:%d", s.config.TLSPort),
 				Handler:   mux,
 				TLSConfig: tlsConfig,
@@ -171,7 +170,7 @@ func (s *Service) Start() error {
 
 			go func() {
 				logging.ProxyLogger.Success("HTTPS server listening on port %d", s.config.TLSPort)
-				if err := httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				if err := s.httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 					logging.ProxyLogger.Error("HTTPS server error: %v", err)
 				}
 			}()
@@ -180,18 +179,7 @@ func (s *Service) Start() error {
 
 	logging.ProxyLogger.Success("MCP Proxy service started successfully")
 
-	// Wait for shutdown signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case <-sigChan:
-		log.Println("Received shutdown signal")
-	case <-s.shutdownCh:
-		log.Println("Received internal shutdown signal")
-	}
-
-	return s.Stop()
+	return nil
 }
 
 // loadProxyConfig loads the MCP server configuration
@@ -220,7 +208,30 @@ func (s *Service) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // Stop stops the proxy service
 func (s *Service) Stop() error {
-	log.Println("Stopping MCP Proxy service")
+	logging.ProxyLogger.Info("Stopping MCP Proxy service")
+
+	// Shutdown HTTP server
+	if s.httpServer != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
+			logging.ProxyLogger.Error("Error shutting down HTTP server: %v", err)
+		} else {
+			logging.ProxyLogger.Success("HTTP server stopped")
+		}
+	}
+
+	// Shutdown HTTPS server
+	if s.httpsServer != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpsServer.Shutdown(shutdownCtx); err != nil {
+			logging.ProxyLogger.Error("Error shutting down HTTPS server: %v", err)
+		} else {
+			logging.ProxyLogger.Success("HTTPS server stopped")
+		}
+	}
+
 	close(s.shutdownCh)
 	return nil
 }

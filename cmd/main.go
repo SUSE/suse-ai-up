@@ -85,9 +85,8 @@ func runUniproxy() {
 		os.Exit(1)
 	}
 
-	// Display service banner
+	// Display service banner immediately after successful startup
 	logging.ServiceBanner(logging.ServiceProxy, "MCP Proxy and Adapter Management", port, tlsPort)
-	logging.ProxyLogger.Success("Service started successfully")
 	logging.ProxyLogger.Info("Press Ctrl+C to stop the service")
 
 	// Wait for interrupt signal to gracefully shutdown the service
