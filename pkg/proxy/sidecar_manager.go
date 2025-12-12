@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -97,6 +96,20 @@ func (sm *SidecarManager) createDeployment(adapter models.AdapterResource) *apps
 
 	// Build environment variables
 	envVars := []corev1.EnvVar{}
+
+	// Add sidecar config environment variables
+	for _, envVar := range config.Env {
+		if name, ok := envVar["name"]; ok {
+			if value, ok := envVar["value"]; ok {
+				envVars = append(envVars, corev1.EnvVar{
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
+	}
+
+	// Copy adapter environment variables
 	for key, value := range adapter.EnvironmentVariables {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  key,
@@ -154,25 +167,20 @@ func (sm *SidecarManager) buildContainer(config *models.SidecarConfig, envVars [
 
 // buildDockerContainer builds container spec for Docker image deployment
 func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
-	// Build the command array
+	// For Docker type, the image is the last element in args, and the command is the rest
+	var image string
 	var command []string
 
-	if config.DockerCommand != "" {
-		// Check if command contains shell operators that require shell execution
-		if strings.Contains(config.DockerCommand, "&&") || strings.Contains(config.DockerCommand, "||") ||
-			strings.Contains(config.DockerCommand, "|") || strings.Contains(config.DockerCommand, ";") ||
-			strings.Contains(config.DockerCommand, "&") {
-			// Use shell to execute complex commands
-			command = []string{"sh", "-c", config.DockerCommand}
-		} else {
-			// Use the command split by fields for simple commands
-			command = strings.Fields(config.DockerCommand)
-		}
+	if len(config.Args) > 0 {
+		// Last arg is the image
+		image = config.Args[len(config.Args)-1]
+		// Rest are the command args
+		command = config.Args[:len(config.Args)-1]
 	}
 
 	return corev1.Container{
 		Name:  "mcp-server",
-		Image: config.DockerImage,
+		Image: image,
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8000, // Container always listens on port 8000
@@ -209,8 +217,8 @@ func (sm *SidecarManager) buildDockerContainer(config *models.SidecarConfig, env
 func (sm *SidecarManager) buildNpxContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
 	return corev1.Container{
 		Name:    "mcp-server",
-		Image:   config.BaseImage,
-		Command: append([]string{"npx", config.Command}, config.Args...),
+		Image:   "registry.suse.com/bci/nodejs:22", // Default Node.js image for npx
+		Command: append([]string{config.Command}, config.Args...),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: int32(config.Port),
@@ -246,8 +254,8 @@ func (sm *SidecarManager) buildNpxContainer(config *models.SidecarConfig, envVar
 func (sm *SidecarManager) buildPythonContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
 	return corev1.Container{
 		Name:    "mcp-server",
-		Image:   config.BaseImage,
-		Command: append([]string{"python", config.Command}, config.Args...),
+		Image:   "registry.suse.com/bci/python:3.12", // Default Python image
+		Command: append([]string{config.Command}, config.Args...),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: int32(config.Port),
@@ -283,8 +291,8 @@ func (sm *SidecarManager) buildPythonContainer(config *models.SidecarConfig, env
 func (sm *SidecarManager) buildUvContainer(config *models.SidecarConfig, envVars []corev1.EnvVar) corev1.Container {
 	return corev1.Container{
 		Name:    "mcp-server",
-		Image:   config.BaseImage,
-		Command: append([]string{"uv", config.Command}, config.Args...),
+		Image:   "registry.suse.com/bci/python:3.12", // Default Python image for uv
+		Command: append([]string{config.Command}, config.Args...),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: int32(config.Port),

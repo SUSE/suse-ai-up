@@ -1,4 +1,4 @@
-# SUSE AI Universal Proxy
+# SUSE AI Uniproxy
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
@@ -22,14 +22,14 @@ The system uses a **main container + sidecar architecture** where services run a
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    SUSE AI Universal Proxy                  │
+│                      SUSE AI Uniproxy                       │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │   PROXY     │  │  REGISTRY   │  │ DISCOVERY   │          │
+│  │  UNIPROXY   │  │  REGISTRY   │  │ DISCOVERY   │          │
 │  │  (Primary)  │  │  (Sidecar)  │  │  (Sidecar)  │          │
 │  │             │  │             │  │             │          │
-│  │ Port: 8080  │  │ Port: 8913  │  │ Port: 8912  │          │
-│  │ HTTPS:38080 │  │ HTTPS:38913 │  │ HTTPS:38912 │          │
+│  │ Port: 8911  │  │ Port: 8913  │  │ Port: 8912  │          │
+│  │ HTTPS:3911  │  │ HTTPS:38913 │  │ HTTPS:38912 │          │
 │  └─────────────┘  └─────────────┘  └─────────────┘          │
 │                                                             │
 │  ┌─────────────┐                                            │
@@ -42,13 +42,13 @@ The system uses a **main container + sidecar architecture** where services run a
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Service Startup Order**: Proxy → Registry → Discovery → Plugins
+**Service Startup Order**: Uniproxy → Registry → Discovery → Plugins
 
 ## 🏃‍♂️ Quick Start
 
 ### Docker (Single Command)
 ```bash
-docker run -p 8080:8080 -p 8911:8911 suse/suse-ai-up:latest
+docker run -p 8911:8911 suse/suse-ai-up:latest
 ```
 
 ### Kubernetes + Helm
@@ -66,11 +66,11 @@ go run ./cmd
 
 ## 📋 Services Overview
 
-### 🔄 MCP Proxy Service
-- **Purpose**: HTTP proxy for MCP server communication
-- **Features**: Session management, authentication, protocol translation
-- **Ports**: HTTP 8080, HTTPS 38080
-- **Documentation**: [Proxy Service Guide](docs/services/proxy.md)
+### 🔄 Uniproxy Service
+- **Purpose**: Comprehensive MCP proxy with registry, discovery, and plugin management
+- **Features**: Session management, authentication, protocol translation, server registry, network discovery
+- **Ports**: HTTP 8911, HTTPS 3911
+- **Documentation**: [Uniproxy Service Guide](docs/services/uniproxy.md)
 
 ### 📚 Registry Service
 - **Purpose**: MCP server catalog and management

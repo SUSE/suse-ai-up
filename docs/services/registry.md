@@ -1,665 +1,446 @@
-# MCP Registry Service
-
-The MCP Registry Service is the central catalog for MCP (Model Context Protocol) servers in the SUSE AI Universal Proxy system. It maintains a comprehensive database of available MCP servers, their capabilities, and metadata, enabling automatic discovery and integration.
+# SUSE AI Uniproxy Registry Service
 
 ## Overview
 
-The registry service acts as a centralized repository that:
-
-- **Server Catalog**: Maintains a searchable catalog of MCP servers
-- **Multi-Source Sync**: Synchronizes from official and Docker registries
-- **Metadata Management**: Stores detailed server information and capabilities
-- **Validation Framework**: Tracks server validation status and health
-- **API Integration**: Provides RESTful APIs for server management
+The Registry service manages the catalog of MCP (Model Context Protocol) servers available for deployment. It provides a curated collection of 300+ MCP servers from mcpservers.org and other sources, with metadata, configuration templates, and deployment instructions.
 
 ## Architecture
 
-### Service Position
-```
-┌─────────────┐
-│   CLIENT    │
-│  (Browser,  │
-│   CLI, IDE) │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐    ┌─────────────┐
-│   PROXY     │◄──►│  REGISTRY   │
-│  (Primary)  │    │ (Sidecar)   │
-│             │    │             │
-│ Port: 8080  │    │ Port: 8913  │
-│ HTTPS:38080 │    │ HTTPS:38913 │
-└──────┬──────┘    └─────────────┘
-       │
-       ▼
-┌─────────────┐
-│ MCP SERVER  │
-│  (External) │
-└─────────────┘
-```
+The Registry service runs on port 8913 (HTTP) and 38913 (HTTPS) and provides:
 
-### Key Components
+- **Server Catalog**: Curated collection of MCP servers
+- **Metadata Management**: Server descriptions, capabilities, and requirements
+- **Configuration Templates**: Pre-configured setup for popular MCP servers
+- **Sync Operations**: Automatic updates from official registries
+- **Search & Discovery**: Server lookup and filtering capabilities
 
-- **Server Store**: In-memory database for MCP server metadata
-- **Sync Manager**: Handles synchronization with external registries
-- **Validation Engine**: Validates server configurations and capabilities
-- **Search Engine**: Provides advanced filtering and search capabilities
-- **API Layer**: RESTful endpoints for server management
+## Core Components
+
+### MCP Server Store
+- Persistent storage for MCP server metadata
+- Version management and update tracking
+- Configuration validation and schema enforcement
+
+### Registry Manager
+- Server catalog management and organization
+- Category-based classification and tagging
+- Dependency resolution and compatibility checking
+
+### Sync Manager
+- Automated synchronization with mcpservers.org
+- Official registry updates and change detection
+- Conflict resolution for duplicate entries
+
+### Search Engine
+- Full-text search across server metadata
+- Category and tag-based filtering
+- Popularity and rating-based sorting
 
 ## Configuration
 
 ### Environment Variables
 
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REGISTRY_PORT` | `8913` | HTTP server port |
+| `REGISTRY_HTTPS_PORT` | `38913` | HTTPS server port |
+| `REGISTRY_DATA_DIR` | `./data/registry` | Data storage directory |
+| `REGISTRY_SYNC_INTERVAL` | `24h` | Sync interval for official registry |
+| `REGISTRY_MAX_SERVERS` | `1000` | Maximum servers to store |
+
+### Command Line Options
+
 ```bash
-# Basic Configuration
-REGISTRY_PORT=8913              # HTTP port (default: 8913)
-TLS_PORT=38913                  # HTTPS port (default: 38913)
+./suse-ai-up-registry [flags]
 
-# TLS Configuration
-AUTO_TLS=true                   # Auto-generate self-signed certificates
-TLS_CERT_FILE=/path/to/cert.pem
-TLS_KEY_FILE=/path/to/key.pem
-
-# Registry Sources
-ENABLE_OFFICIAL=true            # Enable official MCP registry sync
-ENABLE_DOCKER=true              # Enable Docker registry sync
-SYNC_INTERVAL=24h               # Sync interval (default: 24h)
-
-# Performance Tuning
-MAX_SERVERS=10000               # Maximum servers in registry
-CACHE_TTL=3600                  # Cache TTL in seconds
-```
-
-### Docker Configuration
-
-```yaml
-services:
-  registry:
-    image: suse/suse-ai-up:latest
-    ports:
-      - "8913:8913"      # HTTP
-      - "38913:38913"    # HTTPS
-    environment:
-      - AUTO_TLS=true
-      - ENABLE_OFFICIAL=true
-      - ENABLE_DOCKER=true
-    command: ["./suse-ai-up", "registry"]
-```
-
-### Kubernetes Configuration
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: suse-ai-up-registry
-spec:
-  template:
-    spec:
-      containers:
-      - name: registry
-        image: suse/suse-ai-up:latest
-        ports:
-        - containerPort: 8913
-          name: http
-        - containerPort: 38913
-          name: https
-        env:
-        - name: AUTO_TLS
-          value: "true"
-        - name: ENABLE_OFFICIAL
-          value: "true"
-        command: ["./suse-ai-up", "registry"]
+Flags:
+  -port int        Server port (default 8913)
+  -data-dir string Data directory (default "./data/registry")
+  -sync-interval duration Sync interval (default 24h)
+  -max-servers int Maximum servers (default 1000)
 ```
 
 ## API Endpoints
 
-### Server Browsing
+### Server Catalog
+- `GET /api/v1/registry` - List all MCP servers
+- `GET /api/v1/registry/{id}` - Get server details
+- `PUT /api/v1/registry/{id}` - Update server metadata
+- `DELETE /api/v1/registry/{id}` - Remove server
 
-#### List All Servers
-```http
-GET /api/v1/registry/browse
-```
+### Registry Management
+- `GET /api/v1/registry/public` - List public/official servers
+- `POST /api/v1/registry/sync/official` - Sync with official registry
+- `POST /api/v1/registry/upload` - Upload custom server
+- `POST /api/v1/registry/upload/bulk` - Bulk upload servers
+- `POST /api/v1/registry/upload/local-mcp` - Upload local MCP server
 
-Query Parameters:
-- `q`: Search query (name, description)
-- `transport`: Filter by transport type (http, websocket, sse)
-- `registryType`: Filter by registry type (official, docker, custom)
-- `validationStatus`: Filter by validation status (validated, pending, failed)
+### Search & Discovery
+- `GET /api/v1/registry/browse` - Browse with filtering
+- `GET /api/v1/registry/search?q={query}` - Search servers
+- `GET /api/v1/registry/categories` - List categories
+- `GET /api/v1/registry/tags` - List tags
 
-Response:
-```json
-[
-  {
-    "id": "server-123",
-    "name": "Weather API Server",
-    "description": "Provides weather data and forecasts",
-    "version": "1.0.0",
-    "validationStatus": "validated",
-    "discoveredAt": "2025-12-04T10:00:00Z",
-    "packages": [
-      {
-        "name": "weather-tools",
-        "version": "1.0.0",
-        "transport": {
-          "type": "http",
-          "url": "http://weather-server:8080"
-        },
-        "registryType": "official"
-      }
-    ]
-  }
-]
-```
+## Server Metadata Structure
 
-#### Get Server by ID
-```http
-GET /api/v1/registry/{server_id}
-```
-
-#### Update Server
-```http
-PUT /api/v1/registry/{server_id}
-Content-Type: application/json
-
-{
-  "name": "Updated Server Name",
-  "description": "Updated description",
-  "validationStatus": "validated"
-}
-```
-
-#### Delete Server
-```http
-DELETE /api/v1/registry/{server_id}
-```
-
-### Server Upload
-
-#### Upload Single Server
-```http
-POST /api/v1/registry/upload
-Content-Type: application/json
-
-{
-  "name": "Custom MCP Server",
-  "description": "My custom server",
-  "version": "1.0.0",
-  "packages": [
-    {
-      "name": "custom-tools",
-      "version": "1.0.0",
-      "transport": {
-        "type": "http",
-        "url": "http://my-server:8080"
-      }
-    }
-  ]
-}
-```
-
-#### Bulk Upload Servers
-```http
-POST /api/v1/registry/upload/bulk
-Content-Type: application/json
-
-[
-  {
-    "name": "Server 1",
-    "packages": [...]
-  },
-  {
-    "name": "Server 2",
-    "packages": [...]
-  }
-]
-```
-
-### Registry Synchronization
-
-#### Sync Official Registry
-```http
-POST /api/v1/registry/sync/official
-```
-
-Response:
-```json
-{
-  "status": "sync_started",
-  "source": "official"
-}
-```
-
-#### Sync Docker Registry
-```http
-POST /api/v1/registry/sync/docker
-```
-
-### Administrative Endpoints
-
-#### Health Check
-```http
-GET /health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "service": "registry",
-  "timestamp": "2025-12-04T12:00:00Z",
-  "serverCount": 150
-}
-```
-
-## Registry Sources
-
-### Official MCP Registry
-
-The official registry contains validated, production-ready MCP servers:
-
-- **Source**: Official MCP project registry
-- **Sync Frequency**: Daily (configurable)
-- **Validation**: Pre-validated servers
-- **Content**: Core MCP servers and tools
-
-### Docker Registry
-
-Docker-based MCP servers discovered through container registries:
-
-- **Source**: Docker Hub and private registries
-- **Discovery**: Image labels and metadata
-- **Validation**: Runtime validation required
-- **Content**: Community and custom servers
-
-### Custom Servers
-
-User-uploaded and locally discovered servers:
-
-- **Source**: Manual upload or discovery service
-- **Validation**: User-defined validation status
-- **Content**: Private and development servers
-
-## Server Metadata
-
-### Server Object Structure
+Each MCP server in the registry contains:
 
 ```json
 {
-  "id": "unique-server-id",
-  "name": "Server Display Name",
-  "description": "Detailed server description",
-  "version": "1.2.3",
-  "validationStatus": "validated|pending|failed|new",
-  "discoveredAt": "2025-12-04T10:00:00Z",
-  "lastValidated": "2025-12-04T11:00:00Z",
-  "packages": [
-    {
-      "name": "package-name",
-      "version": "1.0.0",
-      "description": "Package description",
-      "transport": {
-        "type": "http|websocket|sse",
-        "url": "endpoint-url",
-        "headers": {
-          "Authorization": "Bearer token"
-        }
-      },
-      "registryType": "official|docker|custom",
-      "capabilities": {
-        "tools": ["tool1", "tool2"],
-        "resources": ["resource1"],
-        "prompts": ["prompt1"]
-      }
-    }
-  ],
+  "name": "github",
+  "image": "mcp/github",
+  "type": "server",
   "meta": {
-    "source": "official",
-    "tags": ["weather", "api"],
-    "author": "SUSE",
-    "license": "MIT"
+    "category": "productivity",
+    "tags": ["git", "github", "collaboration"],
+    "sidecarConfig": {
+      "commandType": "docker",
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mcp/github"],
+      "port": 8000,
+      "source": "registry"
+    }
+  },
+  "about": {
+    "title": "GitHub MCP Server",
+    "description": "Access GitHub repositories, issues, and pull requests",
+    "icon": "https://github.com/favicon.ico"
+  },
+  "source": {
+    "project": "https://github.com/modelcontextprotocol/server-github",
+    "commit": "abc123",
+    "branch": "main"
+  },
+  "config": {
+    "description": "GitHub API configuration",
+    "secrets": [
+      {
+        "env": "GITHUB_TOKEN",
+        "name": "github.token",
+        "example": "ghp_..."
+      }
+    ],
+    "parameters": {
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "GitHub repository (owner/repo)"
+        }
+      }
+    }
   }
 }
 ```
 
-### Validation Status
+## Registry Categories
 
-- **validated**: Server has been tested and confirmed working
-- **pending**: Server awaiting validation
-- **failed**: Server validation failed
-- **new**: Newly discovered, not yet validated
+### Development Tools
+- **Git**: Version control and repository management
+- **GitHub/GitLab**: Issue tracking and code review
+- **Docker**: Container management and orchestration
+- **Kubernetes**: Cluster management and deployment
 
-## Search and Filtering
+### Productivity
+- **Notion**: Document collaboration and knowledge management
+- **Slack/Discord**: Team communication and automation
+- **Google Workspace**: Email, calendar, and document integration
+- **Microsoft 365**: Office suite integration
 
-### Search Syntax
+### Data & Analytics
+- **PostgreSQL/MySQL**: Database query and management
+- **Elasticsearch**: Search and analytics
+- **Redis**: Caching and data structures
+- **MongoDB**: Document database operations
 
-The registry supports advanced search and filtering:
+### AI & ML
+- **OpenAI**: GPT model integration
+- **Anthropic**: Claude model access
+- **HuggingFace**: Model repository and inference
+- **LangChain**: LLM application framework
+
+### Cloud Services
+- **AWS**: Cloud infrastructure management
+- **Azure**: Microsoft cloud services
+- **GCP**: Google cloud platform
+- **DigitalOcean**: Cloud hosting and management
+
+## Sync Operations
+
+### Official Registry Sync
+The registry automatically syncs with mcpservers.org:
 
 ```bash
+# Manual sync
+curl -X POST http://localhost:8913/api/v1/registry/sync/official
+
+# Check sync status
+curl http://localhost:8913/api/v1/registry/sync/status
+```
+
+### Sync Process
+1. **Discovery**: Fetch latest server catalog from official registry
+2. **Validation**: Verify server metadata and configurations
+3. **Merge**: Update existing servers and add new ones
+4. **Cleanup**: Remove deprecated or invalid entries
+5. **Notification**: Log sync results and statistics
+
+## Custom Server Upload
+
+### Single Server Upload
+```bash
+curl -X POST http://localhost:8913/api/v1/registry/upload \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-custom-server",
+    "image": "myorg/my-server:latest",
+    "type": "server",
+    "meta": {
+      "category": "custom",
+      "tags": ["internal", "custom"],
+      "sidecarConfig": {
+        "commandType": "docker",
+        "command": "docker",
+        "args": ["run", "-p", "8000:8000", "myorg/my-server:latest"],
+        "port": 8000
+      }
+    },
+    "config": {
+      "secrets": [
+        {
+          "env": "API_KEY",
+          "name": "my-server.api_key"
+        }
+      ]
+    }
+  }'
+```
+
+### Bulk Upload
+```bash
+curl -X POST http://localhost:8913/api/v1/registry/upload/bulk \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"name": "server1", ...},
+    {"name": "server2", ...}
+  ]'
+```
+
+### Local MCP Server
+```bash
+curl -X POST http://localhost:8913/api/v1/registry/upload/local-mcp \
+  -F "file=@package.json" \
+  -F "config={\"name\": \"local-server\", \"version\": \"1.0.0\"}"
+```
+
+## Search & Filtering
+
+### Basic Search
+```bash
 # Search by name or description
-GET /api/v1/registry/browse?q=weather
+curl "http://localhost:8913/api/v1/registry/search?q=github"
 
-# Filter by transport type
-GET /api/v1/registry/browse?transport=http
+# Search by category
+curl "http://localhost:8913/api/v1/registry/browse?category=productivity"
 
-# Filter by registry type
-GET /api/v1/registry/browse?registryType=official
-
-# Combine filters
-GET /api/v1/registry/browse?q=api&transport=http&validationStatus=validated
+# Search by tags
+curl "http://localhost:8913/api/v1/registry/browse?tags=git,docker"
 ```
 
 ### Advanced Filtering
+```bash
+# Multiple filters
+curl "http://localhost:8913/api/v1/registry/browse?category=development&tags=docker,kubernetes&limit=10&offset=0"
 
-- **Text Search**: Full-text search across name and description
-- **Transport Types**: http, websocket, sse
-- **Registry Types**: official, docker, custom
-- **Validation Status**: validated, pending, failed, new
-- **Date Ranges**: discoveredAt, lastValidated
-
-## Synchronization Process
-
-### Sync Workflow
-
-1. **Trigger Sync**: Manual or scheduled sync initiation
-2. **Fetch Sources**: Retrieve server lists from registries
-3. **Validate Entries**: Check server accessibility and capabilities
-4. **Update Database**: Add new servers, update existing ones
-5. **Cleanup**: Remove stale or invalid entries
-
-### Sync Configuration
-
-```yaml
-sync:
-  official:
-    enabled: true
-    interval: 24h
-    url: "https://registry.mcp-project.org/api/v1/servers"
-  docker:
-    enabled: true
-    interval: 6h
-    registries:
-      - "docker.io"
-      - "registry.example.com"
+# Sort options
+curl "http://localhost:8913/api/v1/registry/browse?sort=popularity&order=desc"
 ```
+
+## Server Validation
+
+### Configuration Validation
+- Schema validation for server metadata
+- Configuration parameter validation
+- Dependency checking and compatibility
+- Security scanning for malicious configurations
+
+### Health Checks
+- Server image availability verification
+- Configuration template validation
+- Network connectivity testing
+- Performance benchmarking
+
+## Caching & Performance
+
+### Metadata Caching
+- Server metadata cached for fast access
+- Automatic cache invalidation on updates
+- Distributed cache support for scalability
+
+### Search Optimization
+- Full-text search indexing
+- Query result caching
+- Pagination and result limiting
+- Response compression
+
+## Security Features
+
+### Access Control
+- Registry access authentication
+- Server upload authorization
+- Administrative operation restrictions
+- Audit logging for all operations
+
+### Content Security
+- Server configuration sanitization
+- Malicious code detection
+- Safe image source validation
+- Configuration template security scanning
 
 ## Monitoring & Observability
 
 ### Metrics
+- Server catalog size and growth
+- Sync operation statistics
+- Search query performance
+- API usage patterns
 
-The registry exposes Prometheus-compatible metrics:
-
-```
-# Server counts
-mcp_registry_servers_total{status="validated"} 150
-mcp_registry_servers_total{status="pending"} 25
-
-# Sync operations
-mcp_registry_sync_duration_seconds{source="official"} 2.34
-mcp_registry_sync_last_success_timestamp{source="docker"} 1733313600
-
-# API requests
-mcp_registry_api_requests_total{method="GET", endpoint="/browse"} 1250
-```
-
-### Health Checks
-
-- **Readiness Probe**: Validates database connectivity
-- **Liveness Probe**: Checks service responsiveness
-- **Dependency Checks**: Validates sync source availability
+### Health Monitoring
+- Registry service availability
+- Data consistency checks
+- Sync operation status
+- Storage capacity monitoring
 
 ### Logging
-
-Structured logging with configurable levels:
-
-```json
-{
-  "timestamp": "2025-12-04T12:00:00Z",
-  "level": "info",
-  "service": "registry",
-  "event": "server_sync_completed",
-  "source": "official",
-  "server_count": 150,
-  "duration_ms": 2340
-}
-```
-
-## Performance Tuning
-
-### Caching
-
-```bash
-export CACHE_ENABLED=true
-export CACHE_TTL=3600
-export CACHE_SIZE=10000
-```
-
-### Database Optimization
-
-```bash
-export DB_MAX_CONNECTIONS=100
-export DB_CONNECTION_TIMEOUT=30s
-export DB_QUERY_TIMEOUT=10s
-```
-
-### Sync Optimization
-
-```bash
-export SYNC_BATCH_SIZE=50
-export SYNC_TIMEOUT=300s
-export SYNC_RETRY_ATTEMPTS=3
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Sync Failures**
-```bash
-# Check sync status
-curl http://localhost:8913/health
-
-# Manual sync trigger
-curl -X POST http://localhost:8913/api/v1/registry/sync/official
-
-# Check logs
-kubectl logs -f deployment/suse-ai-up-registry
-```
-
-**Search Not Working**
-```bash
-# Test search endpoint
-curl "http://localhost:8913/api/v1/registry/browse?q=test"
-
-# Check server count
-curl http://localhost:8913/health
-```
-
-**High Memory Usage**
-```bash
-# Check cache settings
-kubectl exec -it deployment/suse-ai-up-registry -- env | grep CACHE
-
-# Monitor memory usage
-kubectl top pods
-```
-
-### Debug Mode
-
-Enable detailed logging for troubleshooting:
-
-```bash
-export LOG_LEVEL=debug
-export LOG_FORMAT=json
-./suse-ai-up registry
-```
-
-### Data Recovery
-
-```bash
-# Export registry data
-curl http://localhost:8913/api/v1/registry/browse > registry_backup.json
-
-# Import registry data
-curl -X POST http://localhost:8913/api/v1/registry/upload/bulk \
-  -H "Content-Type: application/json" \
-  -d @registry_backup.json
-```
-
-## Security Considerations
-
-### Access Control
-
-- **API Authentication**: Bearer token or API key authentication
-- **Rate Limiting**: Prevent abuse of search and upload endpoints
-- **Input Validation**: Sanitize all user-provided server metadata
-
-### Data Protection
-
-- **Encryption**: TLS encryption for all communications
-- **Data Validation**: Validate server URLs and metadata
-- **Audit Logging**: Log all registry modifications
-
-### Network Security
-
-- **Firewall Rules**: Restrict access to registry ports
-- **TLS Configuration**: Use proper certificates in production
-- **Private Registries**: Support for authenticated registry access
+- Structured logging for all operations
+- Audit trails for configuration changes
+- Error tracking and alerting
+- Performance monitoring
 
 ## Integration Examples
 
-### JavaScript Client
-
+### Registry Browser
 ```javascript
-import { MCPRegistryClient } from 'mcp-registry-client';
+class RegistryBrowser {
+  constructor(baseUrl = 'http://localhost:8913') {
+    this.baseUrl = baseUrl;
+  }
 
-const registry = new MCPRegistryClient({
-  endpoint: 'http://localhost:8913'
-});
+  async searchServers(query, category = null) {
+    const params = new URLSearchParams({ q: query });
+    if (category) params.set('category', category);
 
-// Search for servers
-const servers = await registry.browse({
-  q: 'weather',
-  transport: 'http'
-});
+    const response = await fetch(`${this.baseUrl}/api/v1/registry/search?${params}`);
+    return response.json();
+  }
 
-// Register a new server
-await registry.upload({
-  name: 'My Weather Server',
-  packages: [{
-    name: 'weather-tools',
-    transport: { type: 'http', url: 'http://my-server:8080' }
-  }]
-});
+  async getServerDetails(serverId) {
+    const response = await fetch(`${this.baseUrl}/api/v1/registry/${serverId}`);
+    return response.json();
+  }
+
+  async getCategories() {
+    const response = await fetch(`${this.baseUrl}/api/v1/registry/categories`);
+    return response.json();
+  }
+}
 ```
 
-### Python Client
-
+### Server Deployer
 ```python
-from mcp_registry import RegistryClient
+import requests
+import json
 
-client = RegistryClient("http://localhost:8913")
+class ServerDeployer:
+    def __init__(self, registry_url='http://localhost:8913', uniproxy_url='http://localhost:8911'):
+        self.registry_url = registry_url
+        self.uniproxy_url = uniproxy_url
 
-# List all servers
-servers = client.browse()
+    def find_server(self, name):
+        """Find server in registry"""
+        response = requests.get(f"{self.registry_url}/api/v1/registry/search?q={name}")
+        servers = response.json()
+        return servers[0] if servers else None
 
-# Filter by transport
-http_servers = client.browse(transport="http")
+    def deploy_server(self, server_name, config=None):
+        """Deploy server as adapter"""
+        server = self.find_server(server_name)
+        if not server:
+            raise ValueError(f"Server {server_name} not found")
 
-# Upload custom server
-client.upload({
-    "name": "Custom Server",
-    "packages": [{
-        "name": "custom-tools",
-        "transport": {"type": "http", "url": "http://localhost:8080"}
-    }]
-})
+        # Merge configurations
+        adapter_config = {
+            "name": f"{server_name}-adapter",
+            "connectionType": "LocalStdio",
+            "mcpClientConfig": server.get("mcpClientConfig", {}),
+            "authentication": config.get("authentication") if config else None
+        }
+
+        # Create adapter
+        response = requests.post(
+            f"{self.uniproxy_url}/api/v1/adapters",
+            json=adapter_config
+        )
+        return response.json()
 ```
 
-### cURL Examples
+## Best Practices
 
+### Registry Management
+- Regular sync with official registry
+- Monitor for deprecated servers
+- Validate custom server uploads
+- Maintain backup of registry data
+
+### Performance Optimization
+- Implement caching for frequently accessed servers
+- Use pagination for large result sets
+- Optimize search queries
+- Monitor storage usage
+
+### Security
+- Validate all server configurations
+- Implement access controls
+- Regular security audits
+- Monitor for suspicious activity
+
+### Maintenance
+- Regular data cleanup
+- Monitor sync operation health
+- Update server metadata
+- Archive unused servers
+
+## Troubleshooting
+
+### Sync Issues
 ```bash
-# List all servers
-curl http://localhost:8913/api/v1/registry/browse
+# Check sync status
+curl http://localhost:8913/api/v1/registry/sync/status
 
-# Search for servers
-curl "http://localhost:8913/api/v1/registry/browse?q=weather"
+# Force manual sync
+curl -X POST http://localhost:8913/api/v1/registry/sync/official
 
-# Upload a server
-curl -X POST http://localhost:8913/api/v1/registry/upload \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Server","packages":[{"name":"test","transport":{"type":"http","url":"http://test:8080"}}]}'
-
-# Get server details
-curl http://localhost:8913/api/v1/registry/server-123
+# Check logs
+tail -f /var/log/suse-ai-up/registry.log
 ```
 
-## Migration Guide
-
-### From Local Server Lists
-
-**Before:**
-```
-servers.json
-├── server1: {url: "http://server1:8080"}
-├── server2: {url: "http://server2:8080"}
-```
-
-**After:**
+### Search Problems
 ```bash
-# Bulk upload to registry
-curl -X POST http://localhost:8913/api/v1/registry/upload/bulk \
-  -H "Content-Type: application/json" \
-  -d @servers.json
+# Rebuild search index
+curl -X POST http://localhost:8913/api/v1/registry/search/rebuild
+
+# Check search health
+curl http://localhost:8913/api/v1/registry/search/health
 ```
 
-### Configuration Migration
+### Storage Issues
+```bash
+# Check storage usage
+curl http://localhost:8913/api/v1/registry/storage/stats
 
-1. **Update Client Code**: Change from local lists to registry API calls
-2. **Enable Sync Sources**: Configure official and Docker registry sync
-3. **Set Up Authentication**: Add authentication for registry access
-4. **Test Integration**: Verify all servers are accessible through registry
-
-### Compatibility Matrix
-
-| Feature | Version | Status |
-|---------|---------|--------|
-| Server Upload | 1.0.0 | ✅ Full |
-| Bulk Upload | 1.0.0 | ✅ Full |
-| Official Sync | 1.0.0 | ✅ Full |
-| Docker Sync | 1.0.0 | ✅ Full |
-| Search API | 1.0.0 | ✅ Full |
-| Validation | 1.0.0 | ⚠️ Basic |
-
-## Advanced Configuration
-
-### Custom Sync Sources
-
-```go
-// Add custom registry source
-registry.AddSyncSource("custom", &CustomSyncSource{
-    URL: "https://custom-registry.example.com",
-    Auth: &AuthConfig{Token: "token"},
-})
+# Cleanup old data
+curl -X POST http://localhost:8913/api/v1/registry/storage/cleanup
 ```
 
-### Custom Validation Rules
+## API Versioning
 
-```go
-// Add custom validation
-registry.AddValidator("custom", func(server *models.MCPServer) error {
-    // Custom validation logic
-    return nil
-})
-```
-
-### Plugin Integration
-
-```go
-// Load registry plugins
-registry.LoadPlugin("validation", &CustomValidationPlugin{})
-registry.LoadPlugin("sync", &CustomSyncPlugin{})
-```
-
-This comprehensive registry service provides a robust, scalable, and extensible catalog system for MCP servers while maintaining high performance and reliability.</content>
-<parameter name="filePath">docs/services/registry.md
+The Registry service uses API versioning with the `/api/v1/` prefix. Future versions will maintain backward compatibility and provide migration guides for breaking changes.

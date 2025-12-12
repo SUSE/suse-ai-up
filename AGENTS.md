@@ -1,9 +1,19 @@
 # AGENTS.md
 
+## Architecture Overview
+
+SUSE AI Uniproxy uses a unified service architecture where all MCP services (uniproxy, registry, discovery, plugins) run as a single binary with separate logging. The main CLI commands are:
+
+- `suse-ai-up uniproxy` - Run the comprehensive MCP proxy service
+- `suse-ai-up all` - Run all services together with separate logging
+- `suse-ai-up health` - Check service health
+
+Individual service binaries (`suse-ai-up-discovery`, `suse-ai-up-registry`, `suse-ai-up-plugins`) are available for separate deployment scenarios.
+
 ## Build Commands
-- **Go**: `go build -o service ./cmd`
+- **Go**: `go build -o suse-ai-up ./cmd` (builds unified binary with all services)
 - **Python**: `cd examples/local-mcp && pip install -r requirements.txt`
-- **Swagger**: `swag init -g cmd/service/main.go`
+- **Swagger**: `swag init -g cmd/uniproxy/main.go`
 
 ## Test Commands
 - **Go**: `go test ./...` (all tests)
@@ -48,11 +58,17 @@
 
 ## Environment Variables
 - **AUTH_MODE**: Set to "oauth" for OAuth authentication, "development" (default) for development mode
-- **PORT**: Server port (default: 8911)
+- **PORT**: Server port (default: 8911 for uniproxy service)
 - **HOST**: Server host (default: localhost)
 - **API_KEY**: API key for authentication
 - **SMARTAGENTS_ENABLED**: Enable/disable smartagents service (default: true)
 - **REGISTRY_ENABLED**: Enable/disable registry service (default: true)
 - **REGISTRY_ENABLE_OFFICIAL**: Enable official registry sources (default: true)
+
+### Service Ports (when running `suse-ai-up all`)
+- **Uniproxy**: Port 8911 (HTTP) / 38911 (HTTPS)
+- **Registry**: Port 8913 (HTTP) / 38913 (HTTPS)
+- **Discovery**: Port 8912 (HTTP) / 38912 (HTTPS)
+- **Plugins**: Port 8914 (HTTP) / 38914 (HTTPS)
 
 No Cursor or Copilot rules found in the repository.

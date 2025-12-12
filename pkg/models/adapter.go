@@ -25,20 +25,21 @@ const (
 // SidecarConfig represents configuration for sidecar container deployment
 type SidecarConfig struct {
 	// Command execution type
-	CommandType string `json:"commandType" example:"docker"` // "docker", "npx", "python", "uv"
+	CommandType string `json:"commandType" example:"docker"` // "docker", "npx", "python", "pip"
 
-	// Generic command execution (new)
-	BaseImage string   `json:"baseImage,omitempty" example:"registry.suse.com/bci/nodejs:22"`
-	Command   string   `json:"command" example:"npx"`
-	Args      []string `json:"args,omitempty" example:"@package/name,--arg1,--arg2"`
+	// Command and arguments
+	Command string   `json:"command" example:"docker"`
+	Args    []string `json:"args,omitempty" example:"run,-i,--rm,-e,VAR=value,image:tag,cmd"`
 
-	// Docker image-based deployment (legacy, for backward compatibility)
-	DockerImage      string `json:"dockerImage,omitempty" example:"kskarthik/mcp-bugzilla:latest"`
-	DockerCommand    string `json:"dockerCommand,omitempty" example:"--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000"`
-	DockerEntrypoint string `json:"dockerEntrypoint,omitempty" example:"python"`
+	// Environment variables
+	Env []map[string]string `json:"env,omitempty"`
 
 	// Port assignment
 	Port int `json:"port" example:"8000"` // Randomly assigned port
+
+	// Metadata
+	Source      string `json:"source" example:"manual-config"`
+	LastUpdated string `json:"lastUpdated,omitempty" example:"2025-12-12T10:00:00Z"`
 }
 
 // AdapterData represents the data for creating or updating an adapter
@@ -186,6 +187,7 @@ type GitHubConfig struct {
 type MCPServer struct {
 	ID               string                 `json:"id"`
 	Name             string                 `json:"name"`
+	Image            string                 `json:"image,omitempty"` // Docker image for containerized servers
 	Description      string                 `json:"description"`
 	Version          string                 `json:"version"`
 	Repository       Repository             `json:"repository,omitempty"`

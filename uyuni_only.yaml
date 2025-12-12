@@ -1,0 +1,89 @@
+- name: uyuni
+  image: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+  type: server
+  meta:
+    category: system-management
+    sidecarConfig:
+       commandType: docker
+       dockerImage: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+       dockerCommand: "mcp-server-uyuni"
+       port: 8000
+       env:
+         - name: UYUNI_SERVER
+           value: "{{uyuni.server}}"
+         - name: UYUNI_USER
+           value: "{{uyuni.user}}"
+         - name: UYUNI_PASS
+           value: "{{uyuni.pass}}"
+          - name: UYUNI_MCP_TRANSPORT
+            value: "http"
+          - name: UYUNI_MCP_HOST
+            value: "0.0.0.0"
+        source: manual-config
+        lastUpdated: "2025-12-11T16:30:00Z"
+    tags:
+      - uyuni
+      - patch-management
+      - linux
+      - system-administration
+      - suse
+  about:
+    icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+    title: SUSE Uyuni
+  source:
+    commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
+    project: https://github.com/uyuni-project/mcp-server-uyuni
+  config:
+    description: Configure Uyuni server connection
+    secrets:
+        - env: UYUNI_SERVER
+          example: http://uyuni.example.com
+          name: uyuni.server
+        - env: UYUNI_USER
+          example: admin
+          name: uyuni.user
+        - env: UYUNI_PASS
+          example: your_password_here
+          name: uyuni.pass
+        - env: UYUNI_MCP_SSL_VERIFY
+          example: "true"
+          name: uyuni.ssl_verify
+        - env: UYUNI_MCP_WRITE_TOOLS_ENABLED
+          example: "false"
+          name: uyuni.write_tools_enabled
+        - env: UYUNI_SSH_PRIV_KEY
+          example: |-
+            -----BEGIN OPENSSH PRIVATE KEY-----
+            ...
+          name: uyuni.ssh_priv_key
+        - env: UYUNI_SSH_PRIV_KEY_PASS
+          example: your_key_passphrase
+          name: uyuni.ssh_priv_key_pass
+  packages:
+    - registryType: stdio
+      identifier: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+      transport:
+        type: stdio
+      environmentVariables:
+        - name: UYUNI_SERVER
+          description: Uyuni server URL
+          isSecret: false
+        - name: UYUNI_USER
+          description: Uyuni username
+          isSecret: false
+        - name: UYUNI_PASS
+          description: Uyuni password
+          isSecret: true
+        - name: UYUNI_MCP_SSL_VERIFY
+          description: SSL verification
+          isSecret: false
+        - name: UYUNI_MCP_WRITE_TOOLS_ENABLED
+          description: Enable write tools
+          isSecret: false
+        - name: UYUNI_SSH_PRIV_KEY
+          description: SSH private key
+          isSecret: true
+        - name: UYUNI_SSH_PRIV_KEY_PASS
+          description: SSH key passphrase
+          isSecret: true
+- name: bugzilla

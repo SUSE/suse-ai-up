@@ -354,7 +354,7 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// For sidecar adapters (now StreamableHttp), proxy to the sidecar
+	// For sidecar adapters (StreamableHttp with sidecar config), proxy to the sidecar
 	if adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil {
 		// Construct sidecar URL dynamically using the port from sidecar config
 		// Sidecar runs in suse-ai-up-mcp namespace with name mcp-sidecar-{adapterID}
@@ -368,8 +368,11 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// For LocalStdio adapters, return a proper MCP response
-	if adapter.ConnectionType == models.ConnectionTypeLocalStdio {
+	// For LocalStdio adapters OR StreamableHttp adapters without sidecar config, return a proper MCP response
+	fmt.Printf("DEBUG: Adapter %s - ConnectionType: %s, SidecarConfig: %v\n", adapterID, adapter.ConnectionType, adapter.SidecarConfig)
+	if adapter.ConnectionType == models.ConnectionTypeLocalStdio ||
+		(adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig == nil) {
+		fmt.Printf("DEBUG: Returning MCP response for LocalStdio adapter %s\n", adapterID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		response := map[string]interface{}{

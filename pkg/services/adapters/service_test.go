@@ -122,18 +122,15 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 		t.Logf("Sidecar meta: %+v", meta)
 	}
 
-	// Create adapter
-	adapter, err := service.CreateAdapter(context.Background(), "test-user", testServer.ID, "test-adapter", map[string]string{}, nil)
-	if err != nil {
-		t.Fatalf("Failed to create adapter: %v", err)
+	// Create adapter - this should fail because sidecar manager is required for stdio-based servers
+	_, err = service.CreateAdapter(context.Background(), "test-user", testServer.ID, "test-adapter", map[string]string{}, nil)
+	if err == nil {
+		t.Fatal("Expected adapter creation to fail without sidecar manager")
 	}
 
-	// Since no sidecar manager is provided, it should fall back to LocalStdio
-	if adapter.ConnectionType != models.ConnectionTypeLocalStdio {
-		t.Errorf("Expected connection type to be LocalStdio (fallback), got %s", adapter.ConnectionType)
-	}
-
-	if adapter.SidecarConfig != nil {
-		t.Error("Expected sidecar config to be nil when falling back to local stdio")
+	// Verify the error message
+	expectedError := "sidecar manager not available for adapter deployment"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 	}
 }

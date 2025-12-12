@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"suse-ai-up/pkg/clients"
@@ -31,10 +32,27 @@ func NewAdapterService(store clients.AdapterResourceStore, registryStore clients
 
 // CreateAdapter creates a new adapter from a registry server
 func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID, name string, envVars map[string]string, auth *models.AdapterAuthConfig) (*models.AdapterResource, error) {
-	// Get the MCP server from registry
+	// Get the MCP server from registry - first try by ID, then by name
 	server, err := as.registryStore.GetMCPServer(mcpServerID)
 	if err != nil {
-		return nil, fmt.Errorf("MCP server not found: %w", err)
+		// If not found by ID, try to find by name
+		servers := as.registryStore.ListMCPServers()
+		for _, s := range servers {
+			if s.Name == mcpServerID {
+				server = s
+				break
+			}
+		}
+		if server == nil {
+			return nil, fmt.Errorf("MCP server not found: %w", err)
+		}
+	}
+
+	fmt.Printf("DEBUG: CreateAdapter called for server %s\n", server.Name)
+	if len(server.Packages) == 0 {
+		fmt.Printf("DEBUG: Server %s has no packages defined\n", server.Name)
+	} else {
+		fmt.Printf("DEBUG: Server %s transport: %s\n", server.Name, server.Packages[0].Transport.Type)
 	}
 
 	// Validate required environment variables
@@ -49,52 +67,74 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	connectionType := models.ConnectionTypeStreamableHttp
 	var sidecarConfig *models.SidecarConfig
 
-	// Check if server has stdio packages and sidecar configuration
-	if as.hasStdioPackage(server) {
-		if sidecarMeta := as.getSidecarMeta(server); sidecarMeta != nil {
-			connectionType = models.ConnectionTypeSidecarStdio
-			sidecarConfig = &models.SidecarConfig{
-				CommandType:      sidecarMeta.CommandType,
-				BaseImage:        sidecarMeta.BaseImage,
-				Command:          sidecarMeta.Command,
-				Args:             sidecarMeta.Args,
-				DockerImage:      sidecarMeta.DockerImage,
-				DockerCommand:    sidecarMeta.DockerCommand,
-				DockerEntrypoint: sidecarMeta.DockerEntrypoint,
+	// For non-remote servers (those with stdio packages), always create sidecars
+	// The MCP inside the sidecar will use HTTP streamable-HTTP transport
+	fmt.Printf("DEBUG: Checking server %s for sidecar creation\n", server.Name)
+	if as.hasStdioPackage(server) || strings.Contains(server.Name, "uyuni") || strings.Contains(server.Name, "bugzilla") {
+		fmt.Printf("DEBUG: Creating sidecar for server %s (hasStdio: %v)\n", server.Name, as.hasStdioPackage(server))
+		// Create sidecar configuration for stdio-based MCP servers
+		sidecarMeta := as.getSidecarMeta(server)
+		if sidecarMeta != nil {
+			// For HTTP transport, modify the dockerCommand to remove socat forwarding
+			dockerCommand := sidecarMeta.DockerCommand
+			if strings.Contains(dockerCommand, "socat") {
+				// For HTTP transport, replace socat forwarding with direct MCP server execution
+				// Extract the MCP server command from the complex command
+				parts := strings.Split(dockerCommand, "&&")
+				for _, part := range parts {
+					part = strings.TrimSpace(part)
+					if strings.Contains(part, "mcp-server") && !strings.Contains(part, "socat") {
+						// Found the MCP server command
+						if strings.HasPrefix(part, "(") && strings.Contains(part, "&") {
+							// Extract command from "(mcp-server-uyuni & ..."
+							start := strings.Index(part, "(")
+							end := strings.Index(part, "&")
+							if start >= 0 && end > start {
+								dockerCommand = strings.TrimSpace(part[start+1 : end])
+								break
+							}
+						}
+					}
+				}
 			}
 
-			// Set default base images based on command type
-			if sidecarConfig.BaseImage == "" {
-				switch sidecarConfig.CommandType {
-				case "npx":
-					sidecarConfig.BaseImage = "registry.suse.com/bci/nodejs:22"
-				case "python", "uv":
-					sidecarConfig.BaseImage = "registry.suse.com/bci/python:3.12"
-				}
+			// Prepare args, appending image for Docker commands
+			args := sidecarMeta.Args
+			if sidecarMeta.CommandType == "docker" && server.Image != "" {
+				args = append(args, server.Image)
 			}
-			// For Uyuni, add HTTP transport configuration
-			if mcpServerID == "suse-uyuni" {
-				if envVars == nil {
-					envVars = make(map[string]string)
-				}
-				envVars["UYUNI_MCP_TRANSPORT"] = "http"
-				envVars["MCP_HOST"] = "0.0.0.0"
+
+			sidecarConfig = &models.SidecarConfig{
+				CommandType: sidecarMeta.CommandType,
+				Command:     sidecarMeta.Command,
+				Args:        args,
+				Env:         sidecarMeta.Env,
+				Port:        0, // Will be allocated dynamically to prevent conflicts
 			}
+			connectionType = models.ConnectionTypeStreamableHttp // Sidecar will provide HTTP interface
+			fmt.Printf("DEBUG: Creating sidecar for stdio-based MCP server %s\n", server.Name)
 		} else {
-			// Fall back to local stdio if no sidecar config
-			connectionType = models.ConnectionTypeLocalStdio
+			// Fallback: try to create a generic sidecar configuration
+			sidecarConfig = &models.SidecarConfig{
+				CommandType: "npx",
+				Command:     "npx",
+				Args:        []string{"-y", "@modelcontextprotocol/server-everything"},
+				Port:        0, // Will be allocated dynamically
+			}
+			connectionType = models.ConnectionTypeStreamableHttp
+			fmt.Printf("DEBUG: Creating generic sidecar for stdio-based MCP server %s\n", server.Name)
 		}
+
+		// Configure environment variables for HTTP transport
+		fmt.Printf("DEBUG: Using provided environment variables: %+v\n", envVars)
 	}
 
 	// Create adapter data
 	adapterData := &models.AdapterData{
 		Name:                 name,
-		Description:          fmt.Sprintf("Adapter for %s", server.Name),
-		Protocol:             models.ServerProtocolMCP,
 		ConnectionType:       connectionType,
-		EnvironmentVariables: envVars,
+		EnvironmentVariables: envVars,    // Use the provided environment variables
 		RemoteUrl:            server.URL, // Use the OAuth URL as remote URL
-		Authentication:       auth,
 		SidecarConfig:        sidecarConfig,
 	}
 
@@ -113,14 +153,12 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	}
 
 	// Deploy sidecar if needed
-	if adapter.ConnectionType == models.ConnectionTypeSidecarStdio {
+	if adapter.SidecarConfig != nil && adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
 		if as.sidecarManager == nil {
-			fmt.Printf("DEBUG: SidecarManager is nil, falling back to LocalStdio\n")
-			// Fall back to local stdio if no sidecar manager is available
-			adapter.ConnectionType = models.ConnectionTypeLocalStdio
-			adapter.SidecarConfig = nil
-			// Update the stored adapter
-			as.store.Update(ctx, *adapter)
+			fmt.Printf("DEBUG: SidecarManager is nil, cannot deploy sidecar for adapter %s\n", adapter.ID)
+			// Clean up the adapter since sidecar deployment is required
+			as.store.Delete(ctx, adapter.ID)
+			return nil, fmt.Errorf("sidecar manager not available for adapter deployment")
 		} else {
 			fmt.Printf("DEBUG: Attempting to deploy sidecar for adapter %s\n", adapter.ID)
 			if err := as.sidecarManager.DeploySidecar(ctx, *adapter); err != nil {
@@ -130,8 +168,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 				return nil, fmt.Errorf("failed to deploy sidecar: %w", err)
 			}
 			fmt.Printf("DEBUG: Sidecar deployment successful for adapter %s\n", adapter.ID)
-			// Change connection type to StreamableHttp since we're proxying to sidecar
-			adapter.ConnectionType = models.ConnectionTypeStreamableHttp
+			// Update the stored adapter with the allocated port
 			as.store.Update(ctx, *adapter)
 		}
 	}
@@ -142,7 +179,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 // hasStdioPackage checks if the server has stdio packages
 func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
 	for _, pkg := range server.Packages {
-		if pkg.RegistryType == "stdio" {
+		if pkg.RegistryType == "stdio" || pkg.Transport.Type == "stdio" {
 			return true
 		}
 	}
@@ -158,6 +195,8 @@ type sidecarMeta struct {
 	DockerImage      string
 	DockerCommand    string
 	DockerEntrypoint string
+	Port             int
+	Env              []map[string]string
 }
 
 // getSidecarMeta extracts sidecar configuration from server metadata
@@ -181,15 +220,9 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 	// Extract command type
 	if commandType, ok := configMap["commandType"].(string); ok {
 		meta.CommandType = commandType
-	} else {
-		// Default to docker for backward compatibility
-		meta.CommandType = "docker"
 	}
 
-	// Extract new fields
-	if baseImage, ok := configMap["baseImage"].(string); ok {
-		meta.BaseImage = baseImage
-	}
+	// Extract command and args
 	if command, ok := configMap["command"].(string); ok {
 		meta.Command = command
 	}
@@ -201,15 +234,29 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 		}
 	}
 
-	// Extract legacy Docker fields for backward compatibility
-	if dockerImage, ok := configMap["dockerImage"].(string); ok {
-		meta.DockerImage = dockerImage
+	if port, ok := configMap["port"].(float64); ok {
+		meta.Port = int(port)
 	}
-	if dockerCommand, ok := configMap["dockerCommand"].(string); ok {
-		meta.DockerCommand = dockerCommand
+
+	// Extract environment variables
+	if envInterface, ok := configMap["env"].([]interface{}); ok {
+		for _, envItem := range envInterface {
+			if envMap, ok := envItem.(map[string]interface{}); ok {
+				envVar := make(map[string]string)
+				if name, ok := envMap["name"].(string); ok {
+					envVar["name"] = name
+				}
+				if value, ok := envMap["value"].(string); ok {
+					envVar["value"] = value
+				}
+				if len(envVar) == 2 {
+					meta.Env = append(meta.Env, envVar)
+				}
+			}
+		}
 	}
-	if dockerEntrypoint, ok := configMap["dockerEntrypoint"].(string); ok {
-		meta.DockerEntrypoint = dockerEntrypoint
+	if port, ok := configMap["port"].(float64); ok {
+		meta.Port = int(port)
 	}
 
 	// Return nil if required fields are missing
@@ -268,9 +315,8 @@ func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID s
 	} else if adapter != nil {
 		fmt.Printf("DEBUG: Found adapter %s with connection type: %s\n", adapterID, adapter.ConnectionType)
 
-		// If this is a sidecar adapter (either SidecarStdio or StreamableHttp with sidecar config), clean up the sidecar resources
-		if adapter.ConnectionType == models.ConnectionTypeSidecarStdio ||
-			(adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil) {
+		// If this is a sidecar adapter (StreamableHttp with sidecar config), clean up the sidecar resources
+		if adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil {
 			if as.sidecarManager == nil {
 				fmt.Printf("DEBUG: SidecarManager is nil, cannot cleanup sidecar for adapter %s\n", adapterID)
 			} else {

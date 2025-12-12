@@ -22,10 +22,7 @@ import (
 	"time"
 
 	"suse-ai-up/pkg/middleware"
-	"suse-ai-up/pkg/services/discovery"
-	"suse-ai-up/pkg/services/plugins"
 	"suse-ai-up/pkg/services/proxy"
-	"suse-ai-up/pkg/services/registry"
 )
 
 func main() {
@@ -37,18 +34,9 @@ func main() {
 	command := os.Args[1]
 
 	switch command {
-	case "proxy":
+	case "uniproxy":
 		os.Args = append(os.Args[:1], os.Args[2:]...)
-		runProxy()
-	case "discovery":
-		os.Args = append(os.Args[:1], os.Args[2:]...)
-		runDiscovery()
-	case "registry":
-		os.Args = append(os.Args[:1], os.Args[2:]...)
-		runRegistry()
-	case "plugins":
-		os.Args = append(os.Args[:1], os.Args[2:]...)
-		runPlugins()
+		runUniproxy()
 	case "health":
 		runHealthServer()
 	case "all":
@@ -63,12 +51,12 @@ func main() {
 	}
 }
 
-func runProxy() {
+func runUniproxy() {
 	port := 8911    // Default port
 	tlsPort := 3911 // Default TLS port
 
 	// Read environment variables if set
-	if envPort := os.Getenv("PROXY_PORT"); envPort != "" {
+	if envPort := os.Getenv("UNIPROXY_PORT"); envPort != "" {
 		if p, err := strconv.Atoi(envPort); err == nil {
 			port = p
 		}
@@ -86,99 +74,7 @@ func runProxy() {
 	}
 	service := proxy.NewService(config)
 	if err := service.Start(); err != nil {
-		fmt.Printf("Failed to start proxy service: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func runDiscovery() {
-	port := 8912     // Default port
-	tlsPort := 38912 // Default TLS port
-
-	// Read environment variables if set
-	if envPort := os.Getenv("DISCOVERY_PORT"); envPort != "" {
-		if p, err := strconv.Atoi(envPort); err == nil {
-			port = p
-		}
-	}
-	if envTLSPort := os.Getenv("DISCOVERY_TLS_PORT"); envTLSPort != "" {
-		if p, err := strconv.Atoi(envTLSPort); err == nil {
-			tlsPort = p
-		}
-	}
-
-	config := &discovery.Config{
-		Port:           port,
-		TLSPort:        tlsPort,         // HTTPS port
-		DefaultTimeout: 30 * 1000000000, // 30 seconds in nanoseconds
-		MaxConcurrency: 10,
-		ExcludeProxy:   true,
-		AutoTLS:        true, // Enable auto-generated TLS certificates
-	}
-
-	service := discovery.NewService(config)
-	if err := service.Start(); err != nil {
-		fmt.Printf("Failed to start discovery service: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func runRegistry() {
-	port := 8913     // Default port
-	tlsPort := 38913 // Default TLS port
-
-	// Read environment variables if set
-	if envPort := os.Getenv("REGISTRY_PORT"); envPort != "" {
-		if p, err := strconv.Atoi(envPort); err == nil {
-			port = p
-		}
-	}
-	if envTLSPort := os.Getenv("REGISTRY_TLS_PORT"); envTLSPort != "" {
-		if p, err := strconv.Atoi(envTLSPort); err == nil {
-			tlsPort = p
-		}
-	}
-
-	config := &registry.Config{
-		Port:              port,
-		TLSPort:           tlsPort, // HTTPS port
-		RemoteServersFile: "config/remote_mcp_servers.json",
-		AutoTLS:           true, // Enable auto-generated TLS certificates
-	}
-
-	service := registry.NewService(config)
-	if err := service.Start(); err != nil {
-		fmt.Printf("Failed to start registry service: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func runPlugins() {
-	port := 8914     // Default port
-	tlsPort := 38914 // Default TLS port
-
-	// Read environment variables if set
-	if envPort := os.Getenv("PLUGINS_PORT"); envPort != "" {
-		if p, err := strconv.Atoi(envPort); err == nil {
-			port = p
-		}
-	}
-	if envTLSPort := os.Getenv("PLUGINS_TLS_PORT"); envTLSPort != "" {
-		if p, err := strconv.Atoi(envTLSPort); err == nil {
-			tlsPort = p
-		}
-	}
-
-	config := &plugins.Config{
-		Port:           port,
-		TLSPort:        tlsPort,         // HTTPS port
-		HealthInterval: 30 * 1000000000, // 30 seconds in nanoseconds
-		AutoTLS:        true,            // Enable auto-generated TLS certificates
-	}
-
-	service := plugins.NewService(config)
-	if err := service.Start(); err != nil {
-		fmt.Printf("Failed to start plugins service: %v\n", err)
+		fmt.Printf("Failed to start uniproxy service: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -199,10 +95,10 @@ func runAllServices() {
 
 	// Service configurations
 	services := []ServiceConfig{
-		{Name: "proxy", Port: 8911, Cmd: []string{"./suse-ai-up", "proxy"}},
-		{Name: "discovery", Port: 8912, Cmd: []string{"./suse-ai-up", "discovery"}},
-		{Name: "registry", Port: 8913, Cmd: []string{"./suse-ai-up", "registry"}},
-		{Name: "plugins", Port: 8914, Cmd: []string{"./suse-ai-up", "plugins"}},
+		{Name: "uniproxy", Port: 8911, Cmd: []string{"./suse-ai-up", "uniproxy"}},
+		{Name: "discovery", Port: 8912, Cmd: []string{"./suse-ai-up-discovery"}},
+		{Name: "registry", Port: 8913, Cmd: []string{"./suse-ai-up-registry"}},
+		{Name: "plugins", Port: 8914, Cmd: []string{"./suse-ai-up-plugins"}},
 	}
 
 	// Start all services
@@ -244,7 +140,7 @@ func runAllServices() {
 	}
 
 	fmt.Println("All services started successfully!")
-	fmt.Println("Proxy: http://localhost:8911 (HTTPS: https://localhost:3911)")
+	fmt.Println("Uniproxy: http://localhost:8911 (HTTPS: https://localhost:3911)")
 	fmt.Println("Discovery: http://localhost:8912 (HTTPS: https://localhost:38912)")
 	fmt.Println("Registry: http://localhost:8913 (HTTPS: https://localhost:38913)")
 	fmt.Println("Plugins: http://localhost:8914 (HTTPS: https://localhost:38914)")
@@ -1930,26 +1826,23 @@ func (w *prefixedWriter) Write(p []byte) (n int, err error) {
 }
 
 func printUsage() {
-	fmt.Println("SUSE AI Universal Proxy")
+	fmt.Println("SUSE AI Uniproxy")
 	fmt.Println()
-	fmt.Println("A modular system for MCP proxying, service discovery, registry management, and plugin handling.")
+	fmt.Println("A comprehensive MCP proxy system with integrated registry, discovery, and plugin management.")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  suse-ai-up <command> [flags]")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  proxy      MCP proxy system (HTTP-based MCP server proxying)")
-	fmt.Println("  discovery  Network discovery service (CIDR scanning, auto-registration)")
-	fmt.Println("  registry   MCP server registry (server management, search, validation)")
-	fmt.Println("  plugins    Plugin management (third-party service registration)")
+	fmt.Println("  uniproxy   Comprehensive MCP proxy service (port 8911)")
 	fmt.Println("  all        Start all services simultaneously")
+	fmt.Println("  health     Start health check server")
 	fmt.Println("  help       Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  suse-ai-up proxy --port 8080")
-	fmt.Println("  suse-ai-up discovery --config config/discovery.yaml")
-	fmt.Println("  suse-ai-up registry --port 8913")
-	fmt.Println("  suse-ai-up plugins --port 8914")
+	fmt.Println("  suse-ai-up uniproxy")
+	fmt.Println("  suse-ai-up all")
+	fmt.Println("  suse-ai-up health")
 	fmt.Println()
 	fmt.Println("For more information about a command, run:")
 	fmt.Println("  suse-ai-up <command> --help")
