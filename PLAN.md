@@ -147,6 +147,10 @@ sidecarConfig:
 - **Test Failures**: Some MCP package tests have issues (not critical for production)
 - **Vet Warnings**: Static analysis shows some issues in test files (non-blocking)
 - **Empty Directories**: Some intentionally empty Helm template directories remain
+- **Registry Access**: Official `ghcr.io/suse/suse-ai-up` registry may require authentication for Kubernetes pulls
+- **Multi-Arch Builds**: Docker Bake successfully builds amd64/arm64 images
+- **Helm Chart**: Comprehensive chart with RBAC, monitoring, and sidecar support deployed successfully
+- **Service Health**: All services (proxy, registry, discovery, plugins) confirmed healthy on respective ports
 
 ## 🚀 READY FOR PRODUCTION DEPLOYMENT
 

@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -55,6 +56,68 @@ func generateID() string {
 	bytes := make([]byte, 8)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
+}
+
+// loadRegistryFromFile loads MCP servers from config/mcp_registry.yaml
+func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
+	registryFile := "config/mcp_registry.yaml"
+	data, err := os.ReadFile(registryFile)
+	if err != nil {
+		log.Printf("Warning: Could not read registry file %s: %v", registryFile, err)
+		return
+	}
+
+	var servers []map[string]interface{}
+	if err := yaml.Unmarshal(data, &servers); err != nil {
+		log.Printf("Warning: Could not parse registry file %s: %v", registryFile, err)
+		return
+	}
+
+	log.Printf("Loading %d MCP servers from %s", len(servers), registryFile)
+
+	var mcpServers []*models.MCPServer
+	for _, serverData := range servers {
+		// Convert to models.MCPServer format
+		server := &models.MCPServer{
+			ID:   serverData["name"].(string),
+			Name: serverData["name"].(string),
+		}
+
+		if desc, ok := serverData["description"].(string); ok {
+			server.Description = desc
+		}
+
+		if image, ok := serverData["image"].(string); ok {
+			server.Packages = []models.Package{
+				{
+					Identifier: image,
+					Transport: models.Transport{
+						Type: "stdio",
+					},
+				},
+			}
+		}
+
+		// Handle meta field
+		if meta, ok := serverData["meta"].(map[string]interface{}); ok {
+			server.Meta = meta
+		}
+
+		// Generate ID if not present
+		if server.ID == "" {
+			server.ID = generateID()
+		}
+
+		mcpServers = append(mcpServers, server)
+	}
+
+	// Use the registry manager to upload all servers
+	if err := registryManager.UploadRegistryEntries(mcpServers); err != nil {
+		log.Printf("Warning: Could not upload registry entries: %v", err)
+		return
+	}
+
+	log.Printf("Successfully loaded MCP registry from %s", registryFile)
 }
 
 // isVirtualMCPAdapter checks if an adapter is configured for VirtualMCP
@@ -334,6 +397,9 @@ func main() {
 	// Initialize missing handlers
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
+
+	// Load MCP registry from config file
+	loadRegistryFromFile(registryManager)
 
 	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore)
 

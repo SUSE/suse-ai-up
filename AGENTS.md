@@ -12,8 +12,17 @@ Individual service binaries (`suse-ai-up-discovery`, `suse-ai-up-registry`, `sus
 
 ## Build Commands
 - **Go**: `go build -o suse-ai-up ./cmd` (builds unified binary with all services)
+- **Docker Multi-Arch**: `docker buildx bake multiarch --push` (build and push amd64/arm64 to ghcr.io)
+- **Docker Single Arch**: `docker buildx bake amd64 --push` or `docker buildx bake arm64 --push`
+- **Docker Dev**: `docker buildx bake dev` (development build)
 - **Python**: `cd examples/local-mcp && pip install -r requirements.txt`
 - **Swagger**: `swag init -g cmd/uniproxy/main.go`
+
+## Kubernetes Deployment Commands
+- **Helm Install**: `helm install suse-ai-up ./charts/suse-ai-up`
+- **Helm Upgrade**: `helm upgrade suse-ai-up ./charts/suse-ai-up`
+- **Helm Uninstall**: `helm uninstall suse-ai-up`
+- **Port Forward**: `kubectl port-forward -n suse-ai-up svc/suse-ai-up-service 8911:8911`
 
 ## Test Commands
 - **Go**: `go test ./...` (all tests)
@@ -70,5 +79,9 @@ Individual service binaries (`suse-ai-up-discovery`, `suse-ai-up-registry`, `sus
 - **Registry**: Port 8913 (HTTP) / 38913 (HTTPS)
 - **Discovery**: Port 8912 (HTTP) / 38912 (HTTPS)
 - **Plugins**: Port 8914 (HTTP) / 38914 (HTTPS)
+
+### Container Registry
+- **Official**: `ghcr.io/suse/suse-ai-up:latest`
+- **Development**: `ghcr.io/alessandro-festa/suse-ai-up:latest`
 
 No Cursor or Copilot rules found in the repository.

@@ -43,10 +43,11 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 				break
 			}
 		}
-		if server == nil {
-			return nil, fmt.Errorf("MCP server not found: %w", err)
-		}
 	}
+	if server == nil {
+		return nil, fmt.Errorf("MCP server not found: %s", mcpServerID)
+	}
+	fmt.Printf("DEBUG: Retrieved server %s with Meta: %+v\n", server.Name, server.Meta)
 
 	fmt.Printf("DEBUG: CreateAdapter called for server %s\n", server.Name)
 	if len(server.Packages) == 0 {
@@ -69,50 +70,24 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 
 	// For non-remote servers (those with stdio packages), always create sidecars
 	// The MCP inside the sidecar will use HTTP streamable-HTTP transport
-	fmt.Printf("DEBUG: Checking server %s for sidecar creation\n", server.Name)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking server %s for sidecar creation\n", server.Name)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: hasStdioPackage: %v\n", as.hasStdioPackage(server))
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: contains uyuni: %v\n", strings.Contains(server.Name, "uyuni"))
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: contains bugzilla: %v\n", strings.Contains(server.Name, "bugzilla"))
+
 	if as.hasStdioPackage(server) || strings.Contains(server.Name, "uyuni") || strings.Contains(server.Name, "bugzilla") {
-		fmt.Printf("DEBUG: Creating sidecar for server %s (hasStdio: %v)\n", server.Name, as.hasStdioPackage(server))
-		// Create sidecar configuration for stdio-based MCP servers
-		sidecarMeta := as.getSidecarMeta(server)
-		if sidecarMeta != nil {
-			// For HTTP transport, modify the dockerCommand to remove socat forwarding
-			dockerCommand := sidecarMeta.DockerCommand
-			if strings.Contains(dockerCommand, "socat") {
-				// For HTTP transport, replace socat forwarding with direct MCP server execution
-				// Extract the MCP server command from the complex command
-				parts := strings.Split(dockerCommand, "&&")
-				for _, part := range parts {
-					part = strings.TrimSpace(part)
-					if strings.Contains(part, "mcp-server") && !strings.Contains(part, "socat") {
-						// Found the MCP server command
-						if strings.HasPrefix(part, "(") && strings.Contains(part, "&") {
-							// Extract command from "(mcp-server-uyuni & ..."
-							start := strings.Index(part, "(")
-							end := strings.Index(part, "&")
-							if start >= 0 && end > start {
-								dockerCommand = strings.TrimSpace(part[start+1 : end])
-								break
-							}
-						}
-					}
-				}
-			}
-
-			// Prepare args, appending image for Docker commands
-			args := sidecarMeta.Args
-			if sidecarMeta.CommandType == "docker" && server.Image != "" {
-				args = append(args, server.Image)
-			}
-
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will create sidecar for server %s\n", server.Name)
+		// Get the docker command from the server metadata
+		dockerCommand := as.getDockerCommand(server)
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerCommand returned: '%s'\n", dockerCommand)
+		if dockerCommand != "" {
 			sidecarConfig = &models.SidecarConfig{
-				CommandType: sidecarMeta.CommandType,
-				Command:     sidecarMeta.Command,
-				Args:        args,
-				Env:         sidecarMeta.Env,
-				Port:        0, // Will be allocated dynamically to prevent conflicts
+				CommandType: "docker",
+				Command:     dockerCommand,
+				Port:        8000, // Fixed port
 			}
-			connectionType = models.ConnectionTypeStreamableHttp // Sidecar will provide HTTP interface
-			fmt.Printf("DEBUG: Creating sidecar for stdio-based MCP server %s\n", server.Name)
+			connectionType = models.ConnectionTypeStreamableHttp
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Created docker sidecar config with command: %s\n", dockerCommand)
 		} else {
 			// Fallback: try to create a generic sidecar configuration
 			sidecarConfig = &models.SidecarConfig{
@@ -122,11 +97,10 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 				Port:        0, // Will be allocated dynamically
 			}
 			connectionType = models.ConnectionTypeStreamableHttp
-			fmt.Printf("DEBUG: Creating generic sidecar for stdio-based MCP server %s\n", server.Name)
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Created fallback sidecar config\n")
 		}
-
-		// Configure environment variables for HTTP transport
-		fmt.Printf("DEBUG: Using provided environment variables: %+v\n", envVars)
+	} else {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will NOT create sidecar for server %s\n", server.Name)
 	}
 
 	// Create adapter data
@@ -186,6 +160,60 @@ func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
 	return false
 }
 
+// getDockerCommand extracts the docker command from server metadata
+func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: getDockerCommand called for server %s\n", server.Name)
+	if server.Meta == nil {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta is nil\n")
+		return ""
+	}
+
+	sidecarConfig, ok := server.Meta["sidecarConfig"]
+	if !ok {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig not found in meta\n")
+		return ""
+	}
+
+	configMap, ok := sidecarConfig.(map[string]interface{})
+	if !ok {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig is not a map\n")
+		return ""
+	}
+
+	commandType, ok := configMap["commandType"].(string)
+	if !ok || commandType != "docker" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: commandType is not docker or not found: %v\n", configMap["commandType"])
+		return ""
+	}
+
+	// First try to get the full command
+	command, ok := configMap["command"].(string)
+	if ok && command != "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found full docker command: %s\n", command)
+		return command
+	}
+
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Full command not found, trying to reconstruct\n")
+
+	// If no full command, try to reconstruct from dockerCommand and dockerImage
+	dockerCommand, ok := configMap["dockerCommand"].(string)
+	if !ok || dockerCommand == "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerCommand not found or empty: %v\n", configMap["dockerCommand"])
+		return ""
+	}
+
+	dockerImage, ok := configMap["dockerImage"].(string)
+	if !ok || dockerImage == "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerImage not found or empty: %v\n", configMap["dockerImage"])
+		return ""
+	}
+
+	// Reconstruct the docker command with just the image (env vars come from adapter)
+	fullCommand := fmt.Sprintf("docker run -it --rm %s %s", dockerImage, dockerCommand)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Reconstructed docker command: %s\n", fullCommand)
+	return fullCommand
+}
+
 // sidecarMeta represents sidecar configuration from server metadata
 type sidecarMeta struct {
 	CommandType      string
@@ -200,8 +228,10 @@ type sidecarMeta struct {
 }
 
 // getSidecarMeta extracts sidecar configuration from server metadata
-func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta {
+func (as *AdapterService) getSidecarMeta(server *models.MCPServer, envVars map[string]string) *sidecarMeta {
+	fmt.Printf("DEBUG: getSidecarMeta called for server %s, Meta: %+v\n", server.Name, server.Meta)
 	if server.Meta == nil {
+		fmt.Printf("DEBUG: server.Meta is nil\n")
 		return nil
 	}
 
@@ -229,7 +259,9 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 	if argsInterface, ok := configMap["args"].([]interface{}); ok {
 		for _, arg := range argsInterface {
 			if argStr, ok := arg.(string); ok {
-				meta.Args = append(meta.Args, argStr)
+				// Perform template substitution for placeholders like {{uyuni.server}}
+				substitutedArg := as.substituteTemplates(argStr, envVars)
+				meta.Args = append(meta.Args, substitutedArg)
 			}
 		}
 	}
@@ -238,7 +270,7 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 		meta.Port = int(port)
 	}
 
-	// Extract environment variables
+	// Extract environment variables from env section
 	if envInterface, ok := configMap["env"].([]interface{}); ok {
 		for _, envItem := range envInterface {
 			if envMap, ok := envItem.(map[string]interface{}); ok {
@@ -255,16 +287,62 @@ func (as *AdapterService) getSidecarMeta(server *models.MCPServer) *sidecarMeta 
 			}
 		}
 	}
+
+	// Parse -e flags from args (for docker run style commands)
+	if len(meta.Args) > 0 {
+		fmt.Printf("DEBUG: Parsing docker args: %+v\n", meta.Args)
+		parsedArgs := []string{}
+		i := 0
+		for i < len(meta.Args) {
+			arg := meta.Args[i]
+			if arg == "-e" && i+1 < len(meta.Args) {
+				// Parse -e KEY=VALUE
+				envPair := meta.Args[i+1]
+				if eqIndex := strings.Index(envPair, "="); eqIndex > 0 {
+					key := envPair[:eqIndex]
+					value := envPair[eqIndex+1:]
+					fmt.Printf("DEBUG: Parsed env var: %s=%s\n", key, value)
+					envVar := map[string]string{
+						"name":  key,
+						"value": value,
+					}
+					meta.Env = append(meta.Env, envVar)
+				}
+				i += 2 // Skip -e and the env var
+			} else {
+				// Keep all other args
+				parsedArgs = append(parsedArgs, arg)
+				i++
+			}
+		}
+		meta.Args = parsedArgs
+		fmt.Printf("DEBUG: Final args: %+v, env: %+v\n", meta.Args, meta.Env)
+	}
 	if port, ok := configMap["port"].(float64); ok {
 		meta.Port = int(port)
 	}
 
 	// Return nil if required fields are missing
-	if meta.DockerImage == "" {
+	if meta.CommandType == "" || meta.Command == "" {
 		return nil
 	}
 
 	return meta
+}
+
+// substituteTemplates replaces template placeholders like {{uyuni.server}} with actual values
+func (as *AdapterService) substituteTemplates(template string, envVars map[string]string) string {
+	result := template
+
+	// Replace {{variable}} patterns with values from envVars
+	for key, value := range envVars {
+		// Convert env var names to template format (e.g., UYUNI_SERVER -> uyuni.server)
+		templateKey := strings.ToLower(strings.ReplaceAll(key, "_", "."))
+		placeholder := "{{" + templateKey + "}}"
+		result = strings.ReplaceAll(result, placeholder, value)
+	}
+
+	return result
 }
 
 // GetAdapter gets an adapter by ID for a specific user

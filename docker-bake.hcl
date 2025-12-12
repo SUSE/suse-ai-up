@@ -6,7 +6,7 @@ variable "REGISTRY" {
 }
 
 variable "REPO_NAME" {
-  default = "suse/suse-ai-up"
+  default = "alessandro-festa/suse-ai-up"
 }
 
 # Define the target platforms

@@ -41,10 +41,13 @@ func TestAdapterService_getSidecarMeta(t *testing.T) {
 
 	// Test server with sidecar config
 	serverWithSidecar := &models.MCPServer{
+		Image: "kskarthik/mcp-bugzilla:latest",
 		Meta: map[string]interface{}{
 			"sidecarConfig": map[string]interface{}{
-				"dockerImage":   "kskarthik/mcp-bugzilla:latest",
-				"dockerCommand": "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000",
+				"commandType": "docker",
+				"command":     "docker",
+				"args":        []interface{}{"run", "-e", "BUGZILLA_SERVER=https://bugzilla.example.com", "--host", "0.0.0.0", "--port", "8000"},
+				"port":        8000.0,
 			},
 		},
 	}
@@ -54,20 +57,134 @@ func TestAdapterService_getSidecarMeta(t *testing.T) {
 		Meta: map[string]interface{}{},
 	}
 
-	meta := service.getSidecarMeta(serverWithSidecar)
+	meta := service.getSidecarMeta(serverWithSidecar, map[string]string{})
 	if meta == nil {
 		t.Error("Expected to get sidecar meta")
 	}
-	if meta.DockerImage != "kskarthik/mcp-bugzilla:latest" {
-		t.Errorf("Expected docker image to be 'kskarthik/mcp-bugzilla:latest', got '%s'", meta.DockerImage)
+	if meta.CommandType != "docker" {
+		t.Errorf("Expected command type to be 'docker', got '%s'", meta.CommandType)
 	}
-	if meta.DockerCommand != "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000" {
-		t.Errorf("Expected docker command to be correct, got '%s'", meta.DockerCommand)
+	if meta.Command != "docker" {
+		t.Errorf("Expected command to be 'docker', got '%s'", meta.Command)
 	}
 
-	meta2 := service.getSidecarMeta(serverWithoutSidecar)
+	if len(meta.Args) != 5 {
+		t.Errorf("Expected 5 args after env var parsing, got %d", len(meta.Args))
+	}
+
+	meta2 := service.getSidecarMeta(serverWithoutSidecar, map[string]string{})
 	if meta2 != nil {
 		t.Error("Expected to get nil for server without sidecar config")
+	}
+}
+
+func TestAdapterService_UyuniSidecarExtraction(t *testing.T) {
+	service := &AdapterService{}
+
+	// Test uyuni server with sidecar config (similar to YAML)
+	serverUyuni := &models.MCPServer{
+		Name:  "uyuni",
+		Image: "ghcr.io/uyuni-project/mcp-server-uyuni:latest",
+		Meta: map[string]interface{}{
+			"sidecarConfig": map[string]interface{}{
+				"commandType": "docker",
+				"command":     "docker",
+				"args": []interface{}{
+					"run", "-i", "--rm",
+					"-e", "UYUNI_SERVER={{uyuni.server}}",
+					"-e", "UYUNI_USER={{uyuni.user}}",
+					"-e", "UYUNI_PASS={{uyuni.pass}}",
+					"-e", "UYUNI_MCP_TRANSPORT=http",
+					"-e", "UYUNI_MCP_HOST=0.0.0.0",
+					"ghcr.io/uyuni-project/mcp-server-uyuni:latest",
+				},
+				"port": 8000.0,
+			},
+		},
+	}
+
+	// Test with some environment variables
+	envVars := map[string]string{
+		"uyuni.server": "http://uyuni.example.com",
+		"uyuni.user":   "admin",
+		"uyuni.pass":   "secret",
+	}
+
+	meta := service.getSidecarMeta(serverUyuni, envVars)
+	if meta == nil {
+		t.Error("Expected to get sidecar meta for uyuni")
+		return
+	}
+
+	t.Logf("Uyuni Sidecar Meta:")
+	t.Logf("  CommandType: %s", meta.CommandType)
+	t.Logf("  Command: %s", meta.Command)
+	t.Logf("  Args: %+v", meta.Args)
+	t.Logf("  Env: %+v", meta.Env)
+	t.Logf("  Port: %d", meta.Port)
+
+	// Verify expected results
+	if meta.CommandType != "docker" {
+		t.Errorf("Expected CommandType 'docker', got '%s'", meta.CommandType)
+	}
+	if meta.Command != "docker" {
+		t.Errorf("Expected Command 'docker', got '%s'", meta.Command)
+	}
+	if len(meta.Args) != 4 { // run, -i, --rm, image
+		t.Errorf("Expected 4 args, got %d: %+v", len(meta.Args), meta.Args)
+	}
+	if len(meta.Env) != 5 { // 5 environment variables
+		t.Errorf("Expected 5 env vars, got %d: %+v", len(meta.Env), meta.Env)
+	}
+}
+
+func TestAdapterService_BugzillaSidecarExtraction(t *testing.T) {
+	service := &AdapterService{}
+
+	// Test bugzilla server with sidecar config (similar to YAML)
+	serverBugzilla := &models.MCPServer{
+		Name:  "bugzilla",
+		Image: "kskarthik/mcp-bugzilla:latest",
+		Meta: map[string]interface{}{
+			"sidecarConfig": map[string]interface{}{
+				"commandType": "docker",
+				"command":     "docker",
+				"args": []interface{}{
+					"run", "-e", "BUGZILLA_SERVER={{bugzilla.server}}",
+					"--host", "0.0.0.0", "--port", "8000",
+				},
+				"port": 8000.0,
+			},
+		},
+	}
+
+	// Test with environment variables
+	envVars := map[string]string{
+		"bugzilla.server": "https://bugzilla.suse.com",
+	}
+
+	meta := service.getSidecarMeta(serverBugzilla, envVars)
+	if meta == nil {
+		t.Error("Expected to get sidecar meta for bugzilla")
+		return
+	}
+
+	t.Logf("Bugzilla Sidecar Meta:")
+	t.Logf("  CommandType: %s", meta.CommandType)
+	t.Logf("  Command: %s", meta.Command)
+	t.Logf("  Args: %+v", meta.Args)
+	t.Logf("  Env: %+v", meta.Env)
+	t.Logf("  Port: %d", meta.Port)
+
+	// Verify expected results
+	if meta.CommandType != "docker" {
+		t.Errorf("Expected CommandType 'docker', got '%s'", meta.CommandType)
+	}
+	if len(meta.Args) != 5 { // run, --host, 0.0.0.0, --port, 8000 (image appended later)
+		t.Errorf("Expected 5 args, got %d: %+v", len(meta.Args), meta.Args)
+	}
+	if len(meta.Env) != 1 { // 1 environment variable
+		t.Errorf("Expected 1 env var, got %d: %+v", len(meta.Env), meta.Env)
 	}
 }
 
@@ -78,15 +195,18 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 
 	// Create test server with stdio package and sidecar config
 	testServer := &models.MCPServer{
-		ID:   "test-server",
-		Name: "Test Server",
+		ID:    "test-server",
+		Name:  "Test Server",
+		Image: "kskarthik/mcp-bugzilla:latest",
 		Packages: []models.Package{
 			{RegistryType: "stdio"},
 		},
 		Meta: map[string]interface{}{
 			"sidecarConfig": map[string]interface{}{
-				"dockerImage":   "kskarthik/mcp-bugzilla:latest",
-				"dockerCommand": "--bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000",
+				"commandType": "docker",
+				"command":     "docker",
+				"args":        []interface{}{"run", "-e", "BUGZILLA_SERVER=https://bugzilla.example.com", "--host", "0.0.0.0", "--port", "8000"},
+				"port":        8000.0,
 			},
 		},
 	}
@@ -115,7 +235,7 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	}
 
 	// Check sidecar meta
-	meta := service.getSidecarMeta(storedServer)
+	meta := service.getSidecarMeta(storedServer, map[string]string{})
 	if meta == nil {
 		t.Error("Server should have sidecar meta")
 	} else {
