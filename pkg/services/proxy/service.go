@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
@@ -50,7 +51,7 @@ func NewService(config *Config) *Service {
 
 // Start starts the proxy service
 func (s *Service) Start() error {
-	log.Printf("Starting MCP Proxy service on port %d", s.config.Port)
+	logging.ProxyLogger.Info("Initializing MCP Proxy service on port %d", s.config.Port)
 
 	// Load proxy configuration
 	config, err := s.loadProxyConfig()
@@ -126,9 +127,9 @@ func (s *Service) Start() error {
 
 	// Start HTTP server in goroutine
 	go func() {
-		log.Printf("MCP Proxy HTTP server listening on port %d", s.config.Port)
+		logging.ProxyLogger.Success("HTTP server listening on port %d", s.config.Port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("HTTP server error: %v", err)
+			logging.ProxyLogger.Error("HTTP server error: %v", err)
 		}
 	}()
 
@@ -142,7 +143,7 @@ func (s *Service) Start() error {
 		if s.config.CertFile != "" && s.config.KeyFile != "" {
 			cert, err := tls.LoadX509KeyPair(s.config.CertFile, s.config.KeyFile)
 			if err != nil {
-				log.Printf("Failed to load TLS certificates: %v", err)
+				logging.ProxyLogger.Error("Failed to load TLS certificates: %v", err)
 				if !s.config.AutoTLS {
 					return fmt.Errorf("TLS certificates required but failed to load: %w", err)
 				}
@@ -158,7 +159,7 @@ func (s *Service) Start() error {
 				return fmt.Errorf("failed to generate self-signed certificate: %w", err)
 			}
 			tlsConfig.Certificates = []tls.Certificate{*cert}
-			log.Printf("Generated self-signed TLS certificate for proxy service")
+			logging.ProxyLogger.Info("Generated self-signed TLS certificate for proxy service")
 		}
 
 		if len(tlsConfig.Certificates) > 0 {
@@ -169,15 +170,15 @@ func (s *Service) Start() error {
 			}
 
 			go func() {
-				log.Printf("MCP Proxy HTTPS server listening on port %d", s.config.TLSPort)
+				logging.ProxyLogger.Success("HTTPS server listening on port %d", s.config.TLSPort)
 				if err := httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-					log.Printf("HTTPS server error: %v", err)
+					logging.ProxyLogger.Error("HTTPS server error: %v", err)
 				}
 			}()
 		}
 	}
 
-	log.Printf("MCP Proxy service started successfully")
+	logging.ProxyLogger.Success("MCP Proxy service started successfully")
 
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
@@ -1216,7 +1217,7 @@ func (s *Service) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 	// Convert to JSON
 	responseData, err := json.Marshal(swagger)
 	if err != nil {
-		log.Printf("Failed to marshal swagger JSON: %v", err)
+		logging.ProxyLogger.Error("Failed to marshal swagger JSON: %v", err)
 		http.Error(w, "Swagger documentation not available", http.StatusInternalServerError)
 		return
 	}
@@ -1240,14 +1241,14 @@ func (s *Service) HandleAdapterMCP(w http.ResponseWriter, r *http.Request) {
 	registryURL := fmt.Sprintf("http://localhost:8913/api/v1/adapters/%s", adapterID)
 	resp, err := http.Get(registryURL)
 	if err != nil {
-		log.Printf("Failed to get adapter %s: %v", adapterID, err)
+		logging.ProxyLogger.Error("Failed to get adapter %s: %v", adapterID, err)
 		http.Error(w, "Adapter not found", http.StatusNotFound)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Adapter %s not found (status: %d)", adapterID, resp.StatusCode)
+		logging.ProxyLogger.Warn("Adapter %s not found (status: %d)", adapterID, resp.StatusCode)
 		http.Error(w, "Adapter not found", http.StatusNotFound)
 		return
 	}
@@ -1255,7 +1256,7 @@ func (s *Service) HandleAdapterMCP(w http.ResponseWriter, r *http.Request) {
 	// Parse adapter response
 	var adapter models.AdapterResource
 	if err := json.NewDecoder(resp.Body).Decode(&adapter); err != nil {
-		log.Printf("Failed to parse adapter response: %v", err)
+		logging.ProxyLogger.Error("Failed to parse adapter response: %v", err)
 		http.Error(w, "Failed to parse adapter", http.StatusInternalServerError)
 		return
 	}
@@ -1454,7 +1455,7 @@ func (s *Service) proxyRequest(w http.ResponseWriter, r *http.Request, serviceUR
 		targetURL += "?" + r.URL.RawQuery
 	}
 
-	log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, targetURL)
+	logging.ProxyLogger.Info("Proxying request: %s %s -> %s", r.Method, r.URL.Path, targetURL)
 
 	// Create the request to the target service
 	req, err := http.NewRequest(r.Method, targetURL, r.Body)
@@ -1477,7 +1478,7 @@ func (s *Service) proxyRequest(w http.ResponseWriter, r *http.Request, serviceUR
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Proxy request failed: %v", err)
+		logging.ProxyLogger.Error("Proxy request failed: %v", err)
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 		return
 	}

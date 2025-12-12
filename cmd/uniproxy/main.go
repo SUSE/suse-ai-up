@@ -28,10 +28,12 @@ import (
 	"suse-ai-up/pkg/auth"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
+	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/plugins"
 	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/scanner"
+	adaptersvc "suse-ai-up/pkg/services/adapters"
 	"suse-ai-up/pkg/session"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -298,6 +300,7 @@ func initOTEL(ctx context.Context, cfg *config.Config) error {
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
+	log.Printf("Config loaded: Port=%s", cfg.Port)
 
 	// Update swagger host dynamically
 	// docs.SwaggerInfo.Host = cfg.GetSwaggerHost() // Not used in current implementation
@@ -376,7 +379,6 @@ func main() {
 			log.Printf("SidecarManager initialized successfully")
 		}
 	}
-	_ = sidecarManager // TODO: Use sidecarManager for adapter creation
 
 	// Initialize discovery components
 	scanConfig := &models.ScanConfig{
@@ -398,6 +400,17 @@ func main() {
 	registryStore := clients.NewInMemoryMCPServerStore()
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
+	// Initialize AdapterService with SidecarManager
+	adapterService := adaptersvc.NewAdapterService(adapterStore, registryStore, sidecarManager)
+	adapterHandler := handlers.NewAdapterHandler(adapterService)
+
+	// Helper function to convert Gin context to standard HTTP handler
+	ginToHTTPHandler := func(handler func(http.ResponseWriter, *http.Request)) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			handler(c.Writer, c.Request)
+		}
+	}
+
 	// Load MCP registry from config file
 	loadRegistryFromFile(registryManager)
 
@@ -408,6 +421,10 @@ func main() {
 	pluginHandler := handlers.NewPluginHandler(serviceManager)
 
 	// registrationHandler := handlers.NewRegistrationHandler(networkScanner, adapterStore, tokenManager, cfg)
+
+	// Request/Response logging middleware
+	logger := middleware.NewRequestResponseLogger()
+	r.Use(logger.GinMiddleware())
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -481,100 +498,12 @@ func main() {
 		// Adapter routes
 		adapters := v1.Group("/adapters")
 		{
-			// CRUD operations
-			adapters.GET("", func(c *gin.Context) {
-				// List all adapters
-				allAdapters, err := adapterStore.List(c.Request.Context(), "")
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					return
-				}
-				c.JSON(http.StatusOK, allAdapters)
-			})
-			adapters.POST("", func(c *gin.Context) {
-				// Create adapter
-				var data models.AdapterData
-				if err := c.ShouldBindJSON(&data); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-					return
-				}
-
-				// Check if this is a VirtualMCP adapter that needs reconfiguration
-				if isVirtualMCPAdapter(&data) {
-					log.Printf("Detected VirtualMCP adapter, reconfiguring: %s", data.Name)
-					reconfigureVirtualMCPAdapter(&data)
-				}
-
-				// Ensure ApiBaseUrl is set in environment variables for VirtualMCP adapters
-				if isVirtualMCPAdapter(&data) && data.ApiBaseUrl != "" {
-					for serverName, serverConfig := range data.MCPClientConfig.MCPServers {
-						if serverConfig.Env == nil {
-							serverConfig.Env = make(map[string]string)
-						}
-						serverConfig.Env["API_BASE_URL"] = data.ApiBaseUrl
-						data.MCPClientConfig.MCPServers[serverName] = serverConfig
-						break
-					}
-				}
-
-				adapter := &models.AdapterResource{}
-				adapter.Create(data, "system", time.Now())
-				if err := adapterStore.Create(c.Request.Context(), *adapter); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					return
-				}
-				c.JSON(http.StatusCreated, gin.H{"status": "ok", "id": adapter.ID})
-			})
-			adapters.GET("/:name", func(c *gin.Context) {
-				// Get adapter
-				adapter, err := adapterStore.Get(c.Request.Context(), c.Param("name"))
-				if err != nil {
-					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-					return
-				}
-				c.JSON(http.StatusOK, adapter)
-			})
-			adapters.PUT("/:name", func(c *gin.Context) {
-				// Update adapter
-				var data models.AdapterData
-				if err := c.ShouldBindJSON(&data); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-					return
-				}
-				adapter, err := adapterStore.Get(c.Request.Context(), c.Param("name"))
-				if err != nil {
-					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-					return
-				}
-
-				// Check if this is a VirtualMCP adapter being updated
-				wasVirtualMCP := isVirtualMCPAdapter(&adapter.AdapterData)
-				isVirtualMCP := isVirtualMCPAdapter(&data)
-
-				// Update adapter data
-				adapter.AdapterData = data
-				adapter.LastUpdatedAt = time.Now()
-
-				// If it became a VirtualMCP adapter or the config changed, reconfigure
-				if isVirtualMCP && (!wasVirtualMCP || data.ApiBaseUrl != adapter.ApiBaseUrl) {
-					log.Printf("Reconfiguring updated VirtualMCP adapter: %s", adapter.Name)
-					reconfigureVirtualMCPAdapter(&adapter.AdapterData)
-				}
-
-				if err := adapterStore.Update(c.Request.Context(), *adapter); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					return
-				}
-				c.JSON(http.StatusOK, gin.H{"status": "ok"})
-			})
-			adapters.DELETE("/:name", func(c *gin.Context) {
-				// Delete adapter
-				if err := adapterStore.Delete(c.Request.Context(), c.Param("name")); err != nil {
-					c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-					return
-				}
-				c.JSON(http.StatusNoContent, nil)
-			})
+			// CRUD operations using AdapterHandler
+			adapters.GET("", ginToHTTPHandler(adapterHandler.ListAdapters))
+			adapters.POST("", ginToHTTPHandler(adapterHandler.CreateAdapter))
+			adapters.GET("/:name", ginToHTTPHandler(adapterHandler.GetAdapter))
+			adapters.PUT("/:name", ginToHTTPHandler(adapterHandler.UpdateAdapter))
+			adapters.DELETE("/:name", ginToHTTPHandler(adapterHandler.DeleteAdapter))
 
 			// Token management
 			adapters.GET("/:name/token", tokenHandler.GetAdapterToken)
@@ -644,9 +573,10 @@ func main() {
 			})
 
 			// MCP proxy endpoint - this is the main integration point
-			adapters.Any("/:name/mcp", func(c *gin.Context) {
-				handleMCPProxy(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
-			})
+			adapters.Any("/:name/mcp", ginToHTTPHandler(adapterHandler.HandleMCPProtocol))
+
+			// Sync capabilities
+			adapters.POST("/:name/sync", ginToHTTPHandler(adapterHandler.SyncAdapterCapabilities))
 
 			// REST-style MCP endpoints
 			adapters.GET("/:name/tools", func(c *gin.Context) {
@@ -715,7 +645,8 @@ func main() {
 
 	// Log available server URLs
 	serverURLs := cfg.GetServerURLs()
-	log.Printf("Server starting on port %s", cfg.Port)
+	log.Printf("Server starting on port %s (from config)", cfg.Port)
+	log.Printf("PORT env var: %s", os.Getenv("PORT"))
 	log.Printf("Service will be accessible at:")
 	for _, url := range serverURLs {
 		log.Printf("  %s", url)

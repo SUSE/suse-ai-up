@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
@@ -32,6 +33,8 @@ func NewAdapterService(store clients.AdapterResourceStore, registryStore clients
 
 // CreateAdapter creates a new adapter from a registry server
 func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID, name string, envVars map[string]string, auth *models.AdapterAuthConfig) (*models.AdapterResource, error) {
+	logging.AdapterLogger.Info("CreateAdapter started for server ID %s (user: %s)", mcpServerID, userID)
+
 	// Get the MCP server from registry - first try by ID, then by name
 	server, err := as.registryStore.GetMCPServer(mcpServerID)
 	if err != nil {
@@ -45,15 +48,13 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		}
 	}
 	if server == nil {
+		logging.AdapterLogger.Error("MCP server not found: %s", mcpServerID)
 		return nil, fmt.Errorf("MCP server not found: %s", mcpServerID)
 	}
-	fmt.Printf("DEBUG: Retrieved server %s with Meta: %+v\n", server.Name, server.Meta)
 
-	fmt.Printf("DEBUG: CreateAdapter called for server %s\n", server.Name)
-	if len(server.Packages) == 0 {
-		fmt.Printf("DEBUG: Server %s has no packages defined\n", server.Name)
-	} else {
-		fmt.Printf("DEBUG: Server %s transport: %s\n", server.Name, server.Packages[0].Transport.Type)
+	logging.AdapterLogger.Info("Retrieved server %s with %d packages", server.Name, len(server.Packages))
+	if len(server.Packages) > 0 {
+		logging.AdapterLogger.Info("Server transport: %s", server.Packages[0].Transport.Type)
 	}
 
 	// Validate required environment variables
@@ -70,16 +71,15 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 
 	// For non-remote servers (those with stdio packages), always create sidecars
 	// The MCP inside the sidecar will use HTTP streamable-HTTP transport
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking server %s for sidecar creation\n", server.Name)
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: hasStdioPackage: %v\n", as.hasStdioPackage(server))
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: contains uyuni: %v\n", strings.Contains(server.Name, "uyuni"))
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: contains bugzilla: %v\n", strings.Contains(server.Name, "bugzilla"))
+	logging.AdapterLogger.Info("Checking server %s for sidecar creation (hasStdio: %v, uyuni: %v, bugzilla: %v)",
+		server.Name, as.hasStdioPackage(server), strings.Contains(server.Name, "uyuni"), strings.Contains(server.Name, "bugzilla"))
 
 	if as.hasStdioPackage(server) || strings.Contains(server.Name, "uyuni") || strings.Contains(server.Name, "bugzilla") {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will create sidecar for server %s\n", server.Name)
+		logging.AdapterLogger.Info("Will create sidecar for server %s", server.Name)
 		// Get the docker command from the server metadata
 		dockerCommand := as.getDockerCommand(server)
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerCommand returned: '%s'\n", dockerCommand)
+		logging.AdapterLogger.Info("Docker command: '%s'", dockerCommand)
+
 		if dockerCommand != "" {
 			sidecarConfig = &models.SidecarConfig{
 				CommandType: "docker",
@@ -87,7 +87,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 				Port:        8000, // Fixed port
 			}
 			connectionType = models.ConnectionTypeStreamableHttp
-			fmt.Printf("ADAPTER_SERVICE_DEBUG: Created docker sidecar config with command: %s\n", dockerCommand)
+			logging.AdapterLogger.Success("Created docker sidecar config")
 		} else {
 			// Fallback: try to create a generic sidecar configuration
 			sidecarConfig = &models.SidecarConfig{
@@ -97,7 +97,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 				Port:        0, // Will be allocated dynamically
 			}
 			connectionType = models.ConnectionTypeStreamableHttp
-			fmt.Printf("ADAPTER_SERVICE_DEBUG: Created fallback sidecar config\n")
+			logging.AdapterLogger.Info("Created fallback sidecar config")
 		}
 	} else {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will NOT create sidecar for server %s\n", server.Name)
@@ -129,24 +129,25 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	// Deploy sidecar if needed
 	if adapter.SidecarConfig != nil && adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
 		if as.sidecarManager == nil {
-			fmt.Printf("DEBUG: SidecarManager is nil, cannot deploy sidecar for adapter %s\n", adapter.ID)
+			logging.AdapterLogger.Error("SidecarManager is nil, cannot deploy sidecar for adapter %s", adapter.ID)
 			// Clean up the adapter since sidecar deployment is required
 			as.store.Delete(ctx, adapter.ID)
 			return nil, fmt.Errorf("sidecar manager not available for adapter deployment")
 		} else {
-			fmt.Printf("DEBUG: Attempting to deploy sidecar for adapter %s\n", adapter.ID)
+			logging.AdapterLogger.Info("Deploying sidecar for adapter %s", adapter.ID)
 			if err := as.sidecarManager.DeploySidecar(ctx, *adapter); err != nil {
-				fmt.Printf("DEBUG: Sidecar deployment failed: %v\n", err)
+				logging.AdapterLogger.Error("Sidecar deployment failed for adapter %s: %v", adapter.ID, err)
 				// If sidecar deployment fails, we should clean up the adapter
 				as.store.Delete(ctx, adapter.ID)
 				return nil, fmt.Errorf("failed to deploy sidecar: %w", err)
 			}
-			fmt.Printf("DEBUG: Sidecar deployment successful for adapter %s\n", adapter.ID)
+			logging.AdapterLogger.Success("Sidecar deployment successful for adapter %s", adapter.ID)
 			// Update the stored adapter with the allocated port
 			as.store.Update(ctx, *adapter)
 		}
 	}
 
+	logging.AdapterLogger.Success("CreateAdapter completed successfully for adapter %s", adapter.ID)
 	return adapter, nil
 }
 
@@ -384,42 +385,42 @@ func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adap
 
 // DeleteAdapter deletes an adapter and its associated resources
 func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID string) error {
-	fmt.Printf("DEBUG: DeleteAdapter called for adapter %s by user %s\n", adapterID, userID)
+	logging.AdapterLogger.Info("DeleteAdapter called for adapter %s by user %s", adapterID, userID)
 
 	// Get adapter before deletion to check if it has sidecar resources
 	adapter, err := as.store.Get(ctx, adapterID)
 	if err != nil {
-		fmt.Printf("DEBUG: Failed to get adapter %s: %v\n", adapterID, err)
+		logging.AdapterLogger.Error("Failed to get adapter %s: %v", adapterID, err)
 	} else if adapter != nil {
-		fmt.Printf("DEBUG: Found adapter %s with connection type: %s\n", adapterID, adapter.ConnectionType)
+		logging.AdapterLogger.Info("Found adapter %s with connection type: %s", adapterID, adapter.ConnectionType)
 
 		// If this is a sidecar adapter (StreamableHttp with sidecar config), clean up the sidecar resources
 		if adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil {
 			if as.sidecarManager == nil {
-				fmt.Printf("DEBUG: SidecarManager is nil, cannot cleanup sidecar for adapter %s\n", adapterID)
+				logging.AdapterLogger.Warn("SidecarManager is nil, cannot cleanup sidecar for adapter %s", adapterID)
 			} else {
-				fmt.Printf("DEBUG: Attempting to cleanup sidecar for adapter %s\n", adapterID)
+				logging.AdapterLogger.Info("Cleaning up sidecar for adapter %s", adapterID)
 				if cleanupErr := as.sidecarManager.CleanupSidecar(ctx, adapterID); cleanupErr != nil {
 					// Log the error but don't fail the adapter deletion
-					fmt.Printf("Warning: Failed to cleanup sidecar for adapter %s: %v\n", adapterID, cleanupErr)
+					logging.AdapterLogger.Warn("Failed to cleanup sidecar for adapter %s: %v", adapterID, cleanupErr)
 				} else {
-					fmt.Printf("DEBUG: Successfully initiated sidecar cleanup for adapter %s\n", adapterID)
+					logging.AdapterLogger.Success("Successfully initiated sidecar cleanup for adapter %s", adapterID)
 				}
 			}
 		} else {
-			fmt.Printf("DEBUG: Adapter %s is not a sidecar adapter (type: %s), skipping sidecar cleanup\n", adapterID, adapter.ConnectionType)
+			logging.AdapterLogger.Info("Adapter %s is not a sidecar adapter (type: %s), skipping sidecar cleanup", adapterID, adapter.ConnectionType)
 		}
 	} else {
-		fmt.Printf("DEBUG: Adapter %s not found in store\n", adapterID)
+		logging.AdapterLogger.Warn("Adapter %s not found in store", adapterID)
 	}
 
 	// Delete the adapter from store
 	if err := as.store.Delete(ctx, adapterID); err != nil {
-		fmt.Printf("DEBUG: Failed to delete adapter %s from store: %v\n", adapterID, err)
+		logging.AdapterLogger.Error("Failed to delete adapter %s from store: %v", adapterID, err)
 		return fmt.Errorf("failed to delete adapter from store: %w", err)
 	}
 
-	fmt.Printf("DEBUG: Successfully deleted adapter %s from store\n", adapterID)
+	logging.AdapterLogger.Success("Successfully deleted adapter %s", adapterID)
 	return nil
 }
 

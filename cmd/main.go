@@ -21,11 +21,15 @@ import (
 	"syscall"
 	"time"
 
+	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/services/proxy"
 )
 
 func main() {
+	// Initialize global logging system
+	logging.InitGlobalLoggers()
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
@@ -45,7 +49,7 @@ func main() {
 		printUsage()
 		os.Exit(0)
 	default:
-		fmt.Printf("Unknown command: %s\n", command)
+		logging.ProxyLogger.Error("Unknown command: %s", command)
 		printUsage()
 		os.Exit(1)
 	}
@@ -67,6 +71,9 @@ func runUniproxy() {
 		}
 	}
 
+	logging.ProxyLogger.Info("Starting SUSE AI Universal Proxy service...")
+	logging.ProxyLogger.Info("HTTP Port: %d, HTTPS Port: %d", port, tlsPort)
+
 	config := &proxy.Config{
 		Port:    port,
 		TLSPort: tlsPort,
@@ -74,12 +81,27 @@ func runUniproxy() {
 	}
 	service := proxy.NewService(config)
 	if err := service.Start(); err != nil {
-		fmt.Printf("Failed to start uniproxy service: %v\n", err)
+		logging.ProxyLogger.Error("Failed to start uniproxy service: %v", err)
 		os.Exit(1)
 	}
 
-	// Block indefinitely to keep the service running
-	select {}
+	// Display service banner
+	logging.ServiceBanner(logging.ServiceProxy, "MCP Proxy and Adapter Management", port, tlsPort)
+	logging.ProxyLogger.Success("Service started successfully")
+	logging.ProxyLogger.Info("Press Ctrl+C to stop the service")
+
+	// Wait for interrupt signal to gracefully shutdown the service
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logging.ShutdownBanner(logging.ServiceProxy)
+	if err := service.Stop(); err != nil {
+		logging.ProxyLogger.Error("Error during service shutdown: %v", err)
+		os.Exit(1)
+	}
+
+	logging.ProxyLogger.Success("Service stopped gracefully")
 }
 
 func runHealthServer() {

@@ -82,6 +82,14 @@ func parseTrentoConfig(config string) (trentoURL, token string, err error) {
 }
 
 // HandleAdapters handles both listing and creating adapters
+// @Summary List adapters
+// @Description List all adapters for the current user
+// @Tags adapters
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Success 200 {array} models.AdapterResource "List of adapters"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters [get]
 func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -94,6 +102,17 @@ func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) 
 }
 
 // CreateAdapter creates a new adapter from a registry server
+// @Summary Create a new adapter
+// @Description Create a new adapter from an MCP server in the registry
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param adapter body CreateAdapterRequest true "Adapter creation request"
+// @Success 201 {object} CreateAdapterResponse "Created adapter"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters [post]
 func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -218,6 +237,16 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAdapter gets a specific adapter by ID
+// @Summary Get adapter details
+// @Description Retrieve details of a specific adapter
+// @Tags adapters
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter ID"
+// @Success 200 {object} models.AdapterResource "Adapter details"
+// @Failure 404 {object} ErrorResponse "Adapter not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters/{name} [get]
 func (h *AdapterHandler) GetAdapter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -251,6 +280,18 @@ func (h *AdapterHandler) GetAdapter(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateAdapter updates an existing adapter
+// @Summary Update adapter
+// @Description Update an existing adapter's configuration
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter ID"
+// @Param adapter body models.AdapterResource true "Updated adapter data"
+// @Success 200 {object} models.AdapterResource "Updated adapter"
+// @Failure 404 {object} ErrorResponse "Adapter not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters/{name} [put]
 func (h *AdapterHandler) UpdateAdapter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -294,6 +335,15 @@ func (h *AdapterHandler) UpdateAdapter(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAdapter deletes an adapter and its associated sidecar resources
+// @Summary Delete adapter
+// @Description Delete an adapter and clean up its associated resources
+// @Tags adapters
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} ErrorResponse "Adapter not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters/{name} [delete]
 func (h *AdapterHandler) DeleteAdapter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -328,6 +378,17 @@ func (h *AdapterHandler) DeleteAdapter(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleMCPProtocol proxies MCP protocol requests to the sidecar
+// @Summary Proxy MCP protocol requests
+// @Description Proxy MCP protocol requests (tools, resources, prompts) to the adapter
+// @Tags adapters,mcp
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter ID"
+// @Success 200 {object} map[string]interface{} "MCP response"
+// @Failure 404 {object} ErrorResponse "Adapter not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters/{name}/mcp [post]
 func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Request) {
 	// Extract adapter ID from URL path
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
@@ -512,6 +573,16 @@ func (h *AdapterHandler) rewriteSidecarURLs(responseBody, adapterID string) stri
 }
 
 // SyncAdapterCapabilities syncs capabilities for an adapter
+// @Summary Sync adapter capabilities
+// @Description Synchronize and refresh the capabilities of an adapter
+// @Tags adapters
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter ID"
+// @Success 200 {object} map[string]string "Sync result"
+// @Failure 404 {object} ErrorResponse "Adapter not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters/{name}/sync [post]
 func (h *AdapterHandler) SyncAdapterCapabilities(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

@@ -1,0 +1,15 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Comprehensive MCP proxy with discovery, registry, and deployment capabilities",
+        "title": "SUSE AI Uniproxy API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8911",
+    "basePath": "/",
+    "paths": {}
+}
