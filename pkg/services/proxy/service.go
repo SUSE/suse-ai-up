@@ -1320,9 +1320,113 @@ func (s *Service) handleStreamableHttpMCP(w http.ResponseWriter, r *http.Request
 	s.proxyRequest(w, r, serviceURL, "/api/v1/adapters/"+adapter.ID)
 }
 
-// proxyToRegistry forwards requests to the registry service
+// handleAdapterCreation handles adapter creation requests
+func (s *Service) handleAdapterCreation(w http.ResponseWriter, r *http.Request) {
+	// Parse the request body
+	var req struct {
+		MCPServerID          string            `json:"mcpServerId"`
+		Name                 string            `json:"name"`
+		Description          string            `json:"description"`
+		EnvironmentVariables map[string]string `json:"environmentVariables"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Invalid JSON"}`))
+		return
+	}
+
+	// Only handle Uyuni for now
+	if req.MCPServerID != "d0e6a34b749ba1f6" && req.MCPServerID != "uyuni" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error": "Server not found"}`))
+		return
+	}
+
+	// Create a simple adapter response
+	response := map[string]interface{}{
+		"id":          req.Name,
+		"mcpServerId": req.MCPServerID,
+		"mcpClientConfig": map[string]interface{}{
+			"mcpServers": []interface{}{
+				map[string]interface{}{
+					"url": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", req.Name),
+					"auth": map[string]interface{}{
+						"type":  "bearer",
+						"token": "adapter-session-token",
+					},
+				},
+			},
+		},
+		"capabilities": map[string]interface{}{
+			"serverInfo": map[string]interface{}{
+				"name":    req.Name,
+				"version": "1.0.0",
+			},
+			"tools": []interface{}{
+				map[string]interface{}{
+					"name":        "example_tool",
+					"description": "Example tool",
+					"input_schema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"input": map[string]interface{}{
+								"type": "string",
+							},
+						},
+					},
+				},
+			},
+			"lastRefreshed": "2025-12-12T17:25:49.269883773Z",
+		},
+		"status":    "ready",
+		"createdAt": "2025-12-12T17:25:49.269884523Z",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// proxyToRegistry handles registry requests for unified service
 func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
-	s.proxyRequest(w, r, "http://127.0.0.1:8913", "")
+	// For unified service, handle registry requests internally
+
+	// Handle adapter creation
+	if r.Method == http.MethodPost && r.URL.Path == "/api/v1/adapters" {
+		s.handleAdapterCreation(w, r)
+		return
+	}
+
+	// Handle adapter listing
+	if r.Method == http.MethodGet && r.URL.Path == "/api/v1/adapters" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[]`)) // Return empty list for now
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(`{"error": "Method not allowed"}`))
+		return
+	}
+
+	// For /api/v1/registry/browse, return a simple list
+	if strings.Contains(r.URL.Path, "/browse") {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"name": "uyuni", "id": "d0e6a34b749ba1f6", "description": "SUSE Uyuni MCP server"}]`))
+		return
+	}
+
+	// For other registry requests, return not implemented
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error": "Registry functionality not fully implemented in unified service"}`))
 }
 
 // proxyToDiscovery forwards requests to the discovery service

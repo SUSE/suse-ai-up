@@ -77,6 +77,9 @@ func runUniproxy() {
 		fmt.Printf("Failed to start uniproxy service: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Block indefinitely to keep the service running
+	select {}
 }
 
 func runHealthServer() {

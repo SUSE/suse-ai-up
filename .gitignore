@@ -36,3 +36,4 @@ test_sidecar
 test_sidecar.go
 update_docker_commands
 AGENTS.md
+PLAN.md

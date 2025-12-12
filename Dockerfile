@@ -33,6 +33,9 @@ COPY --from=builder /app/suse-ai-up .
 COPY --from=builder /app/docs ./docs
 COPY --from=builder /app/config ./config
 
+# Clean up old config files
+RUN rm -f config/comprehensive_mcp_servers.yaml*
+
 # Change ownership to non-root user
 RUN chown -R mcpuser:mcpuser suse-ai-up docs config
 
@@ -47,4 +50,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8911 8912-8914 3911 38912-38914
 
 # Run the binary
-CMD ["./suse-ai-up", "all"]
+CMD ["./suse-ai-up", "uniproxy"]
