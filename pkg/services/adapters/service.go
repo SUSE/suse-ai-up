@@ -128,6 +128,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 
 	// Deploy sidecar if needed
 	if adapter.SidecarConfig != nil && adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
+		logging.AdapterLogger.Info("Sidecar deployment needed for adapter %s (SidecarConfig: %+v)", adapter.ID, adapter.SidecarConfig)
 		if as.sidecarManager == nil {
 			logging.AdapterLogger.Error("SidecarManager is nil, cannot deploy sidecar for adapter %s", adapter.ID)
 			// Clean up the adapter since sidecar deployment is required

@@ -27,6 +27,7 @@ import (
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
 	"suse-ai-up/pkg/clients"
+	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
@@ -250,6 +251,8 @@ func reconfigureVirtualMCPAdapter(data *models.AdapterData) {
 
 // initOTEL initializes OpenTelemetry tracing and metrics
 func initOTEL(ctx context.Context, cfg *config.Config) error {
+	log.Printf("DEBUG: initOTEL called")
+
 	// Create OTLP trace exporter
 	traceExporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint(cfg.OtelEndpoint),
@@ -327,7 +330,8 @@ func main() {
 	}
 
 	// Initialize stores
-	adapterStore := clients.NewInMemoryAdapterStore()
+	// Use file-based adapter store for persistence
+	adapterStore := clients.NewFileAdapterStore("/tmp/adapters.json")
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
@@ -401,12 +405,17 @@ func main() {
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
 	// Initialize AdapterService with SidecarManager
+	logging.ProxyLogger.Info("Initializing AdapterService with SidecarManager")
 	adapterService := adaptersvc.NewAdapterService(adapterStore, registryStore, sidecarManager)
 	adapterHandler := handlers.NewAdapterHandler(adapterService)
+	logging.ProxyLogger.Success("AdapterService and AdapterHandler initialized")
+
+	// Adapter handlers are now used directly in Gin routes
 
 	// Helper function to convert Gin context to standard HTTP handler
 	ginToHTTPHandler := func(handler func(http.ResponseWriter, *http.Request)) gin.HandlerFunc {
 		return func(c *gin.Context) {
+			log.Printf("GIN HANDLER CALLED for path: %s", c.Request.URL.Path)
 			handler(c.Writer, c.Request)
 		}
 	}
@@ -481,6 +490,7 @@ func main() {
 	})
 
 	// API v1 routes
+	logging.ProxyLogger.Info("Setting up API v1 routes")
 	v1 := r.Group("/api/v1")
 	{
 		// Discovery routes
@@ -496,10 +506,13 @@ func main() {
 		}
 
 		// Adapter routes
+		logging.ProxyLogger.Info("Setting up adapter routes")
 		adapters := v1.Group("/adapters")
 		{
 			// CRUD operations using AdapterHandler
+			logging.ProxyLogger.Info("Registering adapter GET route")
 			adapters.GET("", ginToHTTPHandler(adapterHandler.ListAdapters))
+			logging.ProxyLogger.Info("Registering adapter POST route")
 			adapters.POST("", ginToHTTPHandler(adapterHandler.CreateAdapter))
 			adapters.GET("/:name", ginToHTTPHandler(adapterHandler.GetAdapter))
 			adapters.PUT("/:name", ginToHTTPHandler(adapterHandler.UpdateAdapter))
@@ -642,6 +655,13 @@ func main() {
 		Addr:    ":" + cfg.Port,
 		Handler: r,
 	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+	log.Printf("DEBUG: Gin HTTP server created")
 
 	// Log available server URLs
 	serverURLs := cfg.GetServerURLs()

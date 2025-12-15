@@ -23,7 +23,7 @@ import (
 
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/middleware"
-	"suse-ai-up/pkg/services/proxy"
+	proxysvc "suse-ai-up/pkg/services/proxy"
 )
 
 func main() {
@@ -74,12 +74,14 @@ func runUniproxy() {
 	logging.ProxyLogger.Info("Starting SUSE AI Universal Proxy service...")
 	logging.ProxyLogger.Info("HTTP Port: %d, HTTPS Port: %d", port, tlsPort)
 
-	config := &proxy.Config{
+	// Adapter handlers will be implemented in the proxy service
+
+	config := &proxysvc.Config{
 		Port:    port,
 		TLSPort: tlsPort,
 		AutoTLS: true, // Enable auto-generated TLS certificates
 	}
-	service := proxy.NewService(config)
+	service := proxysvc.NewService(config)
 	if err := service.Start(); err != nil {
 		logging.ProxyLogger.Error("Failed to start uniproxy service: %v", err)
 		os.Exit(1)

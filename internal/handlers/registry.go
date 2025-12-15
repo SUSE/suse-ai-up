@@ -58,12 +58,12 @@ type MCPServerStore interface {
 type RegistryHandler struct {
 	Store           MCPServerStore
 	RegistryManager RegistryManagerInterface
-	AdapterStore    *clients.InMemoryAdapterStore
+	AdapterStore    clients.AdapterResourceStore
 	ToolDiscovery   *mcp.MCPToolDiscoveryService
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore *clients.InMemoryAdapterStore) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore) *RegistryHandler {
 	handler := &RegistryHandler{
 		Store:           store,
 		RegistryManager: registryManager,

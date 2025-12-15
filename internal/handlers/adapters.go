@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/models"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
 )
@@ -102,30 +103,19 @@ func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) 
 }
 
 // CreateAdapter creates a new adapter from a registry server
-// @Summary Create a new adapter
-// @Description Create a new adapter from an MCP server in the registry
-// @Tags adapters
-// @Accept json
-// @Produce json
-// @Param X-User-ID header string false "User ID" default(default-user)
-// @Param adapter body CreateAdapterRequest true "Adapter creation request"
-// @Success 201 {object} CreateAdapterResponse "Created adapter"
-// @Failure 400 {object} ErrorResponse "Bad request"
-// @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /api/v1/adapters [post]
 func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	logging.AdapterLogger.Info("CreateAdapter handler invoked")
 
 	var req CreateAdapterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logging.AdapterLogger.Error("Failed to decode JSON: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid JSON: " + err.Error()})
 		return
 	}
+
+	logging.AdapterLogger.Info("Decoded request: mcpServerId=%s, name=%s", req.MCPServerID, req.Name)
 
 	// Basic validation
 	if req.MCPServerID == "" || req.Name == "" {
@@ -214,6 +204,7 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 
 // ListAdapters lists all adapters for the current user
 func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
+	logging.AdapterLogger.Info("ListAdapters handler invoked")
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

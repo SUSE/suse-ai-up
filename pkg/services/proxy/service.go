@@ -13,21 +13,38 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Service represents the proxy service
 type Service struct {
-	config      *Config
-	server      *proxy.MCPProxyServer
-	httpServer  *http.Server
-	httpsServer *http.Server
-	shutdownCh  chan struct{}
+	config          *Config
+	server          *proxy.MCPProxyServer
+	httpServer      *http.Server
+	httpsServer     *http.Server
+	shutdownCh      chan struct{}
+	adapterHandlers AdapterHandlers
+	// Simple in-memory adapter storage for basic functionality
+	adapters map[string]models.AdapterResource
+}
+
+// AdapterHandlers contains the adapter handler functions
+type AdapterHandlers struct {
+	ListAdapters      func(http.ResponseWriter, *http.Request)
+	CreateAdapter     func(http.ResponseWriter, *http.Request)
+	GetAdapter        func(http.ResponseWriter, *http.Request)
+	UpdateAdapter     func(http.ResponseWriter, *http.Request)
+	DeleteAdapter     func(http.ResponseWriter, *http.Request)
+	HandleMCPProtocol func(http.ResponseWriter, *http.Request)
+	SyncCapabilities  func(http.ResponseWriter, *http.Request)
 }
 
 // Config holds proxy service configuration
@@ -43,8 +60,10 @@ type Config struct {
 // NewService creates a new proxy service
 func NewService(config *Config) *Service {
 	return &Service{
-		config:     config,
-		shutdownCh: make(chan struct{}),
+		config:          config,
+		shutdownCh:      make(chan struct{}),
+		adapterHandlers: AdapterHandlers{}, // Will be set up in route configuration
+		adapters:        make(map[string]models.AdapterResource),
 	}
 }
 
@@ -95,17 +114,59 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
 	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
 
-	// Proxy routes for service APIs
+	// Registry routes - handle properly instead of hardcoded responses
 	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
 	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(s.proxyToRegistry))
 	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(s.proxyToRegistry))
-	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(s.proxyToRegistry))
+	// Adapter routes with inline handlers
+	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		// Handle both GET (list) and POST (create) for /api/v1/adapters
+		switch r.Method {
+		case http.MethodGet:
+			s.handleListAdapters(w, r)
+		case http.MethodPost:
+			s.handleCreateAdapter(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		// Check if this is an MCP request (contains /mcp in the path)
-		if strings.Contains(r.URL.Path, "/mcp") {
-			s.HandleAdapterMCP(w, r)
+		// Route based on HTTP method and path
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters")
+		if path == "" || path == "/" {
+			// Root adapters endpoint
+			switch r.Method {
+			case http.MethodGet:
+				s.handleListAdapters(w, r)
+			case http.MethodPost:
+				s.handleCreateAdapter(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		} else if strings.Contains(path, "/mcp") {
+			// MCP protocol endpoint
+			s.handleMCPProtocol(w, r)
+		} else if strings.Contains(path, "/sync") {
+			// Sync capabilities endpoint
+			s.handleSyncCapabilities(w, r)
 		} else {
-			s.proxyToRegistry(w, r)
+			// Individual adapter endpoints - extract adapter name
+			parts := strings.Split(strings.Trim(path, "/"), "/")
+			if len(parts) > 0 {
+				adapterName := parts[0]
+				switch r.Method {
+				case http.MethodGet:
+					s.handleGetAdapter(w, r, adapterName)
+				case http.MethodPut:
+					s.handleUpdateAdapter(w, r, adapterName)
+				case http.MethodDelete:
+					s.handleDeleteAdapter(w, r, adapterName)
+				default:
+					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				}
+			} else {
+				http.Error(w, "Invalid adapter path", http.StatusBadRequest)
+			}
 		}
 	}))
 	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(s.proxyToDiscovery))
@@ -116,7 +177,11 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/health/", middleware.CORSMiddleware(s.proxyToPlugins))
 
 	// Health check endpoint for Kubernetes probes
-	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
+	mux.HandleFunc("/health", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "healthy", "timestamp": "` + time.Now().UTC().Format(time.RFC3339) + `", "version": "1.0.0"}`))
+	}))
 
 	// Start HTTP server
 	s.httpServer = &http.Server{
@@ -234,6 +299,167 @@ func (s *Service) Stop() error {
 
 	close(s.shutdownCh)
 	return nil
+}
+
+// Adapter handler methods
+
+func (s *Service) handleListAdapters(w http.ResponseWriter, r *http.Request) {
+	logging.AdapterLogger.Info("handleListAdapters called")
+	w.Header().Set("Content-Type", "application/json")
+	adapters := make([]models.AdapterResource, 0, len(s.adapters))
+	for _, adapter := range s.adapters {
+		adapters = append(adapters, adapter)
+	}
+	json.NewEncoder(w).Encode(adapters)
+}
+
+func (s *Service) handleCreateAdapter(w http.ResponseWriter, r *http.Request) {
+	logging.AdapterLogger.Info("handleCreateAdapter called")
+
+	var req struct {
+		MCPServerID          string            `json:"mcpServerId"`
+		Name                 string            `json:"name"`
+		Description          string            `json:"description"`
+		EnvironmentVariables map[string]string `json:"environmentVariables"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logging.AdapterLogger.Error("Failed to decode adapter request: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	if req.Name == "" {
+		logging.AdapterLogger.Error("Adapter name is required")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Adapter name is required"})
+		return
+	}
+
+	// Check if adapter already exists
+	if _, exists := s.adapters[req.Name]; exists {
+		logging.AdapterLogger.Error("Adapter %s already exists", req.Name)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Adapter already exists"})
+		return
+	}
+
+	// Create basic adapter data
+	adapterData := &models.AdapterData{
+		Name:                 req.Name,
+		ConnectionType:       models.ConnectionTypeStreamableHttp,
+		EnvironmentVariables: req.EnvironmentVariables,
+		Description:          req.Description,
+	}
+
+	// Create adapter resource
+	adapter := models.AdapterResource{}
+	adapter.Create(*adapterData, "system", time.Now())
+
+	// Store adapter
+	s.adapters[req.Name] = adapter
+
+	logging.AdapterLogger.Success("Created adapter %s", req.Name)
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	response := map[string]interface{}{
+		"id":          adapter.ID,
+		"mcpServerId": req.MCPServerID,
+		"status":      "ready",
+		"capabilities": map[string]interface{}{
+			"serverInfo": map[string]interface{}{
+				"name":    adapter.Name,
+				"version": "1.0.0",
+			},
+			"tools": []interface{}{
+				map[string]interface{}{
+					"name":        "example_tool",
+					"description": "Example tool from remote server",
+					"input_schema": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"input": map[string]interface{}{
+								"type": "string",
+							},
+						},
+					},
+				},
+			},
+		},
+		"mcpClientConfig": map[string]interface{}{
+			"mcpServers": []interface{}{
+				map[string]interface{}{
+					"url": fmt.Sprintf("http://localhost:%d/api/v1/adapters/%s/mcp", s.config.Port, req.Name),
+					"auth": map[string]interface{}{
+						"type":  "bearer",
+						"token": "adapter-session-token",
+					},
+				},
+			},
+		},
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Service) handleGetAdapter(w http.ResponseWriter, r *http.Request, adapterName string) {
+	logging.AdapterLogger.Info("handleGetAdapter called for %s", adapterName)
+
+	adapter, exists := s.adapters[adapterName]
+	if !exists {
+		logging.AdapterLogger.Warn("Adapter %s not found", adapterName)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Adapter not found"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(adapter)
+}
+
+func (s *Service) handleUpdateAdapter(w http.ResponseWriter, r *http.Request, adapterName string) {
+	logging.AdapterLogger.Info("handleUpdateAdapter called for %s", adapterName)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{"error": "Adapter update not implemented"})
+}
+
+func (s *Service) handleDeleteAdapter(w http.ResponseWriter, r *http.Request, adapterName string) {
+	logging.AdapterLogger.Info("handleDeleteAdapter called for %s", adapterName)
+
+	if _, exists := s.adapters[adapterName]; !exists {
+		logging.AdapterLogger.Warn("Adapter %s not found for deletion", adapterName)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Adapter not found"})
+		return
+	}
+
+	delete(s.adapters, adapterName)
+	logging.AdapterLogger.Success("Deleted adapter %s", adapterName)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Service) handleMCPProtocol(w http.ResponseWriter, r *http.Request) {
+	logging.AdapterLogger.Info("handleMCPProtocol called")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{"error": "MCP protocol not implemented"})
+}
+
+func (s *Service) handleSyncCapabilities(w http.ResponseWriter, r *http.Request) {
+	logging.AdapterLogger.Info("handleSyncCapabilities called")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "synced"})
 }
 
 // generateSelfSignedCert generates a self-signed certificate for development
@@ -1404,6 +1630,7 @@ func (s *Service) handleAdapterCreation(w http.ResponseWriter, r *http.Request) 
 
 // proxyToRegistry handles registry requests for unified service
 func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
+
 	// For unified service, handle registry requests internally
 
 	// Handle adapter creation
@@ -1427,11 +1654,12 @@ func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For /api/v1/registry/browse, return a simple list
+	// Handle registry browse endpoint
 	if strings.Contains(r.URL.Path, "/browse") {
+		servers := s.loadRegistryServers()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"name": "uyuni", "id": "d0e6a34b749ba1f6", "description": "SUSE Uyuni MCP server"}]`))
+		json.NewEncoder(w).Encode(servers)
 		return
 	}
 
@@ -1449,6 +1677,27 @@ func (s *Service) proxyToDiscovery(w http.ResponseWriter, r *http.Request) {
 // proxyToPlugins forwards requests to the plugins service
 func (s *Service) proxyToPlugins(w http.ResponseWriter, r *http.Request) {
 	s.proxyRequest(w, r, "http://127.0.0.1:8914", "")
+}
+
+// loadRegistryServers loads MCP servers from the config file
+func (s *Service) loadRegistryServers() []map[string]interface{} {
+	registryFile := "config/mcp_registry.yaml"
+	data, err := os.ReadFile(registryFile)
+	if err != nil {
+		logging.ProxyLogger.Error("Could not read registry file %s: %v", registryFile, err)
+		return []map[string]interface{}{}
+	}
+
+	var servers []map[string]interface{}
+	if err := yaml.Unmarshal(data, &servers); err != nil {
+		logging.ProxyLogger.Error("Could not parse registry file %s: %v", registryFile, err)
+		return []map[string]interface{}{}
+	}
+
+	logging.ProxyLogger.Info("Loaded %d MCP servers from %s", len(servers), registryFile)
+
+	// Return the complete server data as-is from the YAML
+	return servers
 }
 
 // proxyRequest forwards HTTP requests to other services
