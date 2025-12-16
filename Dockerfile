@@ -13,14 +13,14 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary for the target architecture
+# Build the binary (swagger docs are copied from build context)
 RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd
 
 # Final stage - minimal runtime image
 FROM alpine:latest
 
 # Install only essential runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata kubectl
 
 # Create non-root user
 RUN adduser -D -s /bin/sh -u 1000 mcpuser
@@ -30,8 +30,10 @@ WORKDIR /home/mcpuser/
 
 # Copy the binary, docs, and config from builder stage
 COPY --from=builder /app/suse-ai-up .
-COPY --from=builder /app/docs ./docs
 COPY --from=builder /app/config ./config
+
+# Copy swagger docs from build context (generated during make build)
+COPY docs ./docs
 
 # Clean up old config files
 RUN rm -f config/comprehensive_mcp_servers.yaml*

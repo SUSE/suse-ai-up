@@ -11,6 +11,7 @@ import (
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/proxy"
+	"suse-ai-up/pkg/services"
 )
 
 // AdapterService manages adapters for remote MCP servers
@@ -33,7 +34,7 @@ func NewAdapterService(store clients.AdapterResourceStore, registryStore clients
 
 // CreateAdapter creates a new adapter from a registry server
 func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID, name string, envVars map[string]string, auth *models.AdapterAuthConfig) (*models.AdapterResource, error) {
-	logging.AdapterLogger.Info("CreateAdapter started for server ID %s (user: %s)", mcpServerID, userID)
+	logging.AdapterLogger.Info("ADAPTER_SERVICE: CreateAdapter started for server ID %s (user: %s)", mcpServerID, userID)
 
 	// Get the MCP server from registry - first try by ID, then by name
 	server, err := as.registryStore.GetMCPServer(mcpServerID)
@@ -127,6 +128,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	}
 
 	// Deploy sidecar if needed
+	logging.AdapterLogger.Info("ADAPTER_SERVICE: Checking sidecar deployment - SidecarConfig: %v, ConnectionType: %v", adapter.SidecarConfig != nil, adapter.ConnectionType)
 	if adapter.SidecarConfig != nil && adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
 		logging.AdapterLogger.Info("Sidecar deployment needed for adapter %s (SidecarConfig: %+v)", adapter.ID, adapter.SidecarConfig)
 		if as.sidecarManager == nil {
@@ -146,6 +148,8 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 			// Update the stored adapter with the allocated port
 			as.store.Update(ctx, *adapter)
 		}
+	} else {
+		logging.AdapterLogger.Info("ADAPTER_SERVICE: Sidecar deployment NOT needed - SidecarConfig nil: %v, ConnectionType: %v", adapter.SidecarConfig == nil, adapter.ConnectionType)
 	}
 
 	logging.AdapterLogger.Success("CreateAdapter completed successfully for adapter %s", adapter.ID)
@@ -347,23 +351,40 @@ func (as *AdapterService) substituteTemplates(template string, envVars map[strin
 	return result
 }
 
-// GetAdapter gets an adapter by ID for a specific user
-func (as *AdapterService) GetAdapter(ctx context.Context, userID, adapterID string) (*models.AdapterResource, error) {
+// GetAdapter gets an adapter by ID with permission checking
+func (as *AdapterService) GetAdapter(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) (*models.AdapterResource, error) {
 	adapter, err := as.store.Get(ctx, adapterID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if adapter belongs to user
+	// Check if user can access this adapter
 	if adapter.CreatedBy != userID {
-		return nil, fmt.Errorf("adapter not found")
+		// Check admin permissions
+		if userGroupService != nil {
+			if canManage, err := userGroupService.CanManageGroups(ctx, userID); err == nil && canManage {
+				// Admin can access any adapter
+			} else {
+				return nil, fmt.Errorf("adapter not found")
+			}
+		} else {
+			return nil, fmt.Errorf("adapter not found")
+		}
 	}
 
 	return adapter, nil
 }
 
-// ListAdapters lists all adapters for a user
-func (as *AdapterService) ListAdapters(ctx context.Context, userID string) ([]models.AdapterResource, error) {
+// ListAdapters lists adapters with permission-based filtering
+func (as *AdapterService) ListAdapters(ctx context.Context, userID string, userGroupService *services.UserGroupService) ([]models.AdapterResource, error) {
+	// Check if user is admin (can see all adapters)
+	if userGroupService != nil {
+		if canManage, err := userGroupService.CanManageGroups(ctx, userID); err == nil && canManage {
+			return as.store.ListAll(ctx)
+		}
+	}
+
+	// Regular users only see their own adapters
 	return as.store.List(ctx, userID)
 }
 
@@ -426,9 +447,9 @@ func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID s
 }
 
 // SyncAdapterCapabilities syncs capabilities for an adapter
-func (as *AdapterService) SyncAdapterCapabilities(ctx context.Context, userID, adapterID string) error {
+func (as *AdapterService) SyncAdapterCapabilities(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) error {
 	// Get adapter
-	adapter, err := as.GetAdapter(ctx, userID, adapterID)
+	adapter, err := as.GetAdapter(ctx, userID, adapterID, userGroupService)
 	if err != nil {
 		return err
 	}

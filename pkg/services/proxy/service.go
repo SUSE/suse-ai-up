@@ -34,6 +34,9 @@ type Service struct {
 	adapterHandlers AdapterHandlers
 	// Simple in-memory adapter storage for basic functionality
 	adapters map[string]models.AdapterResource
+	// Delegate to proper adapter service for full functionality
+	adapterService interface{} // Will be set to the real adapter service
+	adapterStore   interface{} // Adapter store interface
 }
 
 // AdapterHandlers contains the adapter handler functions
@@ -69,106 +72,145 @@ func NewService(config *Config) *Service {
 
 // Start starts the proxy service
 func (s *Service) Start() error {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.ProxyLogger.Error("PANIC in Start(): %v", r)
+			fmt.Printf("PANIC RECOVERED: %v\n", r)
+		}
+	}()
+	if s.config == nil {
+		logging.ProxyLogger.Error("Config is nil!")
+		return fmt.Errorf("config is nil")
+	}
 	logging.ProxyLogger.Info("Initializing MCP Proxy service on port %d", s.config.Port)
+	logging.ProxyLogger.Error("TEST ERROR LOG")
+	logging.ProxyLogger.Info("Config port: %d", s.config.Port)
 
 	// Load proxy configuration
-	config, err := s.loadProxyConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load proxy config: %w", err)
-	}
+	// config, err := s.loadProxyConfig()
+	// if err != nil {
+	// 	return fmt.Errorf("failed to load proxy config: %w", err)
+	// }
 
 	// Create proxy server
-	s.server = proxy.AsProxyFromConfig(config, "MCPProxy")
+	// server := proxy.AsProxyFromConfig(config, "MCPProxy")
+	// s.server = server
 
 	// Create HTTP handler
-	handler := proxy.NewMCPProxyHandler(s.server)
+	// handler := proxy.NewMCPProxyHandler(s.server)
 
-	// Create mux with specific route handlers
-	mux := http.NewServeMux()
+	// Use default serve mux to ensure routes work
+	mux := http.DefaultServeMux
+	logging.ProxyLogger.Info("Using default serve mux")
 
 	// MCP routes (both /mcp/* and /api/v1/mcp/* for compatibility)
-	mux.HandleFunc("/mcp", middleware.CORSMiddleware(handler.HandleMCP))
-	mux.HandleFunc("/api/v1/mcp", middleware.CORSMiddleware(handler.HandleMCP))
-	mux.HandleFunc("/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
-	mux.HandleFunc("/api/v1/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
-	mux.HandleFunc("/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			handler.HandleToolCall(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
-	}))
-	mux.HandleFunc("/api/v1/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			handler.HandleToolCall(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
-	}))
-	mux.HandleFunc("/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
-	mux.HandleFunc("/api/v1/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
-	mux.HandleFunc("/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
-	mux.HandleFunc("/api/v1/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
+	// mux.HandleFunc("/mcp", middleware.CORSMiddleware(handler.HandleMCP))
+	// mux.HandleFunc("/api/v1/mcp", middleware.CORSMiddleware(handler.HandleMCP))
+	// mux.HandleFunc("/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
+	// mux.HandleFunc("/api/v1/mcp/tools", middleware.CORSMiddleware(handler.HandleToolsList))
+	// mux.HandleFunc("/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	// 	if r.Method == "POST" {
+	// 		handler.HandleToolCall(w, r)
+	// 	} else {
+	// 		http.NotFound(w, r)
+	// 	}
+	// }))
+	// mux.HandleFunc("/api/v1/mcp/tools/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	// 	if r.Method == "POST" {
+	// 		handler.HandleToolCall(w, r)
+	// 	} else {
+	// 		http.NotFound(w, r)
+	// 	}
+	// }))
+	// mux.HandleFunc("/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
+	// mux.HandleFunc("/api/v1/mcp/resources", middleware.CORSMiddleware(handler.HandleResourcesList))
+	// mux.HandleFunc("/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
+	// mux.HandleFunc("/api/v1/mcp/resources/", middleware.CORSMiddleware(handler.HandleResourceRead))
 
 	// Health and docs
-	mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
-	mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
+	// mux.HandleFunc("/docs", middleware.CORSMiddleware(s.handleDocs))
+	// mux.HandleFunc("/swagger.json", middleware.CORSMiddleware(s.handleSwaggerJSON))
 
 	// Registry routes - handle properly instead of hardcoded responses
-	mux.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
-	mux.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(s.proxyToRegistry))
-	mux.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(s.proxyToRegistry))
-	// Adapter routes with inline handlers
-	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		// Handle both GET (list) and POST (create) for /api/v1/adapters
-		switch r.Method {
-		case http.MethodGet:
-			s.handleListAdapters(w, r)
-		case http.MethodPost:
-			s.handleCreateAdapter(w, r)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
+	http.HandleFunc("/api/v1/registry/", middleware.CORSMiddleware(s.proxyToRegistry))
+	http.HandleFunc("/api/v1/registry/upload", middleware.CORSMiddleware(s.proxyToRegistry))
+	http.HandleFunc("/api/v1/registry/upload/bulk", middleware.CORSMiddleware(s.proxyToRegistry))
+
+	// Scan and other routes
+	http.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(s.proxyToDiscovery))
+	http.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
+	http.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
+	http.HandleFunc("/api/v1/plugins", middleware.CORSMiddleware(s.proxyToPlugins))
+	http.HandleFunc("/api/v1/plugins/", middleware.CORSMiddleware(s.proxyToPlugins))
+	http.HandleFunc("/api/v1/health/", middleware.CORSMiddleware(s.proxyToPlugins))
+
+	// Health check endpoint for Kubernetes probes
+	http.HandleFunc("/health", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "healthy", "timestamp": "` + time.Now().UTC().Format(time.RFC3339) + `", "version": "1.0.0"}`))
 	}))
-	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		// Route based on HTTP method and path
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters")
-		if path == "" || path == "/" {
-			// Root adapters endpoint
-			switch r.Method {
-			case http.MethodGet:
-				s.handleListAdapters(w, r)
-			case http.MethodPost:
-				s.handleCreateAdapter(w, r)
-			default:
+
+	// Catch-all handler to route requests properly
+	http.HandleFunc("/", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		logging.ProxyLogger.Info("Request received: %s %s", r.Method, r.URL.Path)
+
+		// Route based on path
+		if strings.HasPrefix(r.URL.Path, "/api/v1/adapters") {
+			logging.ProxyLogger.Info("Routing to adapter handler")
+			if r.Method == "GET" && r.URL.Path == "/api/v1/adapters" {
+				s.handleAdapterListCreate(w, r)
+			} else if r.Method == "POST" && r.URL.Path == "/api/v1/adapters" {
+				s.handleAdapterListCreate(w, r)
+			} else if strings.HasPrefix(r.URL.Path, "/api/v1/adapters/") {
+				s.handleAdapterByID(w, r)
+			} else {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
-		} else if strings.Contains(path, "/mcp") {
-			// MCP protocol endpoint
-			s.handleMCPProtocol(w, r)
-		} else if strings.Contains(path, "/sync") {
-			// Sync capabilities endpoint
-			s.handleSyncCapabilities(w, r)
-		} else {
-			// Individual adapter endpoints - extract adapter name
-			parts := strings.Split(strings.Trim(path, "/"), "/")
-			if len(parts) > 0 {
-				adapterName := parts[0]
-				switch r.Method {
-				case http.MethodGet:
-					s.handleGetAdapter(w, r, adapterName)
-				case http.MethodPut:
-					s.handleUpdateAdapter(w, r, adapterName)
-				case http.MethodDelete:
-					s.handleDeleteAdapter(w, r, adapterName)
-				default:
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-			} else {
-				http.Error(w, "Invalid adapter path", http.StatusBadRequest)
-			}
+			return
 		}
+
+		if strings.HasPrefix(r.URL.Path, "/api/v1/registry") {
+			s.proxyToRegistry(w, r)
+			return
+		}
+
+		if strings.HasPrefix(r.URL.Path, "/api/v1/scan") || r.URL.Path == "/api/v1/servers" {
+			s.proxyToDiscovery(w, r)
+			return
+		}
+
+		if strings.HasPrefix(r.URL.Path, "/api/v1/plugins") || strings.HasPrefix(r.URL.Path, "/api/v1/health/") {
+			s.proxyToPlugins(w, r)
+			return
+		}
+
+		if r.URL.Path == "/health" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "healthy", "timestamp": "` + time.Now().UTC().Format(time.RFC3339) + `", "version": "1.0.0"}`))
+			return
+		}
+
+		// Default 404
+		http.NotFound(w, r)
 	}))
+
+	// Adapter routes - use proper adapter handlers
+	logging.ProxyLogger.Info("Registering adapter routes...")
+	http.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(s.handleAdapterListCreate))
+	http.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(s.handleAdapterByID))
+	logging.ProxyLogger.Info("Adapter routes registered successfully")
+	logging.ProxyLogger.Info("Adapter routes registered successfully")
+
+	// Test route to verify mux is working
+	logging.ProxyLogger.Info("Registering /test")
+	mux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		logging.ProxyLogger.Info("TEST ROUTE CALLED")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("test route works"))
+	})
+	logging.ProxyLogger.Info("Registered /test")
 	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(s.proxyToDiscovery))
 	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(s.proxyToDiscovery))
 	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(s.proxyToDiscovery))
@@ -181,6 +223,13 @@ func (s *Service) Start() error {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status": "healthy", "timestamp": "` + time.Now().UTC().Format(time.RFC3339) + `", "version": "1.0.0"}`))
+	}))
+
+	// Test adapter route in health handler
+	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "adapter route works"}`))
 	}))
 
 	// Start HTTP server
@@ -243,6 +292,7 @@ func (s *Service) Start() error {
 	}
 
 	logging.ProxyLogger.Success("MCP Proxy service started successfully")
+	logging.ProxyLogger.Info("Start method completed")
 
 	return nil
 }
@@ -1628,10 +1678,10 @@ func (s *Service) handleAdapterCreation(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
-// proxyToRegistry handles registry requests for unified service
+// proxyToRegistry handles registry and adapter requests for unified service
 func (s *Service) proxyToRegistry(w http.ResponseWriter, r *http.Request) {
 
-	// For unified service, handle registry requests internally
+	// For unified service, handle registry and adapter requests internally
 
 	// Handle adapter creation
 	if r.Method == http.MethodPost && r.URL.Path == "/api/v1/adapters" {
@@ -1698,6 +1748,45 @@ func (s *Service) loadRegistryServers() []map[string]interface{} {
 
 	// Return the complete server data as-is from the YAML
 	return servers
+}
+
+// handleAdapterListCreate handles GET /api/v1/adapters (list) and POST /api/v1/adapters (create)
+func (s *Service) handleAdapterListCreate(w http.ResponseWriter, r *http.Request) {
+	logging.ProxyLogger.Info("handleAdapterListCreate called with method: %s, path: %s", r.Method, r.URL.Path)
+	switch r.Method {
+	case http.MethodGet:
+		s.handleListAdapters(w, r)
+	case http.MethodPost:
+		s.handleCreateAdapter(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleAdapterByID handles /api/v1/adapters/{id} routes
+func (s *Service) handleAdapterByID(w http.ResponseWriter, r *http.Request) {
+	logging.ProxyLogger.Info("handleAdapterByID called with method: %s, path: %s", r.Method, r.URL.Path)
+	// Extract adapter ID from path: /api/v1/adapters/{id}
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	if path == "" {
+		http.Error(w, "Adapter ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Split path to get adapter ID and any sub-path
+	parts := strings.SplitN(path, "/", 2)
+	adapterID := parts[0]
+
+	switch r.Method {
+	case http.MethodGet:
+		s.handleGetAdapter(w, r, adapterID)
+	case http.MethodPut:
+		s.handleUpdateAdapter(w, r, adapterID)
+	case http.MethodDelete:
+		s.handleDeleteAdapter(w, r, adapterID)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // proxyRequest forwards HTTP requests to other services

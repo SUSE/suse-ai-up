@@ -14,6 +14,7 @@ import (
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/services"
 )
 
 // ServerType represents the type of MCP server
@@ -56,19 +57,21 @@ type MCPServerStore interface {
 
 // RegistryHandler handles MCP server registry operations
 type RegistryHandler struct {
-	Store           MCPServerStore
-	RegistryManager RegistryManagerInterface
-	AdapterStore    clients.AdapterResourceStore
-	ToolDiscovery   *mcp.MCPToolDiscoveryService
+	Store            MCPServerStore
+	RegistryManager  RegistryManagerInterface
+	AdapterStore     clients.AdapterResourceStore
+	ToolDiscovery    *mcp.MCPToolDiscoveryService
+	UserGroupService *services.UserGroupService
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore, userGroupService *services.UserGroupService) *RegistryHandler {
 	handler := &RegistryHandler{
-		Store:           store,
-		RegistryManager: registryManager,
-		AdapterStore:    adapterStore,
-		ToolDiscovery:   mcp.NewMCPToolDiscoveryService(),
+		Store:            store,
+		RegistryManager:  registryManager,
+		AdapterStore:     adapterStore,
+		ToolDiscovery:    mcp.NewMCPToolDiscoveryService(),
+		UserGroupService: userGroupService,
 	}
 
 	// Initialize with pre-loaded official MCP servers
@@ -359,6 +362,42 @@ func (h *RegistryHandler) PublicList(c *gin.Context) {
 		log.Printf("Invalid source parameter: %s", source)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source. Must be 'official' or 'docker'"})
 	}
+}
+
+// ListMCPServersFiltered lists servers with permission-based filtering
+func (h *RegistryHandler) ListMCPServersFiltered(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	allServers := h.Store.ListMCPServers()
+
+	// Check if user is admin
+	canSeeAll := false
+	if h.UserGroupService != nil {
+		if canManage, err := h.UserGroupService.CanManageGroups(r.Context(), userID); err == nil && canManage {
+			canSeeAll = true
+		}
+	}
+
+	if canSeeAll {
+		// Admins see all servers
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(allServers)
+		return
+	}
+
+	// Filter servers based on user permissions
+	var filteredServers []*models.MCPServer
+	for _, server := range allServers {
+		if canAccess, _ := h.UserGroupService.CanAccessServer(r.Context(), userID, server.ID); canAccess {
+			filteredServers = append(filteredServers, server)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(filteredServers)
 }
 
 // fetchOfficialRegistry fetches from the official MCP registry

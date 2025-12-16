@@ -4,10 +4,8 @@
 
 # Documentation (but keep specific files needed for build)
 *.md
-docs/*
-!docs/swagger.json
-!docs/index.html
-!docs/docs.go
+docs/
+!docs/
 examples/*
 !examples/local-mcp/requirements.txt
 charts/

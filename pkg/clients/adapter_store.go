@@ -16,6 +16,7 @@ type AdapterResourceStore interface {
 	Create(ctx context.Context, adapter models.AdapterResource) error
 	Get(ctx context.Context, id string) (*models.AdapterResource, error)
 	List(ctx context.Context, userID string) ([]models.AdapterResource, error)
+	ListAll(ctx context.Context) ([]models.AdapterResource, error)
 	Update(ctx context.Context, adapter models.AdapterResource) error
 	Delete(ctx context.Context, id string) error
 	UpsertAsync(adapter models.AdapterResource, ctx context.Context) error
@@ -85,6 +86,19 @@ func (s *FileAdapterStore) List(ctx context.Context, userID string) ([]models.Ad
 	}
 
 	return userAdapters, nil
+}
+
+// ListAll retrieves all adapters regardless of user ownership
+func (s *FileAdapterStore) ListAll(ctx context.Context) ([]models.AdapterResource, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	allAdapters := make([]models.AdapterResource, 0, len(s.adapters))
+	for _, adapter := range s.adapters {
+		allAdapters = append(allAdapters, adapter)
+	}
+
+	return allAdapters, nil
 }
 
 // Update modifies an existing adapter
@@ -233,6 +247,19 @@ func (s *InMemoryAdapterStore) List(ctx context.Context, userID string) ([]model
 	}
 
 	return userAdapters, nil
+}
+
+// ListAll retrieves all adapters regardless of user ownership
+func (s *InMemoryAdapterStore) ListAll(ctx context.Context) ([]models.AdapterResource, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	allAdapters := make([]models.AdapterResource, 0, len(s.adapters))
+	for _, adapter := range s.adapters {
+		allAdapters = append(allAdapters, adapter)
+	}
+
+	return allAdapters, nil
 }
 
 // Update modifies an existing adapter in memory

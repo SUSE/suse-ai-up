@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: suse-ai-up
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: suse-ai-up-sa
+  namespace: suse-ai-up
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: suse-ai-up-role
+  namespace: suse-ai-up
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: suse-ai-up-rolebinding
+  namespace: suse-ai-up
+subjects:
+- kind: ServiceAccount
+  name: suse-ai-up-sa
+  namespace: suse-ai-up
+roleRef:
+  kind: Role
+  name: suse-ai-up-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suse-ai-up-service
+  namespace: suse-ai-up
+spec:
+  selector:
+    app: suse-ai-up
+  ports:
+  - name: http
+    port: 8911
+    targetPort: 8911
+  - name: https
+    port: 38911
+    targetPort: 38911
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suse-ai-up
+  namespace: suse-ai-up
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suse-ai-up
+  template:
+    metadata:
+      labels:
+        app: suse-ai-up
+    spec:
+      serviceAccountName: suse-ai-up-sa
+      containers:
+      - name: suse-ai-up
+        image: ghcr.io/alessandro-festa/suse-ai-up:latest
+        ports:
+        - containerPort: 8911
+          name: http
+        - containerPort: 38911
+          name: https
+        env:
+        - name: PORT
+          value: "8911"
+        - name: AUTH_MODE
+          value: "development"
+        command: ["./suse-ai-up", "uniproxy"]
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

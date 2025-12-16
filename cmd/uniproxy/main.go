@@ -34,6 +34,7 @@ import (
 	"suse-ai-up/pkg/plugins"
 	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/scanner"
+	"suse-ai-up/pkg/services"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
 	"suse-ai-up/pkg/session"
 
@@ -46,6 +47,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
+
+//go:generate swag init -g main.go
 
 // @title SUSE AI Uniproxy API
 // @version 1.0
@@ -63,6 +66,7 @@ func generateID() string {
 
 // loadRegistryFromFile loads MCP servers from config/mcp_registry.yaml
 func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
+	log.Printf("DEBUG: loadRegistryFromFile called")
 	registryFile := "config/mcp_registry.yaml"
 	data, err := os.ReadFile(registryFile)
 	if err != nil {
@@ -79,11 +83,19 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 	log.Printf("Loading %d MCP servers from %s", len(servers), registryFile)
 
 	var mcpServers []*models.MCPServer
-	for _, serverData := range servers {
+	log.Printf("DEBUG: Processing %d servers from YAML", len(servers))
+	for i, serverData := range servers {
+		log.Printf("DEBUG: Server %d data: %+v", i, serverData)
 		// Convert to models.MCPServer format
-		server := &models.MCPServer{
-			ID:   serverData["name"].(string),
-			Name: serverData["name"].(string),
+		server := &models.MCPServer{}
+
+		if name, ok := serverData["name"].(string); ok {
+			server.ID = name
+			server.Name = name
+			log.Printf("DEBUG: Server name/ID: %s", name)
+		} else {
+			log.Printf("Warning: Server missing name field, skipping: %+v", serverData)
+			continue
 		}
 
 		if desc, ok := serverData["description"].(string); ok {
@@ -104,21 +116,21 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 		// Handle meta field
 		if meta, ok := serverData["meta"].(map[string]interface{}); ok {
 			server.Meta = meta
-		}
-
-		// Generate ID if not present
-		if server.ID == "" {
-			server.ID = generateID()
+			log.Printf("DEBUG: Loaded meta for server %s: %+v", server.Name, meta)
+		} else {
+			log.Printf("DEBUG: No meta field found for server %s", server.Name)
 		}
 
 		mcpServers = append(mcpServers, server)
 	}
 
 	// Use the registry manager to upload all servers
+	log.Printf("DEBUG: Uploading %d MCP servers to registry", len(mcpServers))
 	if err := registryManager.UploadRegistryEntries(mcpServers); err != nil {
 		log.Printf("Warning: Could not upload registry entries: %v", err)
 		return
 	}
+	log.Printf("DEBUG: Successfully uploaded MCP servers")
 
 	log.Printf("Successfully loaded MCP registry from %s", registryFile)
 }
@@ -300,7 +312,9 @@ func initOTEL(ctx context.Context, cfg *config.Config) error {
 	return nil
 }
 
-func main() {
+// RunUniproxy starts the SUSE AI Uniproxy service
+func RunUniproxy() {
+	log.Printf("MAIN FUNCTION STARTED")
 	// Load configuration
 	cfg := config.LoadConfig()
 	log.Printf("Config loaded: Port=%s", cfg.Port)
@@ -335,6 +349,29 @@ func main() {
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
+	}
+
+	// Initialize user/group system with admin defaults
+	userStore := clients.NewInMemoryUserStore()
+	groupStore := clients.NewInMemoryGroupStore()
+	userGroupService := services.NewUserGroupService(userStore, groupStore)
+
+	// Initialize default groups and admin user
+	if err := userGroupService.InitializeDefaultGroups(context.Background()); err != nil {
+		log.Printf("Warning: Failed to initialize default groups: %v", err)
+	}
+
+	// Create default admin user if not exists
+	adminUser := models.User{
+		ID:     "admin",
+		Name:   "System Administrator",
+		Email:  "admin@suse.ai",
+		Groups: []string{"mcp-admins"},
+	}
+	if _, err := userGroupService.GetUser(context.Background(), "admin"); err != nil {
+		if err := userGroupService.CreateUser(context.Background(), adminUser); err != nil {
+			log.Printf("Warning: Failed to create admin user: %v", err)
+		}
 	}
 
 	// Initialize MCP components
@@ -407,7 +444,9 @@ func main() {
 	// Initialize AdapterService with SidecarManager
 	logging.ProxyLogger.Info("Initializing AdapterService with SidecarManager")
 	adapterService := adaptersvc.NewAdapterService(adapterStore, registryStore, sidecarManager)
-	adapterHandler := handlers.NewAdapterHandler(adapterService)
+	logging.ProxyLogger.Info("AdapterService created: %v", adapterService != nil)
+	adapterHandler := handlers.NewAdapterHandler(adapterService, userGroupService)
+	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
 	logging.ProxyLogger.Success("AdapterService and AdapterHandler initialized")
 
 	// Adapter handlers are now used directly in Gin routes
@@ -423,7 +462,13 @@ func main() {
 	// Load MCP registry from config file
 	loadRegistryFromFile(registryManager)
 
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore)
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService)
+
+	// Initialize user/group and route assignment handlers
+	userGroupHandler := handlers.NewUserGroupHandler(userGroupService)
+	routeAssignmentHandler := handlers.NewRouteAssignmentHandler(userGroupService, registryStore)
+	logging.ProxyLogger.Info("UserGroupHandler created: %v", userGroupHandler != nil)
+	logging.ProxyLogger.Info("RouteAssignmentHandler created: %v", routeAssignmentHandler != nil)
 
 	// Initialize plugin service manager
 	serviceManager := plugins.NewServiceManager(cfg, registryManager)
@@ -492,6 +537,7 @@ func main() {
 	// API v1 routes
 	logging.ProxyLogger.Info("Setting up API v1 routes")
 	v1 := r.Group("/api/v1")
+	logging.ProxyLogger.Info("V1 group created: %v", v1 != nil)
 	{
 		// Discovery routes
 		discovery := v1.Group("/discovery")
@@ -509,6 +555,7 @@ func main() {
 		logging.ProxyLogger.Info("Setting up adapter routes")
 		adapters := v1.Group("/adapters")
 		{
+			logging.ProxyLogger.Info("Adapter handler initialized: %v", adapterHandler != nil)
 			// CRUD operations using AdapterHandler
 			logging.ProxyLogger.Info("Registering adapter GET route")
 			adapters.GET("", ginToHTTPHandler(adapterHandler.ListAdapters))
@@ -615,11 +662,7 @@ func main() {
 		// Registry routes
 		registry := v1.Group("/registry")
 		{
-			registry.GET("", func(c *gin.Context) {
-				// Browse registry servers
-				servers := registryStore.ListMCPServers()
-				c.JSON(http.StatusOK, servers)
-			})
+			registry.GET("", ginToHTTPHandler(registryHandler.ListMCPServersFiltered))
 			registry.GET("/public", registryHandler.PublicList)
 			registry.POST("/sync/official", registryHandler.SyncOfficialRegistry)
 			registry.POST("/upload", registryHandler.UploadRegistryEntry)
@@ -643,6 +686,38 @@ func main() {
 			plugins.GET("/services/:serviceId/health", pluginHandler.GetServiceHealth)
 		}
 
+		// User/Group management routes
+		logging.ProxyLogger.Info("Registering user/group routes")
+		users := v1.Group("/users")
+		{
+			logging.ProxyLogger.Info("Users group created: %v", users != nil)
+			users.GET("", func(c *gin.Context) {
+				logging.ProxyLogger.Info("Users GET route called")
+				c.JSON(http.StatusOK, gin.H{"message": "users endpoint working"})
+			})
+			users.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
+			users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
+			users.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))
+			users.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteUser))
+		}
+
+		groups := v1.Group("/groups")
+		{
+			groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+			groups.POST("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+			groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
+			groups.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateGroup))
+			groups.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteGroup))
+			groups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
+			groups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
+		}
+
+		// Route assignment routes (under registry)
+		registry.POST("/:id/routes", ginToHTTPHandler(routeAssignmentHandler.CreateRouteAssignment))
+		registry.GET("/:id/routes", ginToHTTPHandler(routeAssignmentHandler.ListRouteAssignments))
+		registry.PUT("/:id/routes/:assignmentId", ginToHTTPHandler(routeAssignmentHandler.UpdateRouteAssignment))
+		registry.DELETE("/:id/routes/:assignmentId", ginToHTTPHandler(routeAssignmentHandler.DeleteRouteAssignment))
+
 	}
 
 	// Start health checks for plugins
@@ -656,12 +731,15 @@ func main() {
 		Handler: r,
 	}
 
+	log.Printf("DEBUG: About to start Gin HTTP server on port %s", cfg.Port)
 	go func() {
+		log.Printf("DEBUG: Gin server goroutine started")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("ERROR: Gin server failed: %v", err)
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
-	log.Printf("DEBUG: Gin HTTP server created")
+	log.Printf("DEBUG: Gin HTTP server created and goroutine started")
 
 	// Log available server URLs
 	serverURLs := cfg.GetServerURLs()

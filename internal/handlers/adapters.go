@@ -10,6 +10,7 @@ import (
 
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/services"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
 )
 
@@ -20,13 +21,15 @@ type ErrorResponse struct {
 
 // AdapterHandler handles adapter management requests
 type AdapterHandler struct {
-	adapterService *adaptersvc.AdapterService
+	adapterService   *adaptersvc.AdapterService
+	userGroupService *services.UserGroupService
 }
 
 // NewAdapterHandler creates a new adapter handler
-func NewAdapterHandler(adapterService *adaptersvc.AdapterService) *AdapterHandler {
+func NewAdapterHandler(adapterService *adaptersvc.AdapterService, userGroupService *services.UserGroupService) *AdapterHandler {
 	return &AdapterHandler{
-		adapterService: adapterService,
+		adapterService:   adapterService,
+		userGroupService: userGroupService,
 	}
 }
 
@@ -215,7 +218,7 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 		userID = "default-user"
 	}
 
-	adapters, err := h.adapterService.ListAdapters(r.Context(), userID)
+	adapters, err := h.adapterService.ListAdapters(r.Context(), userID, h.userGroupService)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -253,7 +256,7 @@ func (h *AdapterHandler) GetAdapter(w http.ResponseWriter, r *http.Request) {
 		userID = "default-user"
 	}
 
-	adapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID)
+	adapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID, h.userGroupService)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if err.Error() == "adapter not found" {
@@ -398,7 +401,7 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get adapter information
-	adapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID)
+	adapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID, h.userGroupService)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -594,7 +597,7 @@ func (h *AdapterHandler) SyncAdapterCapabilities(w http.ResponseWriter, r *http.
 		userID = "default-user"
 	}
 
-	if err := h.adapterService.SyncAdapterCapabilities(r.Context(), userID, adapterID); err != nil {
+	if err := h.adapterService.SyncAdapterCapabilities(r.Context(), userID, adapterID, h.userGroupService); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if err.Error() == "adapter not found" {
 			w.WriteHeader(http.StatusNotFound)

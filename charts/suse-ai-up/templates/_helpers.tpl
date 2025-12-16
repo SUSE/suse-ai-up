@@ -65,7 +65,10 @@ Create the name of the service account to use
 Return the proper image name
 */}}
 {{- define "suse-ai-up.image" -}}
-{{- $registry := default .Values.image.registry .Values.global.imageRegistry }}
+{{- $registry := .Values.image.registry }}
+{{- if .Values.global.imageRegistry }}
+{{- $registry = .Values.global.imageRegistry }}
+{{- end }}
 {{- $repository := .Values.image.repository }}
 {{- $tag := default .Chart.AppVersion .Values.image.tag }}
 {{- if $registry }}

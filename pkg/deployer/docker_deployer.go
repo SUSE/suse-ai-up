@@ -21,19 +21,32 @@ func NewDockerDeployer(namespace string) *DockerDeployer {
 
 // DeployFromDockerCommand takes a docker run command and converts it to kubectl run
 func (d *DockerDeployer) DeployFromDockerCommand(dockerCommand string, name string) error {
-	return d.deployFromDockerCommand(dockerCommand, name, false)
+	fmt.Printf("DOCKER_DEPLOYER: DeployFromDockerCommand called with command: %s, name: %s\n", dockerCommand, name)
+	return d.deployFromDockerCommand(dockerCommand, name, nil, false)
+}
+
+// DeployFromDockerCommandWithEnv takes a docker run command and additional env vars, then converts to kubectl run
+func (d *DockerDeployer) DeployFromDockerCommandWithEnv(dockerCommand string, name string, additionalEnv map[string]string) error {
+	return d.deployFromDockerCommand(dockerCommand, name, additionalEnv, false)
 }
 
 // DryRunFromDockerCommand shows the kubectl command without executing it
 func (d *DockerDeployer) DryRunFromDockerCommand(dockerCommand string, name string) {
-	d.deployFromDockerCommand(dockerCommand, name, true)
+	d.deployFromDockerCommand(dockerCommand, name, nil, true)
 }
 
-func (d *DockerDeployer) deployFromDockerCommand(dockerCommand string, name string, dryRun bool) error {
+func (d *DockerDeployer) deployFromDockerCommand(dockerCommand string, name string, additionalEnv map[string]string, dryRun bool) error {
 	// Parse the docker command to extract image and environment variables
 	image, envVars, port, err := d.parseDockerCommand(dockerCommand)
 	if err != nil {
 		return fmt.Errorf("failed to parse docker command: %w", err)
+	}
+
+	// Merge additional environment variables (additionalEnv takes precedence)
+	if additionalEnv != nil {
+		for key, value := range additionalEnv {
+			envVars[key] = value
+		}
 	}
 
 	// Build the kubectl run command
@@ -43,9 +56,9 @@ func (d *DockerDeployer) deployFromDockerCommand(dockerCommand string, name stri
 		"--expose",
 		"--namespace", d.namespace}
 
-	// Add environment variables individually with quotes around values
+	// Add environment variables individually
 	for key, value := range envVars {
-		args = append(args, fmt.Sprintf("--env=\"%s=%s\"", key, value))
+		args = append(args, fmt.Sprintf("--env=%s=%s", key, value))
 	}
 
 	// Log the exact kubectl command being executed

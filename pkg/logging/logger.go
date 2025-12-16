@@ -153,12 +153,12 @@ func ServiceBanner(service ServiceType, message string, port int, tlsPort int) {
 
 	banner := fmt.Sprintf(`
 ╔══════════════════════════════════════════════════════════════╗
-║ %-76s ║
-║ %-76s ║
-║ %-76s ║
-║ %-76s ║
-║ %-76s ║
-║ %-76s ║
+║ %-73s ║
+║ %-60s ║
+║ %-69s ║
+║ %-69s ║
+║ %-60s ║
+║ %-60s ║
 ╚══════════════════════════════════════════════════════════════╝
 `, serviceText, emptyLine, httpText, httpsText, emptyLine, message)
 
