@@ -27,29 +27,15 @@ RUN useradd -r -s /bin/bash -u 1000 mcpuser
 
 WORKDIR /home/mcpuser/
 
-# Final stage - minimal runtime image
-FROM registry.suse.com/bci/bci-base:16.0
-
-# Install only essential runtime dependencies
-RUN zypper --non-interactive install ca-certificates timezone
-
-# Create non-root user
-RUN useradd -r -s /bin/bash -u 1000 mcpuser
-
-WORKDIR /home/mcpuser/
-
 # Copy binary and config
 COPY --from=builder /app/suse-ai-up .
 COPY --from=builder /app/config ./config
-
-# Create docs directory and copy swagger file
-RUN mkdir -p ./docs
-COPY docs/swagger.json ./docs/
+COPY --from=builder /app/docs ./docs
 
 # Clean up and set permissions
 RUN rm -f config/comprehensive_mcp_servers.yaml*
 
-RUN chown -R mcpuser:mcpuser suse-ai-up config
+RUN chown -R mcpuser:mcpuser suse-ai-up config docs
 
 # Switch to non-root user
 USER 1000
