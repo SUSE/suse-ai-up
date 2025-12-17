@@ -22,27 +22,28 @@ The system uses a **main container + sidecar architecture** where services run a
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      SUSE AI Uniproxy                       │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │  UNIPROXY   │  │  REGISTRY   │  │ DISCOVERY   │          │
-│  │  (Primary)  │  │  (Sidecar)  │  │  (Sidecar)  │          │
-│  │             │  │             │  │             │          │
-│  │ Port: 8911  │  │ Port: 8913  │  │ Port: 8912  │          │
-│  │ HTTPS:3911  │  │ HTTPS:38913 │  │ HTTPS:38912 │          │
-│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│                    SUSE AI Universal Proxy                  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                   UNIFIED SERVICE                       │ │
+│  │                                                         │ │
+│  │  • MCP Proxy with session management                   │ │
+│  │  • Server registry and discovery                       │ │
+│  │  • Plugin management and orchestration                 │ │
+│  │  • Authentication and authorization                    │ │
+│  │                                                         │ │
+│  │              HTTP: 8911 | HTTPS: 3911                  │ │
+│  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │  ┌─────────────┐                                            │
 │  │   PLUGINS   │                                            │
-│  │  (Sidecar)  │                                            │
+│  │  (External) │                                            │
 │  │             │                                            │
-│  │ Port: 8914  │                                            │
-│  │ HTTPS:38914 │                                            │
+│  │  Variable   │                                            │
+│  │   Ports     │                                            │
 │  └─────────────┘                                            │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-**Service Startup Order**: Uniproxy → Registry → Discovery → Plugins
 
 ## 🏃‍♂️ Quick Start
 
@@ -61,34 +62,28 @@ helm install suse-ai-up suse-ai-up/suse-ai-up
 ```bash
 git clone https://github.com/suse/suse-ai-up.git
 cd suse-ai-up
-go run ./cmd
+go run ./cmd/uniproxy
 ```
 
-## 📋 Services Overview
+## 📋 Service Overview
 
-### 🔄 Uniproxy Service
-- **Purpose**: Comprehensive MCP proxy with registry, discovery, and plugin management
-- **Features**: Session management, authentication, protocol translation, server registry, network discovery
+### 🔄 SUSE AI Universal Proxy
+- **Purpose**: Unified MCP proxy service with integrated registry, discovery, and plugin management
+- **Features**:
+  - MCP protocol proxy with session management
+  - Integrated server registry and catalog
+  - Network discovery and automatic server detection
+  - Plugin orchestration and lifecycle management
+  - Authentication and authorization
+  - TLS encryption support
 - **Ports**: HTTP 8911, HTTPS 3911
-- **Documentation**: [Uniproxy Service Guide](docs/services/uniproxy.md)
+- **Architecture**: Single unified service replacing separate microservices
 
-### 📚 Registry Service
-- **Purpose**: MCP server catalog and management
-- **Features**: Multi-source registry, search, validation
-- **Ports**: HTTP 8913, HTTPS 38913
-- **Documentation**: [Registry Service Guide](docs/services/registry.md)
-
-### 🔍 Discovery Service
-- **Purpose**: Network scanning and MCP server detection
-- **Features**: CIDR scanning, auth detection, vulnerability assessment
-- **Ports**: HTTP 8912, HTTPS 38912
-- **Documentation**: [Discovery Service Guide](docs/services/discovery.md)
-
-### 🔌 Plugins Service
-- **Purpose**: Dynamic plugin management and routing
-- **Features**: Service registration, health monitoring, capability routing
-- **Ports**: HTTP 8914, HTTPS 38914
-- **Documentation**: [Plugins Service Guide](docs/services/plugins.md)
+### 🔌 External Plugins
+- **Purpose**: Extensible plugin system for additional MCP server integrations
+- **Features**: External plugin registration, health monitoring, custom MCP server types
+- **Ports**: Variable (configured per plugin)
+- **Integration**: Register with main proxy service via API
 
 ## 🌐 Remote MCP Servers
 

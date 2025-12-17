@@ -47,15 +47,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-//go:generate swag init -g main.go -o ../../docs
-
-// @title SUSE AI Uniproxy API
-// @version 1.0
-// @description Comprehensive MCP proxy with discovery, registry, and deployment capabilities
-// @host localhost:8911
-// @BasePath /
-// @schemes http
-
 // generateID generates a random hex ID
 func generateID() string {
 	bytes := make([]byte, 8)
@@ -322,9 +313,6 @@ func RunUniproxy() {
 	cfg := config.LoadConfig()
 	log.Printf("Config loaded: Port=%s", cfg.Port)
 
-	// Update swagger host dynamically
-	// docs.SwaggerInfo.Host = cfg.GetSwaggerHost() // Not used in current implementation
-
 	// Initialize OpenTelemetry (if enabled)
 	if cfg.OtelEnabled {
 		ctx := context.Background()
@@ -519,72 +507,6 @@ func RunUniproxy() {
 			"status":    "healthy",
 			"timestamp": time.Now().UTC(),
 			"version":   "1.0.0",
-		})
-	})
-
-	// Test endpoint
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"service": "SUSE AI Universal Proxy",
-			"time":    time.Now().UTC(),
-		})
-	})
-
-	// Test route
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"test": "ok"})
-	})
-
-	// Swagger UI
-	r.GET("/swagger/index.html", func(c *gin.Context) {
-		c.Header("Content-Type", "text/html")
-		c.String(200, `<!DOCTYPE html>
-<html>
-<head>
-  <title>SUSE AI Universal Proxy API</title>
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
-  <style>
-    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
-    *, *:before, *:after { box-sizing: inherit; }
-    body { margin:0; background: #fafafa; }
-  </style>
-</head>
-<body>
-  <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
-  <script>
-    window.onload = function() {
-      const ui = SwaggerUIBundle({
-        url: '/swagger/doc.json',
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        presets: [
-          SwaggerUIBundle.presets.apis,
-          SwaggerUIBundle.presets.standalone
-        ],
-        plugins: [
-          SwaggerUIBundle.plugins.DownloadUrl
-        ],
-        layout: "StandaloneLayout",
-        validatorUrl: null,
-        tryItOutEnabled: true
-      });
-    };
-  </script>
-</body>
-</html>`)
-	})
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"test": "ok"})
-	})
-	r.GET("/swagger/doc.json", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"swagger": "2.0",
-			"info": gin.H{
-				"title":   "SUSE AI Universal Proxy API",
-				"version": "1.0",
-			},
 		})
 	})
 
@@ -1432,4 +1354,9 @@ func handleMCPProxy(c *gin.Context, adapterStore clients.AdapterResourceStore, s
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported connection type: %s", adapter.ConnectionType)})
 		return
 	}
+}
+
+// main is the entry point for the SUSE AI Uniproxy service
+func main() {
+	RunUniproxy()
 }

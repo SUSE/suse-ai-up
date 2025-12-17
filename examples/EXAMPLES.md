@@ -89,7 +89,7 @@ helm install suse-ai-up ./charts/suse-ai-up/suse-ai-up-1.0.0.tgz \
 ```bash
 # Get service endpoint
 SERVICE_IP=$(kubectl get svc suse-ai-up-service -n suse-ai-up -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-SERVICE_PORT=8913
+SERVICE_PORT=8911
 
 # Search for Bugzilla in registry
 curl -X GET "http://${SERVICE_IP}:${SERVICE_PORT}/api/v1/registry/browse?q=bugzilla" \
@@ -157,7 +157,7 @@ UYUNI_SSH_PRIV_KEY_PASS="your-key-passphrase"
 ```bash
 # Get service endpoint
 SERVICE_IP=$(kubectl get svc suse-ai-up-service -n suse-ai-up -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-SERVICE_PORT=8913
+SERVICE_PORT=8911
 
 # Search for Uyuni in registry
 curl -X GET "http://${SERVICE_IP}:${SERVICE_PORT}/api/v1/registry/browse?q=uyuni" \
@@ -246,7 +246,7 @@ curl -X GET "http://${SERVICE_IP}:${SERVICE_PORT}/api/v1/registry/browse?q=kuber
 # Get LoadBalancer IP
 SERVICE_IP=$(kubectl get svc suse-ai-up-service -n suse-ai-up -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 PROXY_PORT=8911
-REGISTRY_PORT=8913
+REGISTRY_PORT=8911
 
 echo "Proxy: http://${SERVICE_IP}:${PROXY_PORT}"
 echo "Registry: http://${SERVICE_IP}:${REGISTRY_PORT}"

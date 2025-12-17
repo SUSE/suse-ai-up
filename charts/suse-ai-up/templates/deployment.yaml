@@ -30,30 +30,6 @@ spec:
               containerPort: {{ .Values.services.proxy.tlsPort }}
               protocol: TCP
             {{- end }}
-            - name: registry-http
-              containerPort: {{ .Values.services.registry.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: registry-https
-              containerPort: {{ .Values.services.registry.tlsPort }}
-              protocol: TCP
-            {{- end }}
-            - name: discovery-http
-              containerPort: {{ .Values.services.discovery.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: discovery-https
-              containerPort: {{ .Values.services.discovery.tlsPort }}
-              protocol: TCP
-            {{- end }}
-            - name: plugins-http
-              containerPort: {{ .Values.services.plugins.port }}
-              protocol: TCP
-            {{- if .Values.tls.enabled }}
-            - name: plugins-https
-              containerPort: {{ .Values.services.plugins.tlsPort }}
-              protocol: TCP
-            {{- end }}
           env:
             - name: CORS_ALLOWED_ORIGINS
               value: "{{ .Values.cors.allowedOrigins }}"

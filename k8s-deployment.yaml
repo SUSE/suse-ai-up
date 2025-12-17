@@ -94,8 +94,8 @@ spec:
     port: 8911
     targetPort: 8911
   - name: https
-    port: 38911
-    targetPort: 38911
+    port: 3911
+    targetPort: 3911
   type: LoadBalancer
 ---
 apiVersion: apps/v1
@@ -120,7 +120,7 @@ spec:
         ports:
         - containerPort: 8911
           name: http
-        - containerPort: 38911
+        - containerPort: 3911
           name: https
         env:
         - name: PORT

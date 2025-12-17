@@ -158,46 +158,16 @@ questions:
     value: "custom"
   show_subquestion_if: "custom"
   subquestions:
-  - variable: services.proxy.resources.requests.memory
-    label: "Proxy Memory"
-    description: "Memory allocation for proxy service"
-    type: string
-    default: "1Gi"
-  - variable: services.proxy.resources.requests.cpu
-    label: "Proxy CPU"
-    description: "CPU allocation for proxy service"
-    type: string
-    default: "500m"
-  - variable: services.registry.resources.requests.memory
-    label: "Registry Memory"
-    description: "Memory allocation for registry service"
-    type: string
-    default: "512Mi"
-  - variable: services.registry.resources.requests.cpu
-    label: "Registry CPU"
-    description: "CPU allocation for registry service"
-    type: string
-    default: "200m"
-  - variable: services.discovery.resources.requests.memory
-    label: "Discovery Memory"
-    description: "Memory allocation for discovery service"
-    type: string
-    default: "512Mi"
-  - variable: services.discovery.resources.requests.cpu
-    label: "Discovery CPU"
-    description: "CPU allocation for discovery service"
-    type: string
-    default: "200m"
-  - variable: services.plugins.resources.requests.memory
-    label: "Plugins Memory"
-    description: "Memory allocation for plugins service"
-    type: string
-    default: "512Mi"
-  - variable: services.plugins.resources.requests.cpu
-    label: "Plugins CPU"
-    description: "CPU allocation for plugins service"
-    type: string
-    default: "200m"
+   - variable: services.proxy.resources.requests.memory
+     label: "Memory"
+     description: "Memory allocation for the unified proxy service"
+     type: string
+     default: "1Gi"
+   - variable: services.proxy.resources.requests.cpu
+     label: "CPU"
+     description: "CPU allocation for the unified proxy service"
+     type: string
+     default: "500m"
 
 # Monitoring Configuration
 - variable: monitoring.enabled

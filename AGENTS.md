@@ -2,21 +2,19 @@
 
 ## Architecture Overview
 
-SUSE AI Uniproxy uses a unified service architecture where all MCP services (uniproxy, registry, discovery, plugins) run as a single binary with separate logging. The main CLI commands are:
+SUSE AI Uniproxy uses a unified service architecture where all MCP functionality (proxy, registry, discovery) runs as a single binary on ports 8911 (HTTP) and 3911 (HTTPS). The main CLI commands are:
 
-- `suse-ai-up uniproxy` - Run the comprehensive MCP proxy service
-- `suse-ai-up all` - Run all services together with separate logging
-- `suse-ai-up health` - Check service health
+- `suse-ai-up` - Run the unified MCP proxy service (default command)
+- `suse-ai-up-plugins` - Run external plugins service (separate binary for extensibility)
 
-Individual service binaries (`suse-ai-up-discovery`, `suse-ai-up-registry`, `suse-ai-up-plugins`) are available for separate deployment scenarios.
+External plugins can register with the main service via the plugins API for additional MCP server integrations.
 
 ## Build Commands
-- **Go**: `go build -o suse-ai-up ./cmd` (builds unified binary with all services)
+- **Go**: `go build -o suse-ai-up ./cmd/uniproxy` (builds unified binary with all services)
 - **Docker Multi-Arch**: `docker buildx bake multiarch --push` (build and push amd64/arm64 to ghcr.io)
 - **Docker Single Arch**: `docker buildx bake amd64 --push` or `docker buildx bake arm64 --push`
 - **Docker Dev**: `docker buildx bake dev` (development build)
 - **Python**: `cd examples/local-mcp && pip install -r requirements.txt`
-- **Swagger**: `swag init -g cmd/uniproxy/main.go`
 
 ## Kubernetes Deployment Commands
 - **Helm Install**: `helm install suse-ai-up ./charts/suse-ai-up`
@@ -74,11 +72,9 @@ Individual service binaries (`suse-ai-up-discovery`, `suse-ai-up-registry`, `sus
 - **REGISTRY_ENABLED**: Enable/disable registry service (default: true)
 - **REGISTRY_ENABLE_OFFICIAL**: Enable official registry sources (default: true)
 
-### Service Ports (when running `suse-ai-up all`)
-- **Uniproxy**: Port 8911 (HTTP) / 38911 (HTTPS)
-- **Registry**: Port 8913 (HTTP) / 38913 (HTTPS)
-- **Discovery**: Port 8912 (HTTP) / 38912 (HTTPS)
-- **Plugins**: Port 8914 (HTTP) / 38914 (HTTPS)
+### Service Ports
+- **Unified Service**: Port 8911 (HTTP) / 3911 (HTTPS)
+- **External Plugins**: Variable ports (configured per plugin)
 
 ### Container Registry
 - **Official**: `ghcr.io/suse/suse-ai-up:latest`

@@ -11,7 +11,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    {{- /* Proxy service ports */}}
+    {{- /* Unified proxy service ports */}}
     {{- if .Values.services.proxy.enabled }}
     - name: proxy-http
       port: {{ .Values.services.proxy.port }}
@@ -21,48 +21,6 @@ spec:
     - name: proxy-https
       port: {{ .Values.services.proxy.tlsPort }}
       targetPort: proxy-https
-      protocol: TCP
-    {{- end }}
-    {{- end }}
-
-    {{- /* Registry service ports */}}
-    {{- if .Values.services.registry.enabled }}
-    - name: registry-http
-      port: {{ .Values.services.registry.port }}
-      targetPort: registry-http
-      protocol: TCP
-    {{- if .Values.tls.enabled }}
-    - name: registry-https
-      port: {{ .Values.services.registry.tlsPort }}
-      targetPort: registry-https
-      protocol: TCP
-    {{- end }}
-    {{- end }}
-
-    {{- /* Discovery service ports */}}
-    {{- if .Values.services.discovery.enabled }}
-    - name: discovery-http
-      port: {{ .Values.services.discovery.port }}
-      targetPort: discovery-http
-      protocol: TCP
-    {{- if .Values.tls.enabled }}
-    - name: discovery-https
-      port: {{ .Values.services.discovery.tlsPort }}
-      targetPort: discovery-https
-      protocol: TCP
-    {{- end }}
-    {{- end }}
-
-    {{- /* Plugins service ports */}}
-    {{- if .Values.services.plugins.enabled }}
-    - name: plugins-http
-      port: {{ .Values.services.plugins.port }}
-      targetPort: plugins-http
-      protocol: TCP
-    {{- if .Values.tls.enabled }}
-    - name: plugins-https
-      port: {{ .Values.services.plugins.tlsPort }}
-      targetPort: plugins-https
       protocol: TCP
     {{- end }}
     {{- end }}

@@ -38,9 +38,9 @@ global:
   tolerations: []
   affinity: {}
 
-# Service enablement and configuration
+# Service configuration
 services:
-  # Primary proxy service (always enabled)
+  # Unified proxy service (includes registry, discovery, and plugin functionality)
   proxy:
     enabled: true
     port: 8911
@@ -52,50 +52,6 @@ services:
       limits:
         cpu: 500m
         memory: 512Mi
-
-  # Registry service (starts after proxy)
-  registry:
-    enabled: true
-    port: 8913
-    tlsPort: 38913
-    remoteServersFile: "config/remote_mcp_servers.json"  # Optional: static remote servers file (uses in-memory storage if not found)
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
-
-  # Discovery service (starts after registry)
-  discovery:
-    enabled: true
-    port: 8912
-    tlsPort: 38912
-    defaultTimeout: 30s
-    maxConcurrency: 10
-    excludeProxy: true  # Don't scan proxy ports
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
-
-  # Plugins service (starts last)
-  plugins:
-    enabled: true
-    port: 8914
-    tlsPort: 38914
-    healthInterval: 30s
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
 
 # TLS Configuration
 tls:
@@ -184,20 +140,11 @@ service:
   type: ClusterIP
   annotations: {}
 
-  # Individual service ports
+  # Service ports
   ports:
     proxy:
       http: 8911
       https: 3911
-    registry:
-      http: 8913
-      https: 38913
-    discovery:
-      http: 8912
-      https: 38912
-    plugins:
-      http: 8914
-      https: 38914
     health:
       http: 8911
       https: 3911

@@ -13,7 +13,7 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary (swagger docs are copied from build context)
+# Build the unified binary
 RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd
 
 # Final stage - minimal runtime image

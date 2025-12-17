@@ -167,9 +167,3 @@ func (c *Config) GetServerURLs() []string {
 
 	return urls
 }
-
-// GetSwaggerHost returns the best host to use for swagger documentation
-func (c *Config) GetSwaggerHost() string {
-	// Use the primary host with port for swagger
-	return network.FormatHostURL(c.PrimaryHost, c.Port)
-}
