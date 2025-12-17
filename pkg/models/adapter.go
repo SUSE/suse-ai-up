@@ -202,6 +202,41 @@ type MCPServer struct {
 	AutoSpawn        *AutoSpawnConfig       `json:"autoSpawn,omitempty"`        // Auto-spawning configuration
 }
 
+// convertToSerializable converts interface{} values to JSON-serializable types
+func convertToSerializable(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+
+	switch val := v.(type) {
+	case map[interface{}]interface{}:
+		// Convert map[interface{}]interface{} to map[string]interface{}
+		result := make(map[string]interface{})
+		for k, v := range val {
+			if keyStr, ok := k.(string); ok {
+				result[keyStr] = convertToSerializable(v)
+			}
+		}
+		return result
+	case []interface{}:
+		// Handle slices
+		result := make([]interface{}, len(val))
+		for i, item := range val {
+			result[i] = convertToSerializable(item)
+		}
+		return result
+	case map[string]interface{}:
+		// Recursively convert nested maps
+		result := make(map[string]interface{})
+		for k, v := range val {
+			result[k] = convertToSerializable(v)
+		}
+		return result
+	default:
+		return v
+	}
+}
+
 // Repository represents repository information for an MCP server
 type Repository struct {
 	URL    string `json:"url"`

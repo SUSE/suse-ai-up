@@ -61,6 +61,14 @@ func (d *DockerDeployer) deployFromDockerCommand(dockerCommand string, name stri
 		args = append(args, fmt.Sprintf("--env=%s=%s", key, value))
 	}
 
+	// Add insecure TLS skip for development (when KUBECONFIG is not set or contains localhost)
+	kubeconfig := os.Getenv("KUBECONFIG")
+	fmt.Printf("DOCKER_DEPLOYER: kubeconfig='%s', checking for insecure skip\n", kubeconfig)
+	if kubeconfig == "" || strings.Contains(kubeconfig, "localhost") || strings.Contains(kubeconfig, "127.0.0.1") {
+		fmt.Printf("DOCKER_DEPLOYER: Adding --insecure-skip-tls-verify for development\n")
+		args = append([]string{"--insecure-skip-tls-verify"}, args...)
+	}
+
 	// Log the exact kubectl command being executed
 	fmt.Printf("DOCKER_DEPLOYER: kubectl command: kubectl")
 	for _, arg := range args {
@@ -74,7 +82,8 @@ func (d *DockerDeployer) deployFromDockerCommand(dockerCommand string, name stri
 
 	// Execute the kubectl command
 	cmd := exec.Command("kubectl", args...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", os.Getenv("KUBECONFIG")))
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -134,16 +143,26 @@ func (d *DockerDeployer) Cleanup(name string) error {
 	deploymentName := fmt.Sprintf("mcp-sidecar-%s", name)
 	serviceName := fmt.Sprintf("mcp-sidecar-%s", name)
 
+	kubeconfig := os.Getenv("KUBECONFIG")
+
 	// Delete deployment
-	cmd := exec.Command("kubectl", "delete", "deployment", deploymentName, "--namespace", d.namespace, "--ignore-not-found=true")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", os.Getenv("KUBECONFIG")))
+	args := []string{"delete", "deployment", deploymentName, "--namespace", d.namespace, "--ignore-not-found=true"}
+	if kubeconfig == "" || strings.Contains(kubeconfig, "localhost") || strings.Contains(kubeconfig, "127.0.0.1") {
+		args = append([]string{"--insecure-skip-tls-verify"}, args...)
+	}
+	cmd := exec.Command("kubectl", args...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete deployment: %w, output: %s", err, string(output))
 	}
 
 	// Delete service
-	cmd = exec.Command("kubectl", "delete", "service", serviceName, "--namespace", d.namespace, "--ignore-not-found=true")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", os.Getenv("KUBECONFIG")))
+	args = []string{"delete", "service", serviceName, "--namespace", d.namespace, "--ignore-not-found=true"}
+	if kubeconfig == "" || strings.Contains(kubeconfig, "localhost") || strings.Contains(kubeconfig, "127.0.0.1") {
+		args = append([]string{"--insecure-skip-tls-verify"}, args...)
+	}
+	cmd = exec.Command("kubectl", args...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete service: %w, output: %s", err, string(output))
 	}

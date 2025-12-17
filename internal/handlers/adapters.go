@@ -417,7 +417,8 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 		if adapter.SidecarConfig != nil {
 			port = adapter.SidecarConfig.Port
 		}
-		sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/mcp", adapterID, port)
+		// For HTTP transport MCP servers, use root path (not /mcp)
+		sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/", adapterID, port)
 		fmt.Printf("DEBUG: Proxying MCP request to sidecar URL: %s\n", sidecarURL)
 		h.proxyToSidecar(w, r, sidecarURL)
 		return

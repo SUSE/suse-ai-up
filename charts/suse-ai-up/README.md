@@ -9,7 +9,13 @@ A comprehensive, modular MCP (Model Context Protocol) proxy system that enables 
 ## TL;DR
 
 ```bash
-helm install suse-ai-up ./charts/suse-ai-up
+# Install with LoadBalancer for external access
+helm install suse-ai-up ./charts/suse-ai-up --set service.type=LoadBalancer
+
+# Create MCP adapter with sidecar deployment
+curl -X POST "http://<SERVICE-IP>:8911/api/v1/adapters" \
+  -H "Content-Type: application/json" \
+  -d '{"mcpServerId": "uyuni", "name": "uyuni-adapter", "environmentVariables": {"UYUNI_SERVER": "https://uyuni.example.com", "UYUNI_USER": "admin", "UYUNI_PASS": "password"}}'
 ```
 
 ## Prerequisites

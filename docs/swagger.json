@@ -1420,7 +1420,7 @@
         },
         "/api/v1/registry/browse": {
             "get": {
-                "description": "Search and filter MCP servers from all configured sources",
+                "description": "Search and filter MCP servers from local YAML configuration",
                 "produces": [
                     "application/json"
                 ],
@@ -1455,7 +1455,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Filter by source (official, docker-mcp, virtualmcp)",
+                        "description": "Filter by source (yaml)",
                         "name": "source",
                         "in": "query"
                     }
@@ -1468,71 +1468,6 @@
                             "items": {
                                 "$ref": "#/definitions/models.MCPServer"
                             }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/registry/public": {
-            "get": {
-                "description": "Retrieve filtered JSON data from MCP registries (official or docker)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Get public registry data",
-                "parameters": [
-                    {
-                        "enum": [
-                            "official",
-                            "docker"
-                        ],
-                        "type": "string",
-                        "description": "Registry source: 'official' or 'docker'",
-                        "name": "source",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by provider (works for both official and docker sources)",
-                        "name": "provider",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/registry/sync/official": {
-            "post": {
-                "description": "Manually trigger synchronization with the official MCP registry",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registry"
-                ],
-                "summary": "Sync from official MCP registry",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SyncResult"
                         }
                     }
                 }
@@ -2120,35 +2055,6 @@
                 },
                 "service_id": {
                     "type": "string"
-                }
-            }
-        },
-        "handlers.SyncResult": {
-            "type": "object",
-            "properties": {
-                "duration": {
-                    "$ref": "#/definitions/time.Duration"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "lastCursor": {
-                    "type": "string"
-                },
-                "pagesFetched": {
-                    "type": "integer"
-                },
-                "totalAdded": {
-                    "type": "integer"
-                },
-                "totalErrors": {
-                    "type": "integer"
-                },
-                "totalFetched": {
-                    "type": "integer"
-                },
-                "totalUpdated": {
-                    "type": "integer"
                 }
             }
         },
@@ -3640,30 +3546,6 @@
                     "type": "string"
                 }
             }
-        },
-        "time.Duration": {
-            "type": "integer",
-            "format": "int64",
-            "enum": [
-                -9223372036854775808,
-                9223372036854775807,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "minDuration",
-                "maxDuration",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
         }
     }
 }

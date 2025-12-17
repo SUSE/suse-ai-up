@@ -17,8 +17,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -29,7 +27,8 @@ import (
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/mcp"
-	"suse-ai-up/pkg/middleware"
+
+	// "suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/plugins"
 	"suse-ai-up/pkg/proxy"
@@ -48,7 +47,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-//go:generate swag init -g main.go
+//go:generate swag init -g main.go -o ../../docs
 
 // @title SUSE AI Uniproxy API
 // @version 1.0
@@ -118,8 +117,12 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 			server.Meta = meta
 			log.Printf("DEBUG: Loaded meta for server %s: %+v", server.Name, meta)
 		} else {
+			server.Meta = make(map[string]interface{})
 			log.Printf("DEBUG: No meta field found for server %s", server.Name)
 		}
+
+		// Set source to distinguish from external registries
+		server.Meta["source"] = "yaml"
 
 		mcpServers = append(mcpServers, server)
 	}
@@ -336,7 +339,18 @@ func RunUniproxy() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	// Custom recovery middleware to handle panics properly
+	r.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+		if err, ok := recovered.(string); ok {
+			log.Printf("Panic recovered: %s", err)
+		} else {
+			log.Printf("Panic recovered: %v", recovered)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal server error",
+			"message": "An unexpected error occurred",
+		})
+	}))
 
 	// Add OTEL Gin middleware (if enabled)
 	if cfg.OtelEnabled {
@@ -477,8 +491,8 @@ func RunUniproxy() {
 	// registrationHandler := handlers.NewRegistrationHandler(networkScanner, adapterStore, tokenManager, cfg)
 
 	// Request/Response logging middleware
-	logger := middleware.NewRequestResponseLogger()
-	r.Use(logger.GinMiddleware())
+	// logger := middleware.NewRequestResponseLogger()
+	// r.Use(logger.GinMiddleware())
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -508,9 +522,71 @@ func RunUniproxy() {
 		})
 	})
 
-	// Swagger documentation
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	r.GET("/swagger/doc.json", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Test endpoint
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"service": "SUSE AI Universal Proxy",
+			"time":    time.Now().UTC(),
+		})
+	})
+
+	// Test route
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"test": "ok"})
+	})
+
+	// Swagger UI
+	r.GET("/swagger/index.html", func(c *gin.Context) {
+		c.Header("Content-Type", "text/html")
+		c.String(200, `<!DOCTYPE html>
+<html>
+<head>
+  <title>SUSE AI Universal Proxy API</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        url: '/swagger/doc.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIBundle.presets.standalone
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        validatorUrl: null,
+        tryItOutEnabled: true
+      });
+    };
+  </script>
+</body>
+</html>`)
+	})
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"test": "ok"})
+	})
+	r.GET("/swagger/doc.json", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"swagger": "2.0",
+			"info": gin.H{
+				"title":   "SUSE AI Universal Proxy API",
+				"version": "1.0",
+			},
+		})
+	})
 
 	// Monitoring endpoints
 	r.GET("/api/v1/monitoring/metrics", func(c *gin.Context) {
@@ -663,8 +739,6 @@ func RunUniproxy() {
 		registry := v1.Group("/registry")
 		{
 			registry.GET("", ginToHTTPHandler(registryHandler.ListMCPServersFiltered))
-			registry.GET("/public", registryHandler.PublicList)
-			registry.POST("/sync/official", registryHandler.SyncOfficialRegistry)
 			registry.POST("/upload", registryHandler.UploadRegistryEntry)
 			registry.POST("/upload/bulk", registryHandler.UploadBulkRegistryEntries)
 			registry.POST("/upload/local-mcp", registryHandler.UploadLocalMCP)

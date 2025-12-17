@@ -166,9 +166,23 @@ func (as *AdapterService) hasStdioPackage(server *models.MCPServer) bool {
 	return false
 }
 
+// getMapKeys returns the keys of a map[string]interface{}
+func getMapKeys(m map[string]interface{}) []string {
+	if m == nil {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // getDockerCommand extracts the docker command from server metadata
 func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
 	fmt.Printf("ADAPTER_SERVICE_DEBUG: getDockerCommand called for server %s\n", server.Name)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Image: %s\n", server.Image)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta keys: %v\n", getMapKeys(server.Meta))
 	if server.Meta == nil {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta is nil\n")
 		return ""
@@ -182,13 +196,14 @@ func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
 
 	configMap, ok := sidecarConfig.(map[string]interface{})
 	if !ok {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig is not a map\n")
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig is not a map, type: %T, value: %v\n", sidecarConfig, sidecarConfig)
 		return ""
 	}
 
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig keys: %v\n", getMapKeys(configMap))
 	commandType, ok := configMap["commandType"].(string)
 	if !ok || commandType != "docker" {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: commandType is not docker or not found: %v\n", configMap["commandType"])
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: commandType is not docker or not found: %v (type: %T)\n", configMap["commandType"], configMap["commandType"])
 		return ""
 	}
 
@@ -196,6 +211,33 @@ func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
 	command, ok := configMap["command"].(string)
 	if ok && command != "" {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found full docker command: %s\n", command)
+
+		// Check if the command already contains an image (non-flag argument)
+		parts := strings.Fields(command)
+		hasImage := false
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking command parts: %v\n", parts)
+		for i := 2; i < len(parts); i++ {
+			arg := parts[i]
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking arg %d: %s\n", i, arg)
+			if !strings.HasPrefix(arg, "-") && arg != "" {
+				hasImage = true
+				fmt.Printf("ADAPTER_SERVICE_DEBUG: Found image in command: %s\n", arg)
+				break
+			}
+			// Skip -e flag arguments
+			if arg == "-e" && i+1 < len(parts) {
+				i++
+			}
+		}
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: hasImage=%v, server.Image='%s'\n", hasImage, server.Image)
+
+		// If no image in command, append the server's image
+		if !hasImage && server.Image != "" {
+			// Remove trailing space and append image
+			command = strings.TrimSpace(command) + " " + server.Image
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Appended image to command: %s\n", command)
+		}
+
 		return command
 	}
 

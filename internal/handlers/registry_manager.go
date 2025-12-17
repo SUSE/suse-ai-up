@@ -1,15 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"net/url"
 	"strings"
-	"time"
 
 	"suse-ai-up/pkg/models"
 )
@@ -131,244 +127,24 @@ func (rm *DefaultRegistryManager) matchesFilters(server *models.MCPServer, filte
 			if server.ValidationStatus != value {
 				return false
 			}
-		case "provider":
-			// Check in repository source
-			if server.Repository.Source != "" && !strings.Contains(strings.ToLower(server.Repository.Source), strings.ToLower(fmt.Sprintf("%v", value))) {
-				return false
-			}
 		case "source":
-			// Check in meta.source for VirtualMCP entries
+			// Check in meta.source for YAML source info (git repo, etc.)
 			if server.Meta == nil {
 				return false
 			}
 			if source, ok := server.Meta["source"].(string); !ok || source != value {
 				return false
 			}
+		case "registry_source":
+			// Check registry source (yaml, official, docker, etc.)
+			if server.Meta == nil {
+				return false
+			}
+			if registrySource, ok := server.Meta["registry_source"].(string); !ok || registrySource != value {
+				return false
+			}
 		}
 	}
 
 	return true
-}
-
-// SyncOfficialRegistry syncs all servers from the official MCP registry using pagination
-func (rm *DefaultRegistryManager) SyncOfficialRegistry(ctx context.Context) (*SyncResult, error) {
-	startTime := time.Now()
-	result := &SyncResult{}
-
-	log.Printf("Starting official registry sync")
-
-	// Fetch all servers with pagination
-	servers, err := rm.fetchAllOfficialServers(ctx, 100)
-	if err != nil {
-		result.Error = err.Error()
-		result.Duration = time.Since(startTime)
-		return result, fmt.Errorf("failed to fetch official registry: %w", err)
-	}
-
-	result.TotalFetched = len(servers)
-	log.Printf("Fetched %d servers from official registry", len(servers))
-
-	// Process servers: add new ones, update existing ones
-	for _, server := range servers {
-		existing, err := rm.store.GetMCPServer(server.ID)
-		if err != nil && err.Error() != "server not found" {
-			log.Printf("Error checking existing server %s: %v", server.ID, err)
-			result.TotalErrors++
-			continue
-		}
-
-		if existing == nil {
-			// New server
-			if err := rm.store.CreateMCPServer(server); err != nil {
-				log.Printf("Error creating server %s: %v", server.ID, err)
-				result.TotalErrors++
-				continue
-			}
-			result.TotalAdded++
-			log.Printf("Added new server: %s", server.ID)
-		} else {
-			// Update existing server
-			if err := rm.store.UpdateMCPServer(server.ID, server); err != nil {
-				log.Printf("Error updating server %s: %v", server.ID, err)
-				result.TotalErrors++
-				continue
-			}
-			result.TotalUpdated++
-			log.Printf("Updated server: %s", server.ID)
-		}
-	}
-
-	result.Duration = time.Since(startTime)
-	log.Printf("Official registry sync completed in %v: %d fetched, %d added, %d updated, %d errors",
-		result.Duration, result.TotalFetched, result.TotalAdded, result.TotalUpdated, result.TotalErrors)
-
-	return result, nil
-}
-
-// fetchAllOfficialServers fetches all servers from the official MCP registry using pagination
-func (rm *DefaultRegistryManager) fetchAllOfficialServers(ctx context.Context, limit int) ([]*models.MCPServer, error) {
-	var allServers []*models.MCPServer
-	cursor := ""
-	pageCount := 0
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	for {
-		// Build URL with pagination
-		baseURL := "https://registry.modelcontextprotocol.io/v0.1/servers"
-		params := url.Values{}
-		params.Add("limit", fmt.Sprintf("%d", limit))
-		if cursor != "" {
-			params.Add("cursor", cursor)
-		}
-
-		fullURL := baseURL + "?" + params.Encode()
-
-		// Create request with context
-		req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-
-		log.Printf("Fetching page %d from: %s", pageCount+1, fullURL)
-
-		// Make request
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch page %d: %w", pageCount+1, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("API returned status %d for page %d", resp.StatusCode, pageCount+1)
-		}
-
-		// Parse response
-		var response struct {
-			Servers  []interface{} `json:"servers"`
-			Metadata struct {
-				NextCursor string `json:"nextCursor"`
-				Count      int    `json:"count"`
-			} `json:"metadata"`
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-			return nil, fmt.Errorf("failed to decode response for page %d: %w", pageCount+1, err)
-		}
-
-		log.Printf("Page %d: received %d servers, nextCursor: %s", pageCount+1, response.Metadata.Count, response.Metadata.NextCursor)
-
-		// Convert servers
-		convertedServers, err := rm.convertOfficialRegistryResponse(response.Servers)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert servers for page %d: %w", pageCount+1, err)
-		}
-
-		allServers = append(allServers, convertedServers...)
-		pageCount++
-
-		// Check if there are more pages
-		if response.Metadata.NextCursor == "" {
-			break
-		}
-
-		cursor = response.Metadata.NextCursor
-
-		// Small delay between requests to be respectful to the API
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-			// Continue
-		}
-	}
-
-	return allServers, nil
-}
-
-// convertOfficialRegistryResponse converts the official registry response format to our internal MCPServer format
-func (rm *DefaultRegistryManager) convertOfficialRegistryResponse(servers []interface{}) ([]*models.MCPServer, error) {
-	var converted []*models.MCPServer
-
-	for _, serverEntry := range servers {
-		serverMap, ok := serverEntry.(map[string]interface{})
-		if !ok {
-			log.Printf("Skipping invalid server entry: not a map")
-			continue
-		}
-
-		serverData, ok := serverMap["server"].(map[string]interface{})
-		if !ok {
-			log.Printf("Skipping server entry without server data")
-			continue
-		}
-
-		// Extract basic server information
-		name, _ := serverData["name"].(string)
-		description, _ := serverData["description"].(string)
-		version, _ := serverData["version"].(string)
-
-		if name == "" {
-			log.Printf("Skipping server without name")
-			continue
-		}
-
-		// Create server ID from name
-		serverID := strings.ReplaceAll(name, "/", "_")
-
-		server := &models.MCPServer{
-			ID:          serverID,
-			Name:        name,
-			Description: description,
-			Version:     version,
-		}
-
-		// Extract repository information
-		if repoData, ok := serverData["repository"].(map[string]interface{}); ok {
-			repo := models.Repository{}
-			if repoURL, ok := repoData["url"].(string); ok {
-				repo.URL = repoURL
-			}
-			if source, ok := repoData["source"].(string); ok {
-				repo.Source = source
-			}
-			server.Repository = repo
-		}
-
-		// Extract packages (OCI, NPM, etc.)
-		if packagesData, ok := serverData["packages"].([]interface{}); ok {
-			var packages []models.Package
-			for _, pkgData := range packagesData {
-				if pkgMap, ok := pkgData.(map[string]interface{}); ok {
-					pkg := models.Package{}
-					if regType, ok := pkgMap["registryType"].(string); ok {
-						pkg.RegistryType = regType
-					}
-					if identifier, ok := pkgMap["identifier"].(string); ok {
-						pkg.Identifier = identifier
-					}
-					if transportData, ok := pkgMap["transport"].(map[string]interface{}); ok {
-						transport := models.Transport{}
-						if transportType, ok := transportData["type"].(string); ok {
-							transport.Type = transportType
-						}
-						pkg.Transport = transport
-					}
-					packages = append(packages, pkg)
-				}
-			}
-			server.Packages = packages
-		}
-
-		// Extract metadata
-		if metaData, ok := serverMap["_meta"].(map[string]interface{}); ok {
-			server.Meta = metaData
-		}
-
-		converted = append(converted, server)
-	}
-
-	return converted, nil
 }

@@ -17,12 +17,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"gopkg.in/yaml.v3"
+
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	_ "suse-ai-up/docs"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
@@ -64,15 +64,54 @@ func generateID() string {
 	return hex.EncodeToString(bytes)
 }
 
+// convertToSerializable converts interface{} values to JSON-serializable types
+func convertToSerializable(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+
+	switch val := v.(type) {
+	case map[interface{}]interface{}:
+		// Convert map[interface{}]interface{} to map[string]interface{}
+		result := make(map[string]interface{})
+		for k, v := range val {
+			if keyStr, ok := k.(string); ok {
+				result[keyStr] = convertToSerializable(v)
+			} else {
+				// Convert non-string keys to strings
+				result[fmt.Sprintf("%v", k)] = convertToSerializable(v)
+			}
+		}
+		return result
+	case []interface{}:
+		// Handle slices
+		result := make([]interface{}, len(val))
+		for i, item := range val {
+			result[i] = convertToSerializable(item)
+		}
+		return result
+	case map[string]interface{}:
+		// Recursively convert nested maps
+		result := make(map[string]interface{})
+		for k, v := range val {
+			result[k] = convertToSerializable(v)
+		}
+		return result
+	default:
+		return v
+	}
+}
+
 // loadRegistryFromFile loads MCP servers from config/mcp_registry.yaml
 func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
-	log.Printf("DEBUG: loadRegistryFromFile called")
+	log.Printf("DEBUG: loadRegistryFromFile called - START - REALLY CALLED")
 	registryFile := "config/mcp_registry.yaml"
 	data, err := os.ReadFile(registryFile)
 	if err != nil {
 		log.Printf("Warning: Could not read registry file %s: %v", registryFile, err)
 		return
 	}
+	log.Printf("DEBUG: Successfully read %d bytes from %s", len(data), registryFile)
 
 	var servers []map[string]interface{}
 	if err := yaml.Unmarshal(data, &servers); err != nil {
@@ -86,24 +125,27 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 	var mcpServers []*models.MCPServer
 	log.Printf("DEBUG: Processing %d servers from YAML", len(servers))
 	for i, serverData := range servers {
-		log.Printf("DEBUG: Server %d data: %+v", i, serverData)
+		// Convert YAML data to JSON-serializable types
+		serializableData := convertToSerializable(serverData).(map[string]interface{})
+		log.Printf("DEBUG: Server %d data: %+v", i, serializableData)
 		// Convert to models.MCPServer format
 		server := &models.MCPServer{}
 
-		if name, ok := serverData["name"].(string); ok {
+		if name, ok := serializableData["name"].(string); ok {
 			server.ID = name
 			server.Name = name
 			log.Printf("DEBUG: Server name/ID: %s", name)
 		} else {
-			log.Printf("Warning: Server missing name field, skipping: %+v", serverData)
+			log.Printf("Warning: Server missing name field, skipping: %+v", serializableData)
 			continue
 		}
 
-		if desc, ok := serverData["description"].(string); ok {
+		if desc, ok := serializableData["description"].(string); ok {
 			server.Description = desc
 		}
 
-		if image, ok := serverData["image"].(string); ok {
+		if image, ok := serializableData["image"].(string); ok {
+			server.Image = image // Set the Image field for sidecar deployment
 			server.Packages = []models.Package{
 				{
 					Identifier: image,
@@ -114,13 +156,74 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 			}
 		}
 
-		// Handle meta field
-		if meta, ok := serverData["meta"].(map[string]interface{}); ok {
-			server.Meta = meta
-			log.Printf("DEBUG: Loaded meta for server %s: %+v", server.Name, meta)
-		} else {
-			log.Printf("DEBUG: No meta field found for server %s", server.Name)
+		// Initialize meta map
+		if server.Meta == nil {
+			server.Meta = make(map[string]interface{})
 		}
+
+		// Initialize meta map if needed
+		if server.Meta == nil {
+			server.Meta = make(map[string]interface{})
+		}
+
+		// Extract and store essential YAML information in JSON-serializable format
+		if about, ok := serializableData["about"].(map[string]interface{}); ok {
+			server.Meta["title"] = about["title"]
+			server.Meta["icon"] = about["icon"]
+		}
+
+		if source, ok := serializableData["source"].(map[string]interface{}); ok {
+			server.Meta["commit"] = source["commit"]
+			server.Meta["project"] = source["project"]
+		}
+
+		if config, ok := serializableData["config"].(map[string]interface{}); ok {
+			server.Meta["config_description"] = config["description"]
+			if secrets, ok := config["secrets"].([]interface{}); ok {
+				secretNames := make([]string, len(secrets))
+				for i, secret := range secrets {
+					if secretMap, ok := secret.(map[string]interface{}); ok {
+						if name, ok := secretMap["name"].(string); ok {
+							secretNames[i] = name
+						}
+					}
+				}
+				server.Meta["config_secrets"] = secretNames
+			}
+		}
+
+		if typeVal, ok := serializableData["type"].(string); ok {
+			server.Meta["type"] = typeVal
+		}
+
+		if meta, ok := serializableData["meta"].(map[string]interface{}); ok {
+			server.Meta["category"] = meta["category"]
+
+			if tags, ok := meta["tags"].([]interface{}); ok {
+				stringTags := make([]string, 0)
+				for _, tag := range tags {
+					if tagStr, ok := tag.(string); ok {
+						stringTags = append(stringTags, tagStr)
+					}
+				}
+				server.Meta["tags"] = stringTags
+			}
+
+			if sidecarConfig, ok := meta["sidecarConfig"].(map[string]interface{}); ok {
+				server.Meta["sidecarConfig"] = map[string]interface{}{
+					"commandType": sidecarConfig["commandType"],
+					"command":     sidecarConfig["command"],
+					"port":        sidecarConfig["port"],
+					"source":      sidecarConfig["source"],
+					"lastUpdated": sidecarConfig["lastUpdated"],
+				}
+			}
+		}
+
+		// Add registry source metadata
+		server.Meta["registry_source"] = "yaml"
+
+		log.Printf("DEBUG: Loaded complete YAML data for server %s", server.Name)
 
 		mcpServers = append(mcpServers, server)
 	}
@@ -412,14 +515,43 @@ func runUniproxyImpl() {
 	}
 
 	var sidecarManager *proxy.SidecarManager
-	if kubeConfig != nil {
-		kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+
+	// First try in-cluster config (when running inside Kubernetes)
+	log.Printf("Attempting to get in-cluster config...")
+	inClusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		log.Printf("In-cluster config not available: %v", err)
+	} else {
+		log.Printf("Using in-cluster Kubernetes configuration")
+		kubeClient, err := kubernetes.NewForConfig(inClusterConfig)
 		if err != nil {
-			log.Printf("Failed to create Kubernetes client: %v", err)
+			log.Printf("Failed to create in-cluster Kubernetes client: %v", err)
 		} else {
 			sidecarManager = proxy.NewSidecarManager(kubeClient, "default")
-			log.Printf("SidecarManager initialized successfully")
+			log.Printf("SidecarManager initialized successfully with in-cluster Kubernetes client")
 		}
+	}
+
+	// If in-cluster didn't work, try external kubeconfig
+	if sidecarManager == nil && kubeConfig != nil {
+		log.Printf("Trying external kubeconfig")
+		kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+		if err != nil {
+			log.Printf("Failed to create Kubernetes client with external config: %v", err)
+			log.Printf("Falling back to kubectl-based SidecarManager")
+			sidecarManager = proxy.NewSidecarManagerWithoutClient("default")
+			log.Printf("SidecarManager initialized without Kubernetes client (kubectl mode)")
+		} else {
+			sidecarManager = proxy.NewSidecarManager(kubeClient, "default")
+			log.Printf("SidecarManager initialized successfully with external Kubernetes client")
+		}
+	}
+
+	// Final fallback
+	if sidecarManager == nil {
+		log.Printf("No Kubernetes configuration available, using kubectl-based SidecarManager")
+		sidecarManager = proxy.NewSidecarManagerWithoutClient("default")
+		log.Printf("SidecarManager initialized without Kubernetes client (kubectl mode)")
 	}
 
 	// Initialize discovery components
@@ -510,8 +642,49 @@ func runUniproxyImpl() {
 	})
 
 	// Swagger documentation
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	r.GET("/swagger/doc.json", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger/doc.json", func(c *gin.Context) {
+		data, err := os.ReadFile("./docs/swagger.json")
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/json")
+		c.String(200, string(data))
+	})
+	r.GET("/docs/", func(c *gin.Context) {
+		c.Header("Content-Type", "text/html")
+		c.String(200, `<!DOCTYPE html>
+<html>
+<head>
+  <title>SUSE AI Uniproxy API</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        url: '/swagger/doc.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ]
+      });
+    };
+  </script>
+</body>
+</html>`)
+	})
 
 	// Monitoring endpoints
 	r.GET("/api/v1/monitoring/metrics", func(c *gin.Context) {
@@ -666,8 +839,6 @@ func runUniproxyImpl() {
 		registry := v1.Group("/registry")
 		{
 			registry.GET("", ginToHTTPHandler(registryHandler.ListMCPServersFiltered))
-			registry.GET("/public", registryHandler.PublicList)
-			registry.POST("/sync/official", registryHandler.SyncOfficialRegistry)
 			registry.POST("/upload", registryHandler.UploadRegistryEntry)
 			registry.POST("/upload/bulk", registryHandler.UploadBulkRegistryEntries)
 			registry.POST("/upload/local-mcp", registryHandler.UploadLocalMCP)

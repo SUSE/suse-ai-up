@@ -9,3 +9,15 @@ data:
 {{ .Files.Get "docs/swagger.json" | indent 4 }}
   swagger.yaml: |
 {{ .Files.Get "docs/swagger.yaml" | indent 4 }}
+---
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-registry
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+data:
+  mcp_registry.yaml: |
+{{ .Files.Get "mcp_registry.yaml" | indent 4 }}
+{{- end }}

@@ -59,7 +59,7 @@
     - suse
     sidecarConfig:
       commandType: docker
-      command: "docker run -it --rm -e BUGZILLA_SERVER=https://bugzilla.suse.com -e BUGZILLA_HOST=0.0.0.0 -e BUGZILLA_PORT=8000 ghcr.io/openSUSE/mcp-bugzilla:latest"
+      command: "docker run -it --rm -e BUGZILLA_SERVER=https://bugzilla.suse.com -e BUGZILLA_HOST=0.0.0.0 -e BUGZILLA_PORT=8000"
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'

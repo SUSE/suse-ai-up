@@ -17,33 +17,39 @@ COPY . .
 RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd
 
 # Final stage - minimal runtime image
-FROM alpine:latest
+FROM registry.suse.com/bci/bci-base:16.0
 
 # Install only essential runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata kubectl
+RUN zypper --non-interactive install ca-certificates timezone
 
 # Create non-root user
-RUN adduser -D -s /bin/sh -u 1000 mcpuser
+RUN useradd -r -s /bin/bash -u 1000 mcpuser
 
-# Set working directory
 WORKDIR /home/mcpuser/
 
-# Copy the binary, docs, and config from builder stage
+# Final stage - minimal runtime image
+FROM registry.suse.com/bci/bci-base:16.0
+
+# Install only essential runtime dependencies
+RUN zypper --non-interactive install ca-certificates timezone
+
+# Create non-root user
+RUN useradd -r -s /bin/bash -u 1000 mcpuser
+
+WORKDIR /home/mcpuser/
+
+# Copy binary and config
 COPY --from=builder /app/suse-ai-up .
 COPY --from=builder /app/config ./config
 
-# Copy swagger docs from build context (generated during make build)
+# Create docs directory and copy swagger file
 RUN mkdir -p ./docs
 COPY docs/swagger.json ./docs/
-COPY docs/swagger.yaml ./docs/
-COPY docs/docs.go ./docs/
-RUN ls -la ./docs/
 
-# Clean up old config files
+# Clean up and set permissions
 RUN rm -f config/comprehensive_mcp_servers.yaml*
 
-# Change ownership to non-root user
-RUN chown -R mcpuser:mcpuser suse-ai-up docs config
+RUN chown -R mcpuser:mcpuser suse-ai-up config
 
 # Switch to non-root user
 USER 1000

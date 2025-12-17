@@ -81,25 +81,6 @@ definitions:
       service_id:
         type: string
     type: object
-  handlers.SyncResult:
-    properties:
-      duration:
-        $ref: '#/definitions/time.Duration'
-      error:
-        type: string
-      lastCursor:
-        type: string
-      pagesFetched:
-        type: integer
-      totalAdded:
-        type: integer
-      totalErrors:
-        type: integer
-      totalFetched:
-        type: integer
-      totalUpdated:
-        type: integer
-    type: object
   models.APIKeyConfig:
     properties:
       key:
@@ -1098,27 +1079,6 @@ definitions:
       tokenType:
         type: string
     type: object
-  time.Duration:
-    enum:
-    - -9223372036854775808
-    - 9223372036854775807
-    - 1
-    - 1000
-    - 1000000
-    - 1000000000
-    - 60000000000
-    - 3600000000000
-    format: int64
-    type: integer
-    x-enum-varnames:
-    - minDuration
-    - maxDuration
-    - Nanosecond
-    - Microsecond
-    - Millisecond
-    - Second
-    - Minute
-    - Hour
 host: localhost:8911
 info:
   contact: {}
@@ -2143,7 +2103,7 @@ paths:
       - registry
   /api/v1/registry/browse:
     get:
-      description: Search and filter MCP servers from all configured sources
+      description: Search and filter MCP servers from local YAML configuration
       parameters:
       - description: Search query
         in: query
@@ -2161,7 +2121,7 @@ paths:
         in: query
         name: validationStatus
         type: string
-      - description: Filter by source (official, docker-mcp, virtualmcp)
+      - description: Filter by source (yaml)
         in: query
         name: source
         type: string
@@ -2175,49 +2135,6 @@ paths:
               $ref: '#/definitions/models.MCPServer'
             type: array
       summary: Browse registry servers with search and filters
-      tags:
-      - registry
-  /api/v1/registry/public:
-    get:
-      description: Retrieve filtered JSON data from MCP registries (official or docker)
-      parameters:
-      - description: 'Registry source: ''official'' or ''docker'''
-        enum:
-        - official
-        - docker
-        in: query
-        name: source
-        type: string
-      - description: Filter by provider (works for both official and docker sources)
-        in: query
-        name: provider
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Get public registry data
-      tags:
-      - registry
-  /api/v1/registry/sync/official:
-    post:
-      description: Manually trigger synchronization with the official MCP registry
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.SyncResult'
-      summary: Sync from official MCP registry
       tags:
       - registry
   /api/v1/registry/upload:

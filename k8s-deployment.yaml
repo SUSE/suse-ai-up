@@ -10,27 +10,75 @@ metadata:
   namespace: suse-ai-up
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: suse-ai-up-role
-  namespace: suse-ai-up
 rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: [""]
-  resources: ["pods", "services"]
-  verbs: ["get", "list", "create", "update", "patch", "delete"]
+  resources: ["pods", "services", "pods/log", "events"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: suse-ai-up-rolebinding
-  namespace: suse-ai-up
 subjects:
 - kind: ServiceAccount
   name: suse-ai-up-sa
   namespace: suse-ai-up
+- kind: ServiceAccount
+  name: suse-ai-up-proxy-sa
+  namespace: suse-ai-up
+- kind: ServiceAccount
+  name: default
+  namespace: suse-ai-up
+roleRef:
+  kind: ClusterRole
+  name: suse-ai-up-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: suse-ai-up-mcp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: suse-ai-up-mcp-role
+  namespace: suse-ai-up-mcp
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "services", "pods/log", "events"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: suse-ai-up-mcp-rolebinding
+  namespace: suse-ai-up-mcp
+subjects:
+- kind: ServiceAccount
+  name: suse-ai-up-sa
+  namespace: suse-ai-up
+- kind: ServiceAccount
+  name: suse-ai-up-proxy-sa
+  namespace: suse-ai-up
+- kind: ServiceAccount
+  name: default
+  namespace: suse-ai-up
 roleRef:
   kind: Role
-  name: suse-ai-up-role
+  name: suse-ai-up-mcp-role
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: v1
@@ -48,7 +96,7 @@ spec:
   - name: https
     port: 38911
     targetPort: 38911
-  type: ClusterIP
+  type: LoadBalancer
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,24 +25,10 @@ const (
 	ServerTypeGitHub     ServerType = "github"
 )
 
-// RegistryManagerInterface defines the interface for registry management
-// SyncResult represents the result of a registry sync operation
-type SyncResult struct {
-	TotalFetched int           `json:"totalFetched"`
-	TotalAdded   int           `json:"totalAdded"`
-	TotalUpdated int           `json:"totalUpdated"`
-	TotalErrors  int           `json:"totalErrors"`
-	PagesFetched int           `json:"pagesFetched"`
-	Duration     time.Duration `json:"duration"`
-	LastCursor   string        `json:"lastCursor,omitempty"`
-	Error        string        `json:"error,omitempty"`
-}
-
 type RegistryManagerInterface interface {
 	UploadRegistryEntries(entries []*models.MCPServer) error
 	LoadFromCustomSource(sourceURL string) error
 	SearchServers(query string, filters map[string]interface{}) ([]*models.MCPServer, error)
-	SyncOfficialRegistry(ctx context.Context) (*SyncResult, error)
 }
 
 // MCPServerStore interface for MCP server storage operations
@@ -74,130 +59,7 @@ func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInt
 		UserGroupService: userGroupService,
 	}
 
-	// Initialize with pre-loaded official MCP servers
-	handler.initializePreloadedServers()
-
 	return handler
-}
-
-// initializePreloadedServers adds official MCP servers to the registry
-func (h *RegistryHandler) initializePreloadedServers() {
-	officialServers := []struct {
-		id          string
-		name        string
-		description string
-		npmPackage  string
-		transport   string
-		isGitHub    bool
-	}{
-		{
-			id:          "filesystem",
-			name:        "filesystem",
-			description: "Secure file operations with configurable access controls",
-			npmPackage:  "@modelcontextprotocol/server-filesystem",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "git",
-			name:        "git",
-			description: "Tools to read, search, and manipulate Git repositories",
-			npmPackage:  "@modelcontextprotocol/server-git",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "memory",
-			name:        "memory",
-			description: "Knowledge graph-based persistent memory system",
-			npmPackage:  "@modelcontextprotocol/server-memory",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "sequential-thinking",
-			name:        "sequential-thinking",
-			description: "Dynamic and reflective problem-solving through thought sequences",
-			npmPackage:  "@modelcontextprotocol/server-sequential-thinking",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "time",
-			name:        "time",
-			description: "Time and timezone conversion capabilities",
-			npmPackage:  "@modelcontextprotocol/server-time",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "everything",
-			name:        "everything",
-			description: "Reference/test server with prompts, resources, and tools",
-			npmPackage:  "@modelcontextprotocol/server-everything",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "fetch",
-			name:        "fetch",
-			description: "Web content fetching and conversion for efficient LLM usage",
-			npmPackage:  "@modelcontextprotocol/server-fetch",
-			transport:   "stdio",
-			isGitHub:    false,
-		},
-		{
-			id:          "github",
-			name:        "github",
-			description: "GitHub integration with repository management, pull requests, and code analysis tools",
-			npmPackage:  "",
-			transport:   "http",
-			isGitHub:    true,
-		},
-	}
-
-	for _, serverInfo := range officialServers {
-		// Check if server already exists
-		if existing, _ := h.Store.GetMCPServer(serverInfo.id); existing != nil {
-			continue // Skip if already exists
-		}
-
-		server := &models.MCPServer{
-			ID:               serverInfo.id,
-			Name:             serverInfo.name,
-			Description:      serverInfo.description,
-			Version:          "latest",
-			ValidationStatus: "approved",
-			DiscoveredAt:     time.Now(),
-			Packages: []models.Package{
-				{
-					RegistryType: "npm",
-					Identifier:   serverInfo.npmPackage,
-					Transport: models.Transport{
-						Type: serverInfo.transport,
-					},
-				},
-			},
-			Meta: map[string]interface{}{
-				"source": "official",
-			},
-		}
-
-		// Add GitHub-specific configuration if this is a GitHub server
-		if serverInfo.isGitHub {
-			server.GitHubConfig = &models.GitHubConfig{
-				APIEndpoint: "https://api.githubcopilot.com/mcp/",
-			}
-			server.Meta["source"] = "github"
-		}
-
-		// Store the server
-		if err := h.Store.CreateMCPServer(server); err != nil {
-			log.Printf("Failed to create pre-loaded server %s: %v", serverInfo.id, err)
-		} else {
-			log.Printf("Pre-loaded official MCP server: %s", serverInfo.id)
-		}
-	}
 }
 
 // DetectServerType determines the type of MCP server from registry metadata and package information
@@ -331,39 +193,6 @@ func (h *RegistryHandler) enumerateTools(url string) ([]models.MCPTool, error) {
 	return []models.MCPTool{}, nil
 }
 
-// PublicList handles GET /public/registry
-// @Summary Get public registry data
-// @Description Retrieve filtered JSON data from MCP registries (official or docker)
-// @Tags registry
-// @Produce json
-// @Param source query string false "Registry source: 'official' or 'docker'" Enums(official,docker)
-// @Param provider query string false "Filter by provider (works for both official and docker sources)"
-// @Success 200 {object} map[string]interface{}
-// @Failure 500 {string} string "Internal Server Error"
-// @Router /api/v1/registry/public [get]
-func (h *RegistryHandler) PublicList(c *gin.Context) {
-	source := c.Query("source")
-	if source == "" {
-		source = "official" // Default to official registry
-	}
-
-	provider := c.Query("provider")
-
-	log.Printf("PublicList called with source=%s, provider=%s", source, provider)
-
-	switch source {
-	case "docker":
-		log.Printf("Routing to Docker registry fetch")
-		h.fetchDockerRegistry(c, provider)
-	case "official":
-		log.Printf("Routing to official registry fetch")
-		h.fetchOfficialRegistry(c, provider)
-	default:
-		log.Printf("Invalid source parameter: %s", source)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source. Must be 'official' or 'docker'"})
-	}
-}
-
 // ListMCPServersFiltered lists servers with permission-based filtering
 func (h *RegistryHandler) ListMCPServersFiltered(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("X-User-ID")
@@ -398,97 +227,6 @@ func (h *RegistryHandler) ListMCPServersFiltered(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(filteredServers)
-}
-
-// fetchOfficialRegistry fetches from the official MCP registry
-func (h *RegistryHandler) fetchOfficialRegistry(c *gin.Context, provider string) {
-	log.Printf("Fetching official registry data from: https://registry.modelcontextprotocol.io/v0.1/servers")
-
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	// Build URL with provider filter if specified
-	url := "https://registry.modelcontextprotocol.io/v0.1/servers?limit=100"
-	if provider != "" {
-		url += "&provider=" + provider
-	}
-
-	// Fetch data from the public registry
-	resp, err := client.Get(url)
-	if err != nil {
-		log.Printf("Error fetching official registry: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch official registry: %v", err)})
-		return
-	}
-	defer resp.Body.Close()
-
-	log.Printf("Official registry response status: %d", resp.StatusCode)
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("Official registry returned non-200 status: %d", resp.StatusCode)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Official registry unavailable (status: %d)", resp.StatusCode)})
-		return
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("Error decoding official registry response: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse registry response"})
-		return
-	}
-
-	// Filter servers to only include active latest versions
-	if servers, ok := result["servers"].([]interface{}); ok {
-		log.Printf("Received %d servers from official registry", len(servers))
-		var filteredServers []interface{}
-
-		for _, serverEntry := range servers {
-			if serverMap, ok := serverEntry.(map[string]interface{}); ok {
-				if meta, ok := serverMap["_meta"].(map[string]interface{}); ok {
-					if official, ok := meta["io.modelcontextprotocol.registry/official"].(map[string]interface{}); ok {
-						status, hasStatus := official["status"].(string)
-						isLatest, hasIsLatest := official["isLatest"].(bool)
-
-						if hasStatus && hasIsLatest && status == "active" && isLatest {
-							// Add validation_status to the server entry
-							serverMap["validation_status"] = "new"
-							filteredServers = append(filteredServers, serverMap)
-						}
-					}
-				}
-			}
-		}
-
-		log.Printf("Filtered to %d active latest servers", len(filteredServers))
-		result["servers"] = filteredServers
-
-		// Store servers in local registry for browsing
-		h.storeFetchedServers(filteredServers, "official")
-	}
-
-	c.JSON(http.StatusOK, result)
-}
-
-// storeFetchedServers converts and stores fetched servers in the local registry
-func (h *RegistryHandler) storeFetchedServers(servers []interface{}, source string) {
-	for _, serverData := range servers {
-		if serverMap, ok := serverData.(map[string]interface{}); ok {
-			server := h.convertToMCPServer(serverMap, source)
-			if server != nil {
-				// Check if server already exists
-				if existing, _ := h.Store.GetMCPServer(server.ID); existing == nil {
-					if err := h.Store.CreateMCPServer(server); err != nil {
-						log.Printf("Error storing server %s: %v", server.ID, err)
-					} else {
-						log.Printf("Stored server %s in local registry", server.ID)
-					}
-				} else {
-					log.Printf("Server %s already exists in local registry", server.ID)
-				}
-			}
-		}
-	}
 }
 
 // convertToMCPServer converts a map representation to MCPServer model
@@ -645,195 +383,6 @@ func (h *RegistryHandler) convertToMCPServer(serverMap map[string]interface{}, s
 	return server
 }
 
-// fetchDockerRegistry fetches from Docker Hub MCP namespace
-func (h *RegistryHandler) fetchDockerRegistry(c *gin.Context, provider string) {
-	log.Printf("Fetching Docker registry data from: https://hub.docker.com/v2/repositories/mcp/")
-
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	var allServers []map[string]interface{}
-
-	// Docker Hub API pagination
-	url := "https://hub.docker.com/v2/repositories/mcp/?page_size=100"
-
-	for url != "" {
-		resp, err := client.Get(url)
-		if err != nil {
-			log.Printf("Error fetching Docker registry: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch Docker registry: %v", err)})
-			return
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			log.Printf("Docker registry returned non-200 status: %d", resp.StatusCode)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Docker registry unavailable (status: %d)", resp.StatusCode)})
-			return
-		}
-
-		var dockerResponse struct {
-			Count    int    `json:"count"`
-			Next     string `json:"next"`
-			Previous string `json:"previous"`
-			Results  []struct {
-				Name        string `json:"name"`
-				Namespace   string `json:"namespace"`
-				Description string `json:"description"`
-				StarCount   int    `json:"star_count"`
-				PullCount   int    `json:"pull_count"`
-				LastUpdated string `json:"last_updated"`
-				Categories  []struct {
-					Name string `json:"name"`
-					Slug string `json:"slug"`
-				} `json:"categories"`
-			} `json:"results"`
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&dockerResponse); err != nil {
-			resp.Body.Close()
-			log.Printf("Error decoding Docker registry response: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse Docker registry response"})
-			return
-		}
-
-		resp.Body.Close()
-
-		// Convert Docker repositories to MCP server format
-		for _, repo := range dockerResponse.Results {
-			// Apply provider filtering if specified
-			if provider != "" && !h.matchesProvider(repo, provider) {
-				continue
-			}
-
-			server := map[string]interface{}{
-				"id":          fmt.Sprintf("docker-mcp-%s", repo.Name),
-				"name":        fmt.Sprintf("mcp/%s", repo.Name),
-				"description": repo.Description,
-				"repository": map[string]interface{}{
-					"url":    fmt.Sprintf("https://hub.docker.com/r/mcp/%s", repo.Name),
-					"source": "dockerhub",
-				},
-				"packages": []map[string]interface{}{
-					{
-						"registryType": "oci",
-						"identifier":   fmt.Sprintf("mcp/%s", repo.Name),
-						"transport": map[string]interface{}{
-							"type": "stdio",
-						},
-					},
-				},
-				"validation_status": "new",
-				"_meta": map[string]interface{}{
-					"source":       "docker-mcp",
-					"provider":     h.inferProvider(repo),
-					"stars":        repo.StarCount,
-					"pulls":        repo.PullCount,
-					"last_updated": repo.LastUpdated,
-					"icon_url":     fmt.Sprintf("https://api.scout.docker.com/v1/policy/insights/org-image-score/badge/mcp/%s", repo.Name),
-				},
-			}
-
-			// Add basic tool info
-			if repo.Description != "" {
-				server["tools"] = []map[string]interface{}{
-					{
-						"name":        "execute",
-						"description": repo.Description,
-						"input_schema": map[string]interface{}{
-							"type":       "object",
-							"properties": map[string]interface{}{},
-						},
-					},
-				}
-			}
-
-			allServers = append(allServers, server)
-		}
-
-		// Get next page URL
-		url = dockerResponse.Next
-	}
-
-	log.Printf("Fetched %d servers from Docker registry", len(allServers))
-
-	// Store servers in local registry for browsing
-	var serversInterface []interface{}
-	for _, s := range allServers {
-		serversInterface = append(serversInterface, s)
-	}
-	h.storeFetchedServers(serversInterface, "docker-mcp")
-
-	result := map[string]interface{}{
-		"servers": allServers,
-		"source":  "docker-mcp",
-		"count":   len(allServers),
-	}
-
-	c.JSON(http.StatusOK, result)
-}
-
-// matchesProvider checks if a Docker repository matches the specified provider
-func (h *RegistryHandler) matchesProvider(repo struct {
-	Name        string `json:"name"`
-	Namespace   string `json:"namespace"`
-	Description string `json:"description"`
-	StarCount   int    `json:"star_count"`
-	PullCount   int    `json:"pull_count"`
-	LastUpdated string `json:"last_updated"`
-	Categories  []struct {
-		Name string `json:"name"`
-		Slug string `json:"slug"`
-	} `json:"categories"`
-}, provider string) bool {
-	inferredProvider := h.inferProvider(repo)
-	return strings.EqualFold(inferredProvider, provider)
-}
-
-// inferProvider attempts to infer the provider from Docker repository metadata
-func (h *RegistryHandler) inferProvider(repo struct {
-	Name        string `json:"name"`
-	Namespace   string `json:"namespace"`
-	Description string `json:"description"`
-	StarCount   int    `json:"star_count"`
-	PullCount   int    `json:"pull_count"`
-	LastUpdated string `json:"last_updated"`
-	Categories  []struct {
-		Name string `json:"name"`
-		Slug string `json:"slug"`
-	} `json:"categories"`
-}) string {
-	// Check for official Anthropic servers
-	officialServers := map[string]bool{
-		"everything":         true,
-		"filesystem":         true,
-		"memory":             true,
-		"sequentialthinking": true,
-	}
-
-	if officialServers[repo.Name] {
-		return "anthropic"
-	}
-
-	// Check categories for provider hints
-	for _, category := range repo.Categories {
-		if strings.Contains(strings.ToLower(category.Name), "official") {
-			return "official"
-		}
-	}
-
-	// Check description for provider hints
-	desc := strings.ToLower(repo.Description)
-	if strings.Contains(desc, "official") || strings.Contains(desc, "anthropic") {
-		return "anthropic"
-	}
-
-	// Default to community for most servers
-	return "community"
-}
-
 // UploadRegistryEntry handles POST /registry/upload
 // @Summary Upload a single registry entry
 // @Description Upload a single MCP server registry entry
@@ -917,66 +466,88 @@ func (h *RegistryHandler) UploadBulkRegistryEntries(c *gin.Context) {
 
 // BrowseRegistry handles GET /registry/browse
 // @Summary Browse registry servers with search and filters
-// @Description Search and filter MCP servers from all configured sources
+// @Description Search and filter MCP servers from local YAML configuration
 // @Tags registry
 // @Produce json
 // @Param q query string false "Search query"
 // @Param transport query string false "Filter by transport type (stdio, sse, websocket)"
 // @Param registryType query string false "Filter by registry type (oci, npm)"
 // @Param validationStatus query string false "Filter by validation status"
-// @Param source query string false "Filter by source (official, docker-mcp, virtualmcp)"
+// @Param source query string false "Filter by source (yaml)"
 // @Success 200 {array} models.MCPServer
 // @Router /api/v1/registry/browse [get]
 func (h *RegistryHandler) BrowseRegistry(c *gin.Context) {
+	// Get query parameters
 	query := c.Query("q")
+	transport := c.Query("transport")
+	registryType := c.Query("registryType")
+	validationStatus := c.Query("validationStatus")
+	source := c.Query("source")
 
-	filters := make(map[string]interface{})
-	if transport := c.Query("transport"); transport != "" {
-		filters["transport"] = transport
-	}
-	if registryType := c.Query("registryType"); registryType != "" {
-		filters["registryType"] = registryType
-	}
-	if validationStatus := c.Query("validationStatus"); validationStatus != "" {
-		filters["validationStatus"] = validationStatus
-	}
-	if source := c.Query("source"); source != "" {
-		filters["source"] = source
+	log.Printf("BrowseRegistry called with query=%s, transport=%s, registryType=%s, validationStatus=%s, source=%s",
+		query, transport, registryType, validationStatus, source)
+
+	// Get all servers from the store
+	allServers := h.Store.ListMCPServers()
+	log.Printf("Found %d servers in registry", len(allServers))
+
+	// Apply filters
+	var filteredServers []*models.MCPServer
+
+	for _, server := range allServers {
+		// Apply search query filter
+		if query != "" {
+			if !strings.Contains(strings.ToLower(server.Name), strings.ToLower(query)) &&
+				!strings.Contains(strings.ToLower(server.Description), strings.ToLower(query)) {
+				continue
+			}
+		}
+
+		// Apply transport filter
+		if transport != "" {
+			hasTransport := false
+			for _, pkg := range server.Packages {
+				if pkg.Transport.Type == transport {
+					hasTransport = true
+					break
+				}
+			}
+			if !hasTransport {
+				continue
+			}
+		}
+
+		// Apply registry type filter
+		if registryType != "" {
+			hasRegistryType := false
+			for _, pkg := range server.Packages {
+				if pkg.RegistryType == registryType {
+					hasRegistryType = true
+					break
+				}
+			}
+			if !hasRegistryType {
+				continue
+			}
+		}
+
+		// Apply validation status filter
+		if validationStatus != "" && server.ValidationStatus != validationStatus {
+			continue
+		}
+
+		// Apply source filter
+		if source != "" {
+			if server.Meta == nil || server.Meta["registry_source"] != source {
+				continue
+			}
+		}
+
+		filteredServers = append(filteredServers, server)
 	}
 
-	servers, err := h.RegistryManager.SearchServers(query, filters)
-	if err != nil {
-		log.Printf("Error searching registry: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search registry"})
-		return
-	}
-
-	c.JSON(http.StatusOK, servers)
-}
-
-// SyncOfficialRegistry handles POST /registry/sync/official
-// @Summary Sync from official MCP registry
-// @Description Manually trigger synchronization with the official MCP registry
-// @Tags registry
-// @Produce json
-// @Success 200 {object} SyncResult
-// @Router /api/v1/registry/sync/official [post]
-func (h *RegistryHandler) SyncOfficialRegistry(c *gin.Context) {
-	log.Printf("Starting manual official registry sync")
-
-	// Perform the sync
-	result, err := h.RegistryManager.SyncOfficialRegistry(c.Request.Context())
-	if err != nil {
-		log.Printf("Official registry sync failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to sync official registry",
-			"details": err.Error(),
-		})
-		return
-	}
-
-	log.Printf("Official registry sync completed successfully")
-	c.JSON(http.StatusOK, result)
+	log.Printf("Filtered to %d servers", len(filteredServers))
+	c.JSON(http.StatusOK, filteredServers)
 }
 
 // UploadLocalMCP handles POST /registry/upload/local-mcp

@@ -40,9 +40,8 @@ type Config struct {
 	Services PluginServicesConfig `json:"services"`
 
 	// Registry configuration
-	RegistryEnableOfficial bool     `json:"registry_enable_official"`
-	RegistrySyncInterval   string   `json:"registry_sync_interval"`
-	RegistryCustomSources  []string `json:"registry_custom_sources"`
+	RegistrySyncInterval  string   `json:"registry_sync_interval"`
+	RegistryCustomSources []string `json:"registry_custom_sources"`
 
 	// Local deployment configuration
 	LocalDeployment LocalDeploymentConfig `json:"local_deployment"`
@@ -101,9 +100,8 @@ func LoadConfig() *Config {
 			},
 		},
 
-		RegistryEnableOfficial: getEnvBool("REGISTRY_ENABLE_OFFICIAL", true),
-		RegistrySyncInterval:   getEnv("REGISTRY_SYNC_INTERVAL", "1h"),
-		RegistryCustomSources:  []string{}, // TODO: Parse from env
+		RegistrySyncInterval:  getEnv("REGISTRY_SYNC_INTERVAL", "1h"),
+		RegistryCustomSources: []string{}, // TODO: Parse from env
 
 		LocalDeployment: LocalDeploymentConfig{
 			MinPort: getEnvInt("LOCAL_DEPLOYMENT_MIN_PORT", 8000),
