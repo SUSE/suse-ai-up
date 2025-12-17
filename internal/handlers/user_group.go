@@ -91,6 +91,17 @@ func (h *UserGroupHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateUser creates a new user
+// CreateUser handles POST /api/v1/users
+// @Summary Create a new user
+// @Description Create a new user in the system
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body CreateUserRequest true "User data"
+// @Success 201 {object} CreateUserResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users [post]
 func (h *UserGroupHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -152,7 +163,14 @@ func (h *UserGroupHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// ListUsers lists all users
+// ListUsers handles GET /api/v1/users
+// @Summary List all users
+// @Description Retrieve a list of all users in the system
+// @Tags users
+// @Produce json
+// @Success 200 {array} models.User
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users [get]
 func (h *UserGroupHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -172,6 +190,16 @@ func (h *UserGroupHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUser gets a specific user by ID
+// GetUser handles GET /api/v1/users/{id}
+// @Summary Get user details
+// @Description Retrieve details of a specific user
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} models.User
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users/{id} [get]
 func (h *UserGroupHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -200,6 +228,19 @@ func (h *UserGroupHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser updates an existing user
+// UpdateUser handles PUT /api/v1/users/{id}
+// @Summary Update a user
+// @Description Update an existing user's information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param user body UpdateUserRequest true "Updated user data"
+// @Success 200 {object} models.User
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users/{id} [put]
 func (h *UserGroupHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -264,6 +305,16 @@ func (h *UserGroupHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteUser deletes a user
+// DeleteUser handles DELETE /api/v1/users/{id}
+// @Summary Delete a user
+// @Description Delete a user from the system
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users/{id} [delete]
 func (h *UserGroupHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -316,6 +367,17 @@ func (h *UserGroupHandler) HandleGroups(w http.ResponseWriter, r *http.Request) 
 }
 
 // CreateGroup creates a new group
+// CreateGroup handles POST /api/v1/groups
+// @Summary Create a new group
+// @Description Create a new group in the system
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param group body CreateGroupRequest true "Group data"
+// @Success 201 {object} models.Group
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups [post]
 func (h *UserGroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -377,7 +439,14 @@ func (h *UserGroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// ListGroups lists all groups
+// ListGroups handles GET /api/v1/groups
+// @Summary List all groups
+// @Description Retrieve a list of all groups in the system
+// @Tags groups
+// @Produce json
+// @Success 200 {array} models.Group
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups [get]
 func (h *UserGroupHandler) ListGroups(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -397,6 +466,16 @@ func (h *UserGroupHandler) ListGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetGroup gets a specific group by ID
+// GetGroup handles GET /api/v1/groups/{id}
+// @Summary Get group details
+// @Description Retrieve details of a specific group
+// @Tags groups
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 200 {object} models.Group
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups/{id} [get]
 func (h *UserGroupHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -425,6 +504,19 @@ func (h *UserGroupHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateGroup updates an existing group
+// UpdateGroup handles PUT /api/v1/groups/{id}
+// @Summary Update a group
+// @Description Update an existing group's information
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param id path string true "Group ID"
+// @Param group body UpdateGroupRequest true "Updated group data"
+// @Success 200 {object} models.Group
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups/{id} [put]
 func (h *UserGroupHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -489,6 +581,16 @@ func (h *UserGroupHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteGroup deletes a group
+// DeleteGroup handles DELETE /api/v1/groups/{id}
+// @Summary Delete a group
+// @Description Delete a group from the system
+// @Tags groups
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups/{id} [delete]
 func (h *UserGroupHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -529,6 +631,19 @@ func (h *UserGroupHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddUserToGroup adds a user to a group
+// AddUserToGroup handles POST /api/v1/groups/{id}/members
+// @Summary Add user to group
+// @Description Add a user to a specific group
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param id path string true "Group ID"
+// @Param request body AddUserToGroupRequest true "User to add"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups/{id}/members [post]
 func (h *UserGroupHandler) AddUserToGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -588,6 +703,18 @@ func (h *UserGroupHandler) AddUserToGroup(w http.ResponseWriter, r *http.Request
 }
 
 // RemoveUserFromGroup removes a user from a group
+// RemoveUserFromGroup handles DELETE /api/v1/groups/{id}/members/{userId}
+// @Summary Remove user from group
+// @Description Remove a user from a specific group
+// @Tags groups
+// @Produce json
+// @Param id path string true "Group ID"
+// @Param userId path string true "User ID to remove"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/groups/{id}/members/{userId} [delete]
 func (h *UserGroupHandler) RemoveUserFromGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

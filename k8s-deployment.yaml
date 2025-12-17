@@ -84,11 +84,11 @@ roleRef:
 apiVersion: v1
 kind: Service
 metadata:
-  name: suse-ai-up-service
+  name: uniproxy-service
   namespace: suse-ai-up
 spec:
   selector:
-    app: suse-ai-up
+    app: uniproxy
   ports:
   - name: http
     port: 8911
@@ -101,17 +101,17 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: suse-ai-up
+  name: uniproxy
   namespace: suse-ai-up
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: suse-ai-up
+      app: uniproxy
   template:
     metadata:
       labels:
-        app: suse-ai-up
+        app: uniproxy
     spec:
       serviceAccountName: suse-ai-up-sa
       containers:

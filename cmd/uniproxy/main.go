@@ -118,6 +118,20 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 		// Set source to distinguish from external registries
 		server.Meta["source"] = "yaml"
 
+		// Include all additional fields from YAML in meta
+		if about, ok := serverData["about"].(map[string]interface{}); ok {
+			server.Meta["about"] = about
+		}
+		if source, ok := serverData["source"].(map[string]interface{}); ok {
+			server.Meta["source_info"] = source
+		}
+		if config, ok := serverData["config"].(map[string]interface{}); ok {
+			server.Meta["config"] = config
+		}
+		if serverType, ok := serverData["type"].(string); ok {
+			server.Meta["type"] = serverType
+		}
+
 		mcpServers = append(mcpServers, server)
 	}
 
@@ -513,7 +527,7 @@ func RunUniproxy() {
 			c.Header("Access-Control-Allow-Origin", "*")
 		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Session-Id")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Session-Id, X-User-Id, x-user-id")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -644,10 +658,7 @@ func RunUniproxy() {
 		users := v1.Group("/users")
 		{
 			logging.ProxyLogger.Info("Users group created: %v", users != nil)
-			users.GET("", func(c *gin.Context) {
-				logging.ProxyLogger.Info("Users GET route called")
-				c.JSON(http.StatusOK, gin.H{"message": "users endpoint working"})
-			})
+			users.GET("", ginToHTTPHandler(userGroupHandler.ListUsers))
 			users.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
 			users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
 			users.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))

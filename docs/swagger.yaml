@@ -23,6 +23,55 @@ definitions:
       tokenType:
         type: string
     type: object
+  handlers.AddUserToGroupRequest:
+    properties:
+      userId:
+        example: user123
+        type: string
+    type: object
+  handlers.CreateGroupRequest:
+    properties:
+      description:
+        example: Team with access to weather APIs
+        type: string
+      id:
+        example: weather-team
+        type: string
+      name:
+        example: Weather Team
+        type: string
+      permissions:
+        example:
+        - '["server:weather-*"]'
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      groups:
+        example:
+        - '["mcp-users"]'
+        items:
+          type: string
+        type: array
+      id:
+        example: user123
+        type: string
+      name:
+        example: John Doe
+        type: string
+    type: object
+  handlers.CreateUserResponse:
+    properties:
+      createdAt:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
   handlers.ErrorResponse:
     properties:
       error:
@@ -79,6 +128,28 @@ definitions:
       message:
         type: string
       service_id:
+        type: string
+    type: object
+  handlers.UpdateGroupRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      groups:
+        items:
+          type: string
+        type: array
+      name:
         type: string
     type: object
   models.APIKeyConfig:
@@ -450,6 +521,36 @@ definitions:
         type: string
       token:
         description: GitHub Personal Access Token
+        type: string
+    type: object
+  models.Group:
+    properties:
+      createdAt:
+        type: string
+      description:
+        example: Users with access to MCP servers
+        type: string
+      id:
+        example: mcp-users
+        type: string
+      members:
+        example:
+        - '["user123"'
+        - '"user456"]'
+        items:
+          type: string
+        type: array
+      name:
+        example: MCP Users
+        type: string
+      permissions:
+        example:
+        - '["server:read"'
+        - '"adapter:create"]'
+        items:
+          type: string
+        type: array
+      updatedAt:
         type: string
     type: object
   models.MCPArgument:
@@ -838,6 +939,29 @@ definitions:
     properties:
       type:
         description: stdio, sse, websocket, http
+        type: string
+    type: object
+  models.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      groups:
+        example:
+        - '["mcp-users"'
+        - '"weather-team"]'
+        items:
+          type: string
+        type: array
+      id:
+        example: user123
+        type: string
+      name:
+        example: John Doe
+        type: string
+      updatedAt:
         type: string
     type: object
   plugins.ServiceCapability:
@@ -1636,6 +1760,220 @@ paths:
       summary: Get discovered server
       tags:
       - discovery
+  /api/v1/groups:
+    get:
+      description: Retrieve a list of all groups in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Group'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List all groups
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: Create a new group in the system
+      parameters:
+      - description: Group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new group
+      tags:
+      - groups
+  /api/v1/groups/{id}:
+    delete:
+      description: Delete a group from the system
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete a group
+      tags:
+      - groups
+    get:
+      description: Retrieve details of a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Group'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get group details
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: Update an existing group's information
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update a group
+      tags:
+      - groups
+  /api/v1/groups/{id}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a user to a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddUserToGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Add user to group
+      tags:
+      - groups
+  /api/v1/groups/{id}/members/{userId}:
+    delete:
+      description: Remove a user from a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Remove user from group
+      tags:
+      - groups
   /api/v1/plugins/register:
     post:
       consumes:
@@ -1987,6 +2325,143 @@ paths:
       summary: Upload a local MCP server implementation
       tags:
       - registry
+  /api/v1/users:
+    get:
+      description: Retrieve a list of all users in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user in the system
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new user
+      tags:
+      - users
+  /api/v1/users/{id}:
+    delete:
+      description: Delete a user from the system
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      description: Retrieve details of a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get user details
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user's information
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated user data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update a user
+      tags:
+      - users
   /plugins/register:
     post:
       consumes:
