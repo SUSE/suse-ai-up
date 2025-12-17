@@ -37,11 +37,6 @@ type AdapterStatusResponse struct {
 	models.AdapterStatus
 }
 
-// LogsResponse represents adapter logs
-type LogsResponse struct {
-	Logs string `json:"logs"`
-}
-
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -486,50 +481,6 @@ func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, status)
-}
-
-// GetAdapterLogs handles GET /adapters/:name/logs
-// @Summary Get adapter logs
-// @Description Access the running logs of an MCP server adapter.
-// @Tags adapters
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Success 200 {object} LogsResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/adapters/{name}/logs [get]
-func (ms *ManagementService) GetAdapterLogs(c *gin.Context) {
-	name := c.Param("name")
-	ctx := context.Background()
-	userID := c.GetString("userId")
-	if userID == "" {
-		userID = "default-user"
-	}
-
-	// Get adapter to check type
-	adapter, err := ms.store.Get(ctx, name)
-	if err != nil || adapter.CreatedBy != userID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	var logs string
-	if adapter.ConnectionType == models.ConnectionTypeSSE || adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
-		instance := c.Query("instance")
-		ordinal := 0
-		if instance != "" {
-			// Parse instance
-		}
-		logs, err = ms.getDeploymentLogs(name, ordinal, ctx)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	} else {
-		logs = "Non-K8s adapter - logs not available"
-	}
-
-	c.JSON(http.StatusOK, gin.H{"logs": logs})
 }
 
 // Helper methods (simplified implementations)

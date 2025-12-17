@@ -17,10 +17,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	_ "suse-ai-up/docs"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/auth"
@@ -306,6 +309,25 @@ func initOTEL(ctx context.Context, cfg *config.Config) error {
 	return nil
 }
 
+// @title SUSE AI Uniproxy API
+// @version 1.0
+// @description A comprehensive, modular MCP (Model Context Protocol) proxy system
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name SUSE
+// @contact.url https://github.com/suse/suse-ai-up
+// @contact.email info@suse.ai
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8911
+// @BasePath /
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
+
 // RunUniproxy starts the SUSE AI Uniproxy service
 func RunUniproxy() {
 	log.Printf("MAIN FUNCTION STARTED")
@@ -510,27 +532,8 @@ func RunUniproxy() {
 		})
 	})
 
-	// Monitoring endpoints
-	r.GET("/api/v1/monitoring/metrics", func(c *gin.Context) {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"status":  "error",
-			"message": "Monitoring not enabled",
-		})
-	})
-
-	r.GET("/api/v1/monitoring/logs", func(c *gin.Context) {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"status":  "error",
-			"message": "Monitoring not enabled",
-		})
-	})
-
-	r.GET("/api/v1/monitoring/cache", func(c *gin.Context) {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"status":  "error",
-			"message": "Cache not available",
-		})
-	})
+	// Swagger UI
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("http://localhost:8911/docs/doc.json")))
 
 	// API v1 routes
 	logging.ProxyLogger.Info("Setting up API v1 routes")
@@ -546,7 +549,6 @@ func RunUniproxy() {
 			discovery.DELETE("/scan/:jobId", discoveryHandler.CancelScanJob)
 			discovery.GET("/servers", discoveryHandler.ListDiscoveredServers)
 			discovery.GET("/servers/:id", discoveryHandler.GetDiscoveredServer)
-			// discovery.POST("/register", registrationHandler.RegisterDiscoveredServer)
 		}
 
 		// Adapter routes
@@ -574,13 +576,6 @@ func RunUniproxy() {
 			adapters.POST("/:name/test-auth", mcpAuthHandler.TestAuthConnection)
 
 			// Adapter management
-			adapters.GET("/:name/logs", func(c *gin.Context) {
-				// Get adapter logs
-				c.JSON(http.StatusOK, gin.H{
-					"logs":  []string{"Adapter logs not yet implemented"},
-					"count": 1,
-				})
-			})
 			adapters.GET("/:name/status", func(c *gin.Context) {
 				// Get adapter status
 				c.JSON(http.StatusOK, gin.H{
@@ -589,44 +584,6 @@ func RunUniproxy() {
 					"availableReplicas": 1,
 					"image":             "nginx:latest",
 					"replicaStatus":     "Healthy",
-				})
-			})
-
-			// Session management
-			adapters.GET("/:name/sessions", func(c *gin.Context) {
-				// List sessions for adapter
-				c.JSON(http.StatusOK, gin.H{
-					"sessions": []interface{}{},
-					"count":    0,
-				})
-			})
-			adapters.POST("/:name/sessions", func(c *gin.Context) {
-				// Reinitialize session
-				c.JSON(http.StatusOK, gin.H{
-					"sessionId": "session-" + generateID(),
-					"status":    "initialized",
-				})
-			})
-			adapters.DELETE("/:name/sessions", func(c *gin.Context) {
-				// Delete all sessions
-				c.JSON(http.StatusOK, gin.H{
-					"deleted": 0,
-					"message": "All sessions deleted",
-				})
-			})
-			adapters.GET("/:name/sessions/:sessionId", func(c *gin.Context) {
-				// Get session details
-				c.JSON(http.StatusOK, gin.H{
-					"sessionId": c.Param("sessionId"),
-					"status":    "active",
-					"createdAt": time.Now(),
-				})
-			})
-			adapters.DELETE("/:name/sessions/:sessionId", func(c *gin.Context) {
-				// Delete specific session
-				c.JSON(http.StatusOK, gin.H{
-					"sessionId": c.Param("sessionId"),
-					"deleted":   true,
 				})
 			})
 
