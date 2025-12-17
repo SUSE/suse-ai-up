@@ -745,15 +745,6 @@ func RunUniproxy() {
 	for _, url := range serverURLs {
 		log.Printf("  %s", url)
 	}
-	log.Printf("Swagger documentation: %s/docs/", serverURLs[0])
-
-	// Graceful shutdown
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
-		}
-	}()
-
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

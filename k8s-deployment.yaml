@@ -116,7 +116,7 @@ spec:
       serviceAccountName: suse-ai-up-sa
       containers:
       - name: suse-ai-up
-        image: ghcr.io/alessandro-festa/suse-ai-up:latest
+        image: ghcr.io/alessandro-festa/uniproxy:latest
         ports:
         - containerPort: 8911
           name: http
@@ -127,7 +127,7 @@ spec:
           value: "8911"
         - name: AUTH_MODE
           value: "development"
-        command: ["./suse-ai-up", "uniproxy"]
+        command: ["./suse-ai-up"]
         resources:
           requests:
             memory: "128Mi"

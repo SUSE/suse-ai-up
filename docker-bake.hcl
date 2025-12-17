@@ -6,7 +6,7 @@ variable "REGISTRY" {
 }
 
 variable "REPO_NAME" {
-  default = "alessandro-festa/suse-ai-up"
+  default = "alessandro-festa/uniproxy"
 }
 
 # Define the target platforms

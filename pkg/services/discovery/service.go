@@ -79,89 +79,10 @@ func NewService(config *Config) *Service {
 	return service
 }
 
-// Start starts the discovery service
+// Start starts the discovery service (unified architecture - no longer starts HTTP servers)
 func (s *Service) Start() error {
-	log.Printf("Starting MCP Discovery service on port %d", s.config.Port)
-
-	// Setup HTTP routes with CORS middleware
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", middleware.CORSMiddleware(s.handleHealth))
-	mux.HandleFunc("/api/v1/scan", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleStartScan)))
-	mux.HandleFunc("/api/v1/scan/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleGetScanStatus)))
-	mux.HandleFunc("/api/v1/servers", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleListServers)))
-
-	// Start HTTP server
-	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%d", s.config.Port),
-		Handler: mux,
-	}
-
-	go func() {
-		log.Printf("MCP Discovery HTTP server listening on port %d", s.config.Port)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("HTTP server error: %v", err)
-		}
-	}()
-
-	// Start HTTPS server if TLS is configured
-	if s.config.TLSPort > 0 {
-		tlsConfig := &tls.Config{
-			ServerName: "localhost",
-		}
-
-		// Try to load certificates
-		if s.config.CertFile != "" && s.config.KeyFile != "" {
-			cert, err := tls.LoadX509KeyPair(s.config.CertFile, s.config.KeyFile)
-			if err != nil {
-				log.Printf("Failed to load TLS certificates: %v", err)
-				if !s.config.AutoTLS {
-					return fmt.Errorf("TLS certificates required but failed to load: %w", err)
-				}
-			} else {
-				tlsConfig.Certificates = []tls.Certificate{cert}
-			}
-		}
-
-		// Generate self-signed certificate if AutoTLS is enabled and no certs loaded
-		if s.config.AutoTLS && len(tlsConfig.Certificates) == 0 {
-			cert, err := s.generateSelfSignedCert()
-			if err != nil {
-				return fmt.Errorf("failed to generate self-signed certificate: %w", err)
-			}
-			tlsConfig.Certificates = []tls.Certificate{*cert}
-			log.Printf("Generated self-signed TLS certificate for discovery service")
-		}
-
-		if len(tlsConfig.Certificates) > 0 {
-			httpsServer := &http.Server{
-				Addr:      fmt.Sprintf("0.0.0.0:%d", s.config.TLSPort),
-				Handler:   mux,
-				TLSConfig: tlsConfig,
-			}
-
-			go func() {
-				log.Printf("MCP Discovery HTTPS server listening on port %d", s.config.TLSPort)
-				if err := httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-					log.Printf("HTTPS server error: %v", err)
-				}
-			}()
-		}
-	}
-
-	log.Printf("MCP Discovery service started successfully")
-
-	// Wait for shutdown signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case <-sigChan:
-		log.Println("Received shutdown signal")
-	case <-s.shutdownCh:
-		log.Println("Received internal shutdown signal")
-	}
-
-	return s.Stop()
+	log.Printf("Discovery service initialized (routes handled by main Gin server)")
+	return nil
 }
 
 // Stop stops the discovery service

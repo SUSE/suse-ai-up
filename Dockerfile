@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build the unified binary
-RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd
+RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd/uniproxy
 
 # Final stage - minimal runtime image
 FROM registry.suse.com/bci/bci-base:16.0
@@ -30,12 +30,11 @@ WORKDIR /home/mcpuser/
 # Copy binary and config
 COPY --from=builder /app/suse-ai-up .
 COPY --from=builder /app/config ./config
-COPY --from=builder /app/docs ./docs
 
 # Clean up and set permissions
 RUN rm -f config/comprehensive_mcp_servers.yaml*
 
-RUN chown -R mcpuser:mcpuser suse-ai-up config docs
+RUN chown -R mcpuser:mcpuser suse-ai-up config
 
 # Switch to non-root user
 USER 1000
@@ -44,8 +43,8 @@ USER 1000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD nc -z localhost 8911 || exit 1
 
-# Expose all service ports (proxy now uses 8911/3911, removed old 8080/38080)
+# Expose unified service ports
 EXPOSE 8911 3911
 
-# Run the binary
-CMD ["./suse-ai-up", "uniproxy"]
+# Run the unified binary
+CMD ["./suse-ai-up"]
