@@ -97,8 +97,8 @@ type ListPromptsRequest struct {
 
 // ListPromptsResponse represents the MCP list prompts response
 type ListPromptsResponse struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"` // Can be string, number, or null
 	Result  struct {
 		Prompts []struct {
 			Name        string `json:"name"`
@@ -121,6 +121,7 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	timeout    time.Duration
+	sessionID  string // MCP session ID for Streamable HTTP transport
 }
 
 // NewClient creates a new MCP client
@@ -138,43 +139,64 @@ func NewClient(baseURL string, timeout time.Duration) *Client {
 	}
 }
 
-// InterrogateServer performs deep interrogation of an MCP server
+// InterrogateServer performs deep interrogation of an MCP server with memory and timeout protection
 func (c *Client) InterrogateServer(ctx context.Context) (*models.McpCapabilities, *models.MCPServerInfo, []models.McpTool, []models.McpResource, []models.McpPrompt, *models.AuthAnalysis, error) {
+	// Add timeout protection for deep interrogation (5 minutes max)
+	interrogationCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 	// Initialize connection
-	capabilities, serverInfo, authAnalysis, err := c.initialize(ctx)
+	capabilities, serverInfo, authAnalysis, err := c.initialize(interrogationCtx)
 	if err != nil {
 		return nil, nil, nil, nil, nil, authAnalysis, err
 	}
 
-	// Extract tools if supported
+	log.Printf("DEBUG: Starting deep interrogation for server at %s", c.baseURL)
+
+	// Send initialized notification to establish session
+	err = c.sendInitialized(interrogationCtx)
+	if err != nil {
+		log.Printf("Failed to send initialized notification: %v", err)
+		// Continue anyway, some servers might not require this
+	}
+
+	// Extract tools if supported (with memory limits)
 	var tools []models.McpTool
 	if capabilities != nil && capabilities.Tools {
-		tools, err = c.listTools(ctx)
+		tools, err = c.listTools(interrogationCtx)
 		if err != nil {
 			log.Printf("Failed to list tools: %v", err)
 			// Continue with other interrogations even if tools fail
+		} else {
+			log.Printf("DEBUG: Retrieved %d tools", len(tools))
 		}
 	}
 
-	// Extract resources if supported
+	// Extract resources if supported (with memory limits)
 	var resources []models.McpResource
 	if capabilities != nil && capabilities.Resources {
-		resources, err = c.listResources(ctx)
+		resources, err = c.listResources(interrogationCtx)
 		if err != nil {
 			log.Printf("Failed to list resources: %v", err)
 			// Continue with other interrogations even if resources fail
+		} else {
+			log.Printf("DEBUG: Retrieved %d resources", len(resources))
 		}
 	}
 
-	// Extract prompts if supported
+	// Extract prompts if supported (with memory limits)
 	var prompts []models.McpPrompt
 	if capabilities != nil && capabilities.Prompts {
-		prompts, err = c.listPrompts(ctx)
+		prompts, err = c.listPrompts(interrogationCtx)
 		if err != nil {
 			log.Printf("Failed to list prompts: %v", err)
 			// Continue with other interrogations even if prompts fail
+		} else {
+			log.Printf("DEBUG: Retrieved %d prompts", len(prompts))
 		}
 	}
+
+	log.Printf("DEBUG: Completed deep interrogation - Tools: %d, Resources: %d, Prompts: %d",
+		len(tools), len(resources), len(prompts))
 
 	return capabilities, serverInfo, tools, resources, prompts, authAnalysis, nil
 }
@@ -186,7 +208,7 @@ func (c *Client) initialize(ctx context.Context) (*models.McpCapabilities, *mode
 		ID:      1,
 		Method:  "initialize",
 		Params: InitializeParams{
-			ProtocolVersion: "2024-11-05",
+			ProtocolVersion: "2025-06-18",
 			Capabilities:    map[string]interface{}{},
 			ClientInfo: ClientInfo{
 				Name:    "mcp-discovery",
@@ -205,6 +227,11 @@ func (c *Client) initialize(ctx context.Context) (*models.McpCapabilities, *mode
 		return nil, nil, authAnalysis, err
 	}
 	defer resp.Body.Close()
+
+	// Capture session ID from response header for Streamable HTTP transport
+	if sessionID := resp.Header.Get("Mcp-Session-Id"); sessionID != "" {
+		c.sessionID = sessionID
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -273,6 +300,43 @@ func (c *Client) initialize(ctx context.Context) (*models.McpCapabilities, *mode
 	return capabilities, serverInfo, authAnalysis, nil
 }
 
+// sendInitialized sends the initialized notification to establish session
+func (c *Client) sendInitialized(ctx context.Context) error {
+	initNotification := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "initialized",
+	}
+
+	jsonData, err := json.Marshal(initNotification)
+	if err != nil {
+		return fmt.Errorf("failed to marshal initialized notification: %w", err)
+	}
+
+	_, _, err = c.makeMCPRequest(ctx, jsonData)
+	return err
+}
+
+// extractJSONFromResponse extracts JSON data from either direct JSON or SSE response format
+func (c *Client) extractJSONFromResponse(body []byte) ([]byte, error) {
+	bodyStr := string(body)
+
+	// Handle SSE responses (Server-Sent Events)
+	if strings.Contains(bodyStr, "event:") && strings.Contains(bodyStr, "data: ") {
+		lines := strings.Split(bodyStr, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "data: ") {
+				jsonData := strings.TrimPrefix(line, "data: ")
+				return []byte(jsonData), nil
+			}
+		}
+		return nil, fmt.Errorf("no JSON data found in SSE response")
+	}
+
+	// Direct JSON response
+	return body, nil
+}
+
 // listTools retrieves available tools from the MCP server
 func (c *Client) listTools(ctx context.Context) ([]models.McpTool, error) {
 	req := ListToolsRequest{
@@ -297,8 +361,14 @@ func (c *Client) listTools(ctx context.Context) ([]models.McpTool, error) {
 		return nil, fmt.Errorf("failed to read tools response: %w", err)
 	}
 
+	// Extract JSON from response (handles both direct JSON and SSE)
+	responseJSON, err := c.extractJSONFromResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract JSON from tools response: %w", err)
+	}
+
 	// Check for non-JSON responses
-	bodyStr := string(body)
+	bodyStr := string(responseJSON)
 	if !strings.HasPrefix(strings.TrimSpace(bodyStr), "{") {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 200 {
@@ -308,7 +378,7 @@ func (c *Client) listTools(ctx context.Context) ([]models.McpTool, error) {
 	}
 
 	var toolsResp ListToolsResponse
-	if err := json.Unmarshal(body, &toolsResp); err != nil {
+	if err := json.Unmarshal(responseJSON, &toolsResp); err != nil {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 300 {
 			bodyPreview = bodyStr[:300]
@@ -327,6 +397,13 @@ func (c *Client) listTools(ctx context.Context) ([]models.McpTool, error) {
 			Description: tool.Description,
 			InputSchema: tool.InputSchema,
 		})
+	}
+
+	// Limit tools to prevent memory exhaustion (keep first 100)
+	const maxTools = 100
+	if len(tools) > maxTools {
+		log.Printf("WARNING: Limiting tools from %d to %d to prevent memory exhaustion", len(tools), maxTools)
+		tools = tools[:maxTools]
 	}
 
 	return tools, nil
@@ -356,8 +433,14 @@ func (c *Client) listResources(ctx context.Context) ([]models.McpResource, error
 		return nil, fmt.Errorf("failed to read resources response: %w", err)
 	}
 
+	// Extract JSON from response (handles both direct JSON and SSE)
+	responseJSON, err := c.extractJSONFromResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract JSON from resources response: %w", err)
+	}
+
 	// Check for non-JSON responses
-	bodyStr := string(body)
+	bodyStr := string(responseJSON)
 	if !strings.HasPrefix(strings.TrimSpace(bodyStr), "{") {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 200 {
@@ -367,7 +450,7 @@ func (c *Client) listResources(ctx context.Context) ([]models.McpResource, error
 	}
 
 	var resourcesResp ListResourcesResponse
-	if err := json.Unmarshal(body, &resourcesResp); err != nil {
+	if err := json.Unmarshal(responseJSON, &resourcesResp); err != nil {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 300 {
 			bodyPreview = bodyStr[:300]
@@ -387,6 +470,13 @@ func (c *Client) listResources(ctx context.Context) ([]models.McpResource, error
 			Description: resource.Description,
 			MimeType:    resource.MimeType,
 		})
+	}
+
+	// Limit resources to prevent memory exhaustion (keep first 100)
+	const maxResources = 100
+	if len(resources) > maxResources {
+		log.Printf("WARNING: Limiting resources from %d to %d to prevent memory exhaustion", len(resources), maxResources)
+		resources = resources[:maxResources]
 	}
 
 	return resources, nil
@@ -416,8 +506,14 @@ func (c *Client) listPrompts(ctx context.Context) ([]models.McpPrompt, error) {
 		return nil, fmt.Errorf("failed to read prompts response: %w", err)
 	}
 
+	// Extract JSON from response (handles both direct JSON and SSE)
+	responseJSON, err := c.extractJSONFromResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract JSON from prompts response: %w", err)
+	}
+
 	// Check for non-JSON responses
-	bodyStr := string(body)
+	bodyStr := string(responseJSON)
 	if !strings.HasPrefix(strings.TrimSpace(bodyStr), "{") {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 200 {
@@ -427,7 +523,7 @@ func (c *Client) listPrompts(ctx context.Context) ([]models.McpPrompt, error) {
 	}
 
 	var promptsResp ListPromptsResponse
-	if err := json.Unmarshal(body, &promptsResp); err != nil {
+	if err := json.Unmarshal(responseJSON, &promptsResp); err != nil {
 		bodyPreview := bodyStr
 		if len(bodyStr) > 300 {
 			bodyPreview = bodyStr[:300]
@@ -457,6 +553,13 @@ func (c *Client) listPrompts(ctx context.Context) ([]models.McpPrompt, error) {
 		})
 	}
 
+	// Limit prompts to prevent memory exhaustion (keep first 50)
+	const maxPrompts = 50
+	if len(prompts) > maxPrompts {
+		log.Printf("WARNING: Limiting prompts from %d to %d to prevent memory exhaustion", len(prompts), maxPrompts)
+		prompts = prompts[:maxPrompts]
+	}
+
 	return prompts, nil
 }
 
@@ -480,6 +583,11 @@ func (c *Client) makeMCPRequest(ctx context.Context, jsonData []byte) (*http.Res
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json, text/event-stream")
 		req.Header.Set("User-Agent", "mcp-discovery/1.0")
+
+		// Include session ID if we have one (required for Streamable HTTP transport)
+		if c.sessionID != "" {
+			req.Header.Set("Mcp-Session-Id", c.sessionID)
+		}
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {

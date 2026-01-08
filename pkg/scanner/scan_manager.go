@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -47,6 +48,7 @@ type DiscoveryStore interface {
 	Save(server *models.DiscoveredServer) error
 	GetAll() ([]models.DiscoveredServer, error)
 	GetByID(id string) (*models.DiscoveredServer, error)
+	FindByFingerprint(fingerprint string) (*models.DiscoveredServer, error)
 	UpdateLastSeen(id string, lastSeen time.Time) error
 	RemoveStale(threshold time.Duration) error
 	Delete(id string) error
@@ -156,6 +158,8 @@ func (sm *ScanManager) runScan(job *ScanJob) {
 	job.Errors = errors
 	job.Progress = 1.0
 
+	log.Printf("DEBUG: Scan job %s completed with %d results and %d errors", job.ID, len(results), len(errors))
+
 	if len(errors) > 0 && len(results) == 0 {
 		job.Status = ScanStatusFailed
 		job.Message = fmt.Sprintf("Scan failed with %d errors", len(errors))
@@ -165,13 +169,68 @@ func (sm *ScanManager) runScan(job *ScanJob) {
 	}
 	sm.jobsMutex.Unlock()
 
-	// Save results to persistent store
-	for _, server := range results {
-		if err := sm.store.Save(&server); err != nil {
-			// Log error but don't fail the job
-			fmt.Printf("Failed to save server %s: %v\n", server.ID, err)
+	// Save results to persistent store (without modifying original data)
+	log.Printf("DEBUG: Saving %d servers to store", len(results))
+	for i, server := range results {
+		log.Printf("DEBUG: Processing server %d: ID=%s, Name=%s, Address=%s", i, server.ID, server.Name, server.Address)
+
+		// Create a completely new server object with truncated data to avoid any reference issues
+		safeServer := models.DiscoveredServer{
+			ID:                 server.ID,
+			Name:               server.Name,
+			Address:            server.Address,
+			Protocol:           server.Protocol,
+			Connection:         server.Connection,
+			Status:             server.Status,
+			LastSeen:           server.LastSeen,
+			Metadata:           server.Metadata,
+			VulnerabilityScore: server.VulnerabilityScore,
+			Capabilities:       server.Capabilities,
+			Tools:              nil, // Will be set below
+			Resources:          nil, // Will be set below
+			Prompts:            nil, // Will be set below
+			ResourceTemplates:  server.ResourceTemplates,
+			AuthInfo:           server.AuthInfo,
+			LastDeepScan:       server.LastDeepScan,
+			ServerVersion:      server.ServerVersion,
+			ProtocolVersion:    server.ProtocolVersion,
+		}
+
+		// Safely copy truncated data
+		if len(server.Tools) > 10 {
+			log.Printf("WARNING: Truncating tools from %d to 10 for server %s", len(server.Tools), server.ID)
+			safeServer.Tools = make([]models.McpTool, 10)
+			copy(safeServer.Tools, server.Tools[:10])
+		} else {
+			safeServer.Tools = make([]models.McpTool, len(server.Tools))
+			copy(safeServer.Tools, server.Tools)
+		}
+
+		if len(server.Resources) > 10 {
+			log.Printf("WARNING: Truncating resources from %d to 10 for server %s", len(server.Resources), server.ID)
+			safeServer.Resources = make([]models.McpResource, 10)
+			copy(safeServer.Resources, server.Resources[:10])
+		} else {
+			safeServer.Resources = make([]models.McpResource, len(server.Resources))
+			copy(safeServer.Resources, server.Resources)
+		}
+
+		if len(server.Prompts) > 5 {
+			log.Printf("WARNING: Truncating prompts from %d to 5 for server %s", len(server.Prompts), server.ID)
+			safeServer.Prompts = make([]models.McpPrompt, 5)
+			copy(safeServer.Prompts, server.Prompts[:5])
+		} else {
+			safeServer.Prompts = make([]models.McpPrompt, len(server.Prompts))
+			copy(safeServer.Prompts, server.Prompts)
+		}
+
+		if err := sm.store.Save(&safeServer); err != nil {
+			log.Printf("ERROR: Failed to save server %s: %v", safeServer.ID, err)
+		} else {
+			log.Printf("DEBUG: Successfully saved server: %s", safeServer.ID)
 		}
 	}
+	log.Printf("DEBUG: Finished saving servers to store")
 }
 
 // CleanupOldJobs removes completed jobs older than the specified duration

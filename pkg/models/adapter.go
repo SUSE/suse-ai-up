@@ -53,6 +53,8 @@ type AdapterData struct {
 	ReplicaCount         int               `json:"replicaCount,omitempty" example:"1"`
 	Description          string            `json:"description" example:"My MCP adapter"`
 	UseWorkloadIdentity  bool              `json:"useWorkloadIdentity,omitempty" example:"false"`
+	// Adapter MCP endpoint URL
+	URL string `json:"url,omitempty" example:"http://localhost:8911/api/v1/adapters/my-adapter/mcp"`
 	// For remote HTTP
 	RemoteUrl string `json:"remoteUrl,omitempty" example:"https://remote-mcp.example.com"`
 	// For VirtualMCP API configuration

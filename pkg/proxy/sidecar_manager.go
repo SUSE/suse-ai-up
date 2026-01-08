@@ -120,7 +120,14 @@ func (sm *SidecarManager) GetSidecarEndpoint(adapterID string) string {
 func (sm *SidecarManager) CleanupSidecar(ctx context.Context, adapterID string) error {
 	fmt.Printf("DEBUG: CleanupSidecar called for adapter %s in namespace %s\n", adapterID, sm.namespace)
 
-	// Use DockerDeployer cleanup (which uses kubectl delete)
+	// If we have a Kubernetes client, use it directly for cleanup
+	if sm.kubeClient != nil {
+		fmt.Printf("SIDECAR_MANAGER: Using Kubernetes Go client for cleanup of adapter %s\n", adapterID)
+		return sm.cleanupWithKubeClient(ctx, adapterID)
+	}
+
+	// Fallback to kubectl-based cleanup for local development
+	fmt.Printf("SIDECAR_MANAGER: Using kubectl for cleanup of adapter %s\n", adapterID)
 	return sm.dockerDeployer.Cleanup(adapterID)
 }
 
@@ -301,6 +308,35 @@ func (sm *SidecarManager) deployWithKubeClient(ctx context.Context, adapter mode
 	}
 
 	fmt.Printf("SIDECAR_MANAGER: Successfully deployed sidecar for adapter %s\n", adapter.ID)
+	return nil
+}
+
+// cleanupWithKubeClient removes the sidecar deployment and service using Kubernetes Go client
+func (sm *SidecarManager) cleanupWithKubeClient(ctx context.Context, adapterID string) error {
+	if sm.kubeClient == nil {
+		return fmt.Errorf("kubernetes client not available")
+	}
+
+	deploymentName := fmt.Sprintf("mcp-sidecar-%s", adapterID)
+	serviceName := fmt.Sprintf("mcp-sidecar-%s", adapterID)
+
+	fmt.Printf("SIDECAR_MANAGER: Cleaning up deployment %s and service %s in namespace %s\n", deploymentName, serviceName, sm.namespace)
+
+	// Delete the service first
+	err := sm.kubeClient.CoreV1().Services(sm.namespace).Delete(ctx, serviceName, metav1.DeleteOptions{})
+	if err != nil {
+		// Log but don't fail if service doesn't exist
+		fmt.Printf("SIDECAR_MANAGER: Warning: failed to delete service %s: %v\n", serviceName, err)
+	}
+
+	// Delete the deployment
+	err = sm.kubeClient.AppsV1().Deployments(sm.namespace).Delete(ctx, deploymentName, metav1.DeleteOptions{})
+	if err != nil {
+		// Log but don't fail if deployment doesn't exist
+		fmt.Printf("SIDECAR_MANAGER: Warning: failed to delete deployment %s: %v\n", deploymentName, err)
+	}
+
+	fmt.Printf("SIDECAR_MANAGER: Successfully initiated cleanup for adapter %s\n", adapterID)
 	return nil
 }
 

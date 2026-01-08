@@ -12,6 +12,7 @@ func TestParseDockerCommand(t *testing.T) {
 		command     string
 		wantImage   string
 		wantEnvVars map[string]string
+		wantPort    int
 		wantErr     bool
 	}{
 		{
@@ -25,7 +26,8 @@ func TestParseDockerCommand(t *testing.T) {
 				"UYUNI_MCP_TRANSPORT": "http",
 				"UYUNI_MCP_HOST":      "0.0.0.0",
 			},
-			wantErr: false,
+			wantPort: 8000,
+			wantErr:  false,
 		},
 		{
 			name:      "valid bugzilla command",
@@ -36,7 +38,8 @@ func TestParseDockerCommand(t *testing.T) {
 				"BUGZILLA_HOST":   "0.0.0.0",
 				"BUGZILLA_PORT":   "8000",
 			},
-			wantErr: false,
+			wantPort: 8000,
+			wantErr:  false,
 		},
 		{
 			name:    "invalid command - not docker run",
@@ -52,7 +55,7 @@ func TestParseDockerCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotImage, gotEnvVars, err := sm.parseDockerCommand(tt.command)
+			gotImage, gotEnvVars, gotPort, err := sm.parseDockerCommand(tt.command)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseDockerCommand() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -60,6 +63,9 @@ func TestParseDockerCommand(t *testing.T) {
 			if !tt.wantErr {
 				if gotImage != tt.wantImage {
 					t.Errorf("parseDockerCommand() gotImage = %v, want %v", gotImage, tt.wantImage)
+				}
+				if gotPort != tt.wantPort {
+					t.Errorf("parseDockerCommand() gotPort = %v, want %v", gotPort, tt.wantPort)
 				}
 				if len(gotEnvVars) != len(tt.wantEnvVars) {
 					t.Errorf("parseDockerCommand() gotEnvVars length = %v, want %v", len(gotEnvVars), len(tt.wantEnvVars))

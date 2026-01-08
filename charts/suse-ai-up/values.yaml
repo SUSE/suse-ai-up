@@ -70,7 +70,7 @@ serviceApiKeys: ""
 
 # Authentication Configuration
 auth:
-  method: "oauth"  # oauth, bearer, apikey, basic, none
+  method: "none"  # oauth, bearer, apikey, basic, none
 
   # OAuth 2.0 configuration
   oauth:

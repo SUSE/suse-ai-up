@@ -17,6 +17,14 @@ import (
 	"suse-ai-up/pkg/models"
 )
 
+// truncateString truncates a string to the specified length
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen]
+}
+
 // NetworkScanner performs network scanning to discover MCP servers
 type NetworkScanner struct {
 	config            *models.ScanConfig
@@ -360,8 +368,9 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 		Methods:   []string{"POST"},
 		UserAgent: "MCP-Scanner/1.0",
 		CustomHeaders: map[string]string{
-			"Content-Type": "application/json",
-			"Accept":       "application/json, text/event-stream",
+			"Content-Type":         "application/json",
+			"Accept":               "application/json, text/event-stream",
+			"MCP-Protocol-Version": "2025-06-18",
 		},
 		Timeout: timeout,
 	}
@@ -376,7 +385,7 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 		"id": 1,
 		"method": "initialize",
 		"params": {
-			"protocolVersion": "2024-11-05",
+			"protocolVersion": "2025-06-18",
 			"capabilities": {},
 			"clientInfo": {
 				"name": "mcp-scanner",
@@ -418,14 +427,18 @@ func (ns *NetworkScanner) detectMCPServer(ip string, port int) (*models.Discover
 
 			// Check if this is a valid MCP server response
 			if server := ns.parseMCPResponse(resp, bodyBytes, address, fmt.Sprintf("%d", port), endpoint); server != nil {
+				log.Printf("DEBUG: Detected MCP server at %s, performing deep interrogation", address)
 				// Perform deep interrogation if this is a basic MCP detection
 				if endpoint == "/" || endpoint == "/mcp" {
 					ns.performDeepInterrogation(ns.ctx, server)
 				}
 
+				log.Printf("DEBUG: Sending server %s to results channel", server.ID)
 				select {
 				case ns.results <- *server:
+					log.Printf("DEBUG: Successfully sent server %s to results channel", server.ID)
 				case <-ns.ctx.Done():
+					log.Printf("DEBUG: Context cancelled while sending server %s to results channel", server.ID)
 				}
 			}
 		}
@@ -480,10 +493,26 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 				vulnerabilityScore = "high" // No auth = high vulnerability
 			}
 		} else if error, ok := jsonResponse["error"].(map[string]interface{}); ok {
-			// Error response - might indicate auth required
+			// Error response - analyze the error type
+			errorCode, _ := error["code"].(float64)
+			errorMessage, _ := error["message"].(string)
+
+			// Check for specific MCP error conditions
 			if resp.StatusCode == 401 || resp.StatusCode == 403 {
 				authType = "required"
 				vulnerabilityScore = "low" // Auth required = low vulnerability
+			} else if int(errorCode) == -32600 && strings.Contains(strings.ToLower(errorMessage), "not acceptable") {
+				// "Not Acceptable: Client must accept text/event-stream" - missing Accept header
+				authType = "none"
+				vulnerabilityScore = "high"
+			} else if int(errorCode) == -32600 && strings.Contains(strings.ToLower(errorMessage), "missing session id") {
+				// "Bad Request: Missing session ID" - server requires session initialization
+				authType = "session_required"
+				vulnerabilityScore = "medium"
+			} else if int(errorCode) == -32602 {
+				// Invalid params - likely protocol version issue
+				authType = "protocol_mismatch"
+				vulnerabilityScore = "medium"
 			} else {
 				// Other error - might still be MCP server
 				authType = "unknown"
@@ -500,10 +529,9 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 
 		// If we have server info or a valid MCP response structure, consider it an MCP server
 		if serverInfo != nil || (jsonResponse["result"] != nil || jsonResponse["error"] != nil) {
+			// For HTTP-based MCP servers, the transport is always Streamable HTTP
+			// The Content-Type indicates whether it uses SSE or direct JSON responses
 			connectionType := models.ConnectionTypeStreamableHttp
-			if resp.Header.Get("Content-Type") == "text/event-stream" {
-				connectionType = models.ConnectionTypeSSE
-			}
 
 			serverName := "Unknown MCP Server"
 			if name, ok := serverInfo["name"].(string); ok {
@@ -526,6 +554,7 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 					"server_name":         serverName,
 					"auth_type":           authType,
 					"vulnerability_score": vulnerabilityScore,
+					"sse_supported":       fmt.Sprintf("%t", resp.Header.Get("Content-Type") == "text/event-stream"),
 				},
 				VulnerabilityScore: vulnerabilityScore,
 			}
@@ -540,12 +569,29 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 
 		return nil
 	} else {
-		// Check for authentication errors that indicate MCP servers
-		if (resp.StatusCode == 401 || resp.StatusCode == 403) && endpoint == "/mcp" {
+		// Check for HTTP errors that might indicate MCP servers
+		if (resp.StatusCode >= 400 && resp.StatusCode < 500) && endpoint == "/mcp" {
+			// Try to parse as JSON error response
 			var errorResponse map[string]interface{}
 			if err := json.Unmarshal(bodyBytes, &errorResponse); err == nil {
 				if _, hasError := errorResponse["error"]; hasError {
-					// Looks like an auth error for an MCP server
+					// Looks like an auth or protocol error for an MCP server
+					authType := "required"
+					vulnerabilityScore := "low"
+					serverName := "Unknown MCP Server (Auth Required)"
+
+					if resp.StatusCode == 401 || resp.StatusCode == 403 {
+						authType = "required"
+						vulnerabilityScore = "low"
+					} else if resp.StatusCode == 400 {
+						authType = "protocol_mismatch"
+						vulnerabilityScore = "medium"
+						serverName = "Unknown MCP Server (Protocol Error)"
+					} else {
+						authType = "unknown"
+						vulnerabilityScore = "medium"
+					}
+
 					serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
 
 					server := &models.DiscoveredServer{
@@ -555,15 +601,45 @@ func (ns *NetworkScanner) parseMCPResponse(resp *http.Response, bodyBytes []byte
 						Connection: models.ConnectionTypeStreamableHttp,
 						Status:     "discovered",
 						LastSeen:   time.Now(),
-						Name:       "Unknown MCP Server (Auth Required)",
+						Name:       serverName,
 						Metadata: map[string]string{
 							"port":                portStr,
 							"endpoint":            endpoint,
-							"server_name":         "Unknown MCP Server (Auth Required)",
-							"auth_type":           "required",
-							"vulnerability_score": "low",
+							"server_name":         serverName,
+							"auth_type":           authType,
+							"vulnerability_score": vulnerabilityScore,
+							"http_status":         fmt.Sprintf("%d", resp.StatusCode),
 						},
-						VulnerabilityScore: "low",
+						VulnerabilityScore: vulnerabilityScore,
+					}
+					return server
+				}
+			} else {
+				// Non-JSON error response - could still be MCP server with HTML error page
+				// Check for common MCP server error patterns
+				bodyLower := strings.ToLower(bodyStr)
+				if strings.Contains(bodyLower, "mcp") || strings.Contains(bodyLower, "jsonrpc") ||
+					strings.Contains(bodyLower, "protocol") || resp.StatusCode == 405 {
+					serverID := fmt.Sprintf("mcp-%s-%s", strings.ReplaceAll(address, ":", "-"), strings.ReplaceAll(endpoint, "/", "-"))
+
+					server := &models.DiscoveredServer{
+						ID:         serverID,
+						Address:    fmt.Sprintf("http://%s", address),
+						Protocol:   models.ServerProtocolMCP,
+						Connection: models.ConnectionTypeStreamableHttp,
+						Status:     "discovered",
+						LastSeen:   time.Now(),
+						Name:       "Unknown MCP Server (Error Response)",
+						Metadata: map[string]string{
+							"port":                portStr,
+							"endpoint":            endpoint,
+							"server_name":         "Unknown MCP Server (Error Response)",
+							"auth_type":           "unknown",
+							"vulnerability_score": "medium",
+							"http_status":         fmt.Sprintf("%d", resp.StatusCode),
+							"error_response":      truncateString(bodyStr, 200), // Truncate for storage
+						},
+						VulnerabilityScore: "medium",
 					}
 					return server
 				}

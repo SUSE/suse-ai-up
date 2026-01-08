@@ -53,6 +53,21 @@ type CreateAdapterResponse struct {
 	CreatedAt       time.Time                `json:"createdAt"`
 }
 
+// ListAdapterResponse represents an adapter in the list response
+type ListAdapterResponse struct {
+	ID              string                   `json:"id"`
+	Name            string                   `json:"name"`
+	Description     string                   `json:"description,omitempty"`
+	URL             string                   `json:"url"`
+	MCPClientConfig map[string]interface{}   `json:"mcpClientConfig"`
+	Capabilities    *models.MCPFunctionality `json:"capabilities,omitempty"`
+	Status          string                   `json:"status"`
+	CreatedAt       time.Time                `json:"createdAt"`
+	LastUpdatedAt   time.Time                `json:"lastUpdatedAt"`
+	CreatedBy       string                   `json:"createdBy"`
+	ConnectionType  models.ConnectionType    `json:"connectionType"`
+}
+
 // parseTrentoConfig parses TRENTO_CONFIG format: "TRENTO_URL={url},TOKEN={pat}"
 func parseTrentoConfig(config string) (trentoURL, token string, err error) {
 	if config == "" {
@@ -226,8 +241,40 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Transform adapters to list response format
+	listAdapters := make([]ListAdapterResponse, len(adapters))
+	for i, adapter := range adapters {
+		// Convert MCPClientConfig to the expected format for JSON response
+		mcpClientConfig := make(map[string]interface{})
+		if adapter.MCPClientConfig.MCPServers != nil {
+			mcpServers := make(map[string]interface{})
+			for serverName, serverConfig := range adapter.MCPClientConfig.MCPServers {
+				mcpServers[serverName] = map[string]interface{}{
+					"command": serverConfig.Command,
+					"args":    serverConfig.Args,
+					"env":     serverConfig.Env,
+				}
+			}
+			mcpClientConfig["mcpServers"] = mcpServers
+		}
+
+		listAdapters[i] = ListAdapterResponse{
+			ID:              adapter.ID,
+			Name:            adapter.Name,
+			Description:     adapter.Description,
+			URL:             adapter.URL,
+			MCPClientConfig: mcpClientConfig,
+			Capabilities:    adapter.MCPFunctionality,
+			Status:          "ready", // TODO: Get actual status from deployment
+			CreatedAt:       adapter.CreatedAt,
+			LastUpdatedAt:   adapter.LastUpdatedAt,
+			CreatedBy:       adapter.CreatedBy,
+			ConnectionType:  adapter.ConnectionType,
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(adapters)
+	json.NewEncoder(w).Encode(listAdapters)
 }
 
 // GetAdapter gets a specific adapter by ID

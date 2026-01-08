@@ -770,6 +770,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/discovery/results": {
+            "get": {
+                "description": "Returns aggregated results from all completed scans",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get all scan results",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/results/{id}": {
+            "get": {
+                "description": "Returns a specific discovered MCP server by ID from aggregated scan results\nReturns a specific discovered MCP server by ID from aggregated scan results",
+                "produces": [
+                    "application/json",
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery",
+                    "discovery"
+                ],
+                "summary": "Get server by ID from aggregated scan results",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/discovery/scan": {
             "get": {
                 "description": "Retrieve all scan jobs (active and completed)",
@@ -965,14 +1032,15 @@ const docTemplate = `{
         },
         "/api/v1/discovery/servers/{id}": {
             "get": {
-                "description": "Returns a specific discovered MCP server by ID",
+                "description": "This endpoint is deprecated due to data access issues. Use GET /api/v1/discovery/results/{id} instead.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "discovery"
                 ],
-                "summary": "Get discovered server",
+                "summary": "Get discovered server by ID (DEPRECATED)",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -2639,6 +2707,11 @@ const docTemplate = `{
                     "type": "array",
                     "items": {}
                 },
+                "url": {
+                    "description": "Adapter MCP endpoint URL",
+                    "type": "string",
+                    "example": "http://localhost:8911/api/v1/adapters/my-adapter/mcp"
+                },
                 "useWorkloadIdentity": {
                     "type": "boolean",
                     "example": false
@@ -2764,6 +2837,11 @@ const docTemplate = `{
                     "description": "For VirtualMCP tools configuration",
                     "type": "array",
                     "items": {}
+                },
+                "url": {
+                    "description": "Adapter MCP endpoint URL",
+                    "type": "string",
+                    "example": "http://localhost:8911/api/v1/adapters/my-adapter/mcp"
                 },
                 "useWorkloadIdentity": {
                     "type": "boolean",

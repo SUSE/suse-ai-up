@@ -247,6 +247,10 @@ definitions:
         description: For VirtualMCP tools configuration
         items: {}
         type: array
+      url:
+        description: Adapter MCP endpoint URL
+        example: http://localhost:8911/api/v1/adapters/my-adapter/mcp
+        type: string
       useWorkloadIdentity:
         example: false
         type: boolean
@@ -328,6 +332,10 @@ definitions:
         description: For VirtualMCP tools configuration
         items: {}
         type: array
+      url:
+        description: Adapter MCP endpoint URL
+        example: http://localhost:8911/api/v1/adapters/my-adapter/mcp
+        type: string
       useWorkloadIdentity:
         example: false
         type: boolean
@@ -1608,6 +1616,54 @@ paths:
       summary: Register discovered server
       tags:
       - discovery
+  /api/v1/discovery/results:
+    get:
+      description: Returns aggregated results from all completed scans
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all scan results
+      tags:
+      - discovery
+  /api/v1/discovery/results/{id}:
+    get:
+      description: |-
+        Returns a specific discovered MCP server by ID from aggregated scan results
+        Returns a specific discovered MCP server by ID from aggregated scan results
+      parameters:
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get server by ID from aggregated scan results
+      tags:
+      - discovery
+      - discovery
   /api/v1/discovery/scan:
     get:
       description: Retrieve all scan jobs (active and completed)
@@ -1738,7 +1794,9 @@ paths:
       - discovery
   /api/v1/discovery/servers/{id}:
     get:
-      description: Returns a specific discovered MCP server by ID
+      deprecated: true
+      description: This endpoint is deprecated due to data access issues. Use GET
+        /api/v1/discovery/results/{id} instead.
       parameters:
       - description: Server ID
         in: path
@@ -1757,7 +1815,7 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Get discovered server
+      summary: Get discovered server by ID (DEPRECATED)
       tags:
       - discovery
   /api/v1/groups:

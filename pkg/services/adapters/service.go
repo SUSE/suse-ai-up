@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -104,13 +106,45 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will NOT create sidecar for server %s\n", server.Name)
 	}
 
+	// Generate a secure token for the adapter
+	token := as.generateSecureToken()
+
 	// Create adapter data
 	adapterData := &models.AdapterData{
 		Name:                 name,
 		ConnectionType:       connectionType,
 		EnvironmentVariables: envVars,    // Use the provided environment variables
 		RemoteUrl:            server.URL, // Use the OAuth URL as remote URL
+		URL:                  fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
 		SidecarConfig:        sidecarConfig,
+	}
+
+	// Create MCP client configuration
+	adapterData.MCPClientConfig = models.MCPClientConfig{
+		MCPServers: map[string]models.MCPServerConfig{
+			name: {
+				Command: "remote",
+				Args: []string{
+					name,
+					fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+					"--header",
+					fmt.Sprintf("Authorization: Bearer %s", token),
+				},
+				Env: map[string]string{
+					"AUTH_TOKEN": token,
+				},
+			},
+		},
+	}
+
+	// Set up authentication configuration
+	adapterData.Authentication = &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		BearerToken: &models.BearerTokenConfig{
+			Token:   token,
+			Dynamic: false,
+		},
 	}
 
 	// Discover capabilities
@@ -232,10 +266,19 @@ func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: hasImage=%v, server.Image='%s'\n", hasImage, server.Image)
 
 		// If no image in command, append the server's image
-		if !hasImage && server.Image != "" {
-			// Remove trailing space and append image
-			command = strings.TrimSpace(command) + " " + server.Image
-			fmt.Printf("ADAPTER_SERVICE_DEBUG: Appended image to command: %s\n", command)
+		if !hasImage {
+			var imageToAppend string
+			if server.Image != "" {
+				imageToAppend = server.Image
+			} else if len(server.Packages) > 0 && server.Packages[0].Identifier != "" {
+				imageToAppend = server.Packages[0].Identifier
+			}
+
+			if imageToAppend != "" {
+				// Remove trailing space and append image
+				command = strings.TrimSpace(command) + " " + imageToAppend
+				fmt.Printf("ADAPTER_SERVICE_DEBUG: Appended image to command: %s\n", command)
+			}
 		}
 
 		return command
@@ -534,4 +577,15 @@ func (as *AdapterService) discoverCapabilities(ctx context.Context, adapterData 
 	}
 
 	return nil
+}
+
+// generateSecureToken generates a cryptographically secure random token
+func (as *AdapterService) generateSecureToken() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		logging.AdapterLogger.Warn("Failed to generate secure token, falling back to timestamp: %v", err)
+		// Fallback to timestamp-based token
+		return fmt.Sprintf("token-%d-%s", time.Now().Unix(), "fallback")
+	}
+	return base64.URLEncoding.EncodeToString(bytes)
 }

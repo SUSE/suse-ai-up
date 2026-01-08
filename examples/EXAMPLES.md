@@ -36,7 +36,7 @@ Deploy the SUSE AI Universal Proxy using the provided Helm chart:
 ```bash
 # Create required namespaces
 kubectl create namespace suse-ai-up
-kubectl create namespace suse-ai-up-mcp
+# Note: suse-ai-up-mcp namespace is created automatically by the Helm chart
 
 # Install with LoadBalancer service (recommended for external access)
 helm install suse-ai-up ./charts/suse-ai-up/suse-ai-up-1.0.0.tgz \
@@ -58,9 +58,9 @@ echo "MCP Proxy available at: http://${SERVICE_IP}:${SERVICE_PORT}"
 
 #### Install in Default Namespace:
 ```bash
-kubectl create namespace suse-ai-up-mcp
 helm install suse-ai-up ./charts/suse-ai-up/suse-ai-up-1.0.0.tgz \
   --set service.type=LoadBalancer
+# Note: suse-ai-up-mcp namespace is created automatically by the Helm chart
 ```
 
 #### Install in Existing Namespace:

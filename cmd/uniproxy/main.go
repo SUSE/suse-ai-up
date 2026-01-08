@@ -562,7 +562,9 @@ func RunUniproxy() {
 			discovery.GET("/scan/:jobId", discoveryHandler.GetScanJob)
 			discovery.DELETE("/scan/:jobId", discoveryHandler.CancelScanJob)
 			discovery.GET("/servers", discoveryHandler.ListDiscoveredServers)
-			discovery.GET("/servers/:id", discoveryHandler.GetDiscoveredServer)
+			discovery.GET("/servers/:id", discoveryHandler.GetDeprecatedServer)
+			discovery.GET("/results", discoveryHandler.GetAllScanResults)
+			discovery.GET("/results/:id", discoveryHandler.GetServerFromResults)
 		}
 
 		// Adapter routes
