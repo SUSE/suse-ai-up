@@ -283,9 +283,11 @@ type MCPToolsConfig []MCPServerConfig
 
 // MCPServerConfig represents the configuration for an MCP server
 type MCPServerConfig struct {
-	Command string            `json:"command"`
-	Args    []string          `json:"args"`
+	Command string            `json:"command,omitempty"`
+	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
+	URL     string            `json:"url,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // MCPClientConfig represents the full MCP client configuration format

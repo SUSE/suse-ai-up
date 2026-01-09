@@ -86,18 +86,33 @@ func (sm *SidecarManager) DeploySidecar(ctx context.Context, adapter models.Adap
 		return fmt.Errorf("running in-cluster but no Kubernetes client available - check service account permissions")
 	}
 
-	// Fallback to kubectl-based deployment for local development
-	if adapter.SidecarConfig.CommandType == "docker" && adapter.SidecarConfig.Command != "" {
-		fmt.Printf("SIDECAR_MANAGER: Using DockerDeployer (kubectl) for adapter %s\n", adapter.ID)
-		err := sm.dockerDeployer.DeployFromDockerCommandWithEnv(adapter.SidecarConfig.Command, adapter.ID, adapter.EnvironmentVariables)
-		if err != nil {
-			return fmt.Errorf("kubectl deployment failed - ensure kubectl is configured and authenticated: %w", err)
+	// Handle different command types
+	switch adapter.SidecarConfig.CommandType {
+	case "docker":
+		if adapter.SidecarConfig.Command != "" {
+			fmt.Printf("SIDECAR_MANAGER: Using DockerDeployer (kubectl) for adapter %s\n", adapter.ID)
+			err := sm.dockerDeployer.DeployFromDockerCommandWithEnv(adapter.SidecarConfig.Command, adapter.ID, adapter.EnvironmentVariables)
+			if err != nil {
+				return fmt.Errorf("kubectl deployment failed - ensure kubectl is configured and authenticated: %w", err)
+			}
+			return nil
 		}
-		return nil
+	case "python":
+		if adapter.SidecarConfig.Command != "" {
+			fmt.Printf("SIDECAR_MANAGER: Deploying python sidecar for adapter %s\n", adapter.ID)
+			return sm.deployPythonSidecar(ctx, adapter)
+		}
+	case "npx":
+		if adapter.SidecarConfig.Command != "" {
+			fmt.Printf("SIDECAR_MANAGER: Deploying npx sidecar for adapter %s\n", adapter.ID)
+			return sm.deployNpxSidecar(ctx, adapter)
+		}
+	default:
+		fmt.Printf("SIDECAR_MANAGER: No deployment method available for adapter %s\n", adapter.ID)
+		return fmt.Errorf("unsupported sidecar configuration: commandType=%s", adapter.SidecarConfig.CommandType)
 	}
 
-	fmt.Printf("SIDECAR_MANAGER: No deployment method available for adapter %s\n", adapter.ID)
-	return fmt.Errorf("unsupported sidecar configuration: commandType=%s", adapter.SidecarConfig.CommandType)
+	return fmt.Errorf("empty command for sidecar configuration: commandType=%s", adapter.SidecarConfig.CommandType)
 }
 
 // isInCluster checks if we're running inside a Kubernetes cluster
@@ -417,4 +432,196 @@ func (sm *SidecarManager) getLogsViaKubectl(adapterID string, lines int64) (stri
 	}
 
 	return string(output), nil
+}
+
+// deployPythonSidecar deploys a python-based sidecar using the BCI python image
+func (sm *SidecarManager) deployPythonSidecar(ctx context.Context, adapter models.AdapterResource) error {
+	pythonImage := "registry.suse.com/bci/python:3.11"
+	return sm.deployGenericSidecar(ctx, adapter, pythonImage, adapter.SidecarConfig.Command)
+}
+
+// deployNpxSidecar deploys an npx-based sidecar using the BCI nodejs image
+func (sm *SidecarManager) deployNpxSidecar(ctx context.Context, adapter models.AdapterResource) error {
+	nodejsImage := "registry.suse.com/bci/nodejs:22"
+	return sm.deployGenericSidecar(ctx, adapter, nodejsImage, adapter.SidecarConfig.Command)
+}
+
+// deployGenericSidecar deploys a sidecar using a generic container image and command
+func (sm *SidecarManager) deployGenericSidecar(ctx context.Context, adapter models.AdapterResource, image, command string) error {
+	// If we have a Kubernetes client, use it directly for deployment
+	if sm.kubeClient != nil {
+		fmt.Printf("SIDECAR_MANAGER: Using Kubernetes Go client for generic adapter %s\n", adapter.ID)
+		return sm.deployGenericWithKubeClient(ctx, adapter, image, command)
+	}
+
+	// Fallback to kubectl-based deployment for local development
+	fmt.Printf("SIDECAR_MANAGER: Using kubectl for generic adapter %s\n", adapter.ID)
+	return sm.deployGenericWithKubectl(adapter, image, command)
+}
+
+// deployGenericWithKubeClient deploys a generic sidecar using the Kubernetes Go client directly
+func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapter models.AdapterResource, image, command string) error {
+	var err error
+	if sm.kubeClient == nil {
+		return fmt.Errorf("kubernetes client not available")
+	}
+
+	// Get port from sidecar config, default to 8000
+	port := adapter.SidecarConfig.Port
+	if port == 0 {
+		port = 8000
+	}
+
+	// Merge additional environment variables
+	envVars := make(map[string]string)
+	if adapter.EnvironmentVariables != nil {
+		for key, value := range adapter.EnvironmentVariables {
+			envVars[key] = value
+		}
+	}
+
+	fmt.Printf("SIDECAR_MANAGER: Deploying generic with Go client - image: %s, port: %d, command: %s, envVars: %+v\n", image, port, command, envVars)
+
+	// Create deployment
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("mcp-sidecar-%s", adapter.ID),
+			Namespace: sm.namespace,
+			Labels: map[string]string{
+				"app":       "mcp-sidecar",
+				"adapterId": adapter.ID,
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &[]int32{1}[0],
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app":       "mcp-sidecar",
+					"adapterId": adapter.ID,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app":       "mcp-sidecar",
+						"adapterId": adapter.ID,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:    "mcp-server",
+							Image:   image,
+							Command: []string{"sh", "-c", command}, // Execute command in shell
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: int32(port),
+									Protocol:      corev1.ProtocolTCP,
+								},
+							},
+							Env: sm.buildEnvVarsWithOverrides(envVars),
+							Resources: corev1.ResourceRequirements{
+								Limits: sm.defaultLimits,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Create the deployment
+	_, err = sm.kubeClient.AppsV1().Deployments(sm.namespace).Create(ctx, deployment, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create deployment: %w", err)
+	}
+
+	// Create service
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("mcp-sidecar-%s", adapter.ID),
+			Namespace: sm.namespace,
+			Labels: map[string]string{
+				"app":       "mcp-sidecar",
+				"adapterId": adapter.ID,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"app":       "mcp-sidecar",
+				"adapterId": adapter.ID,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       int32(port),
+					TargetPort: intstr.FromInt(port),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+
+	_, err = sm.kubeClient.CoreV1().Services(sm.namespace).Create(ctx, service, metav1.CreateOptions{})
+	if err != nil {
+		// Try to clean up the deployment if service creation fails
+		sm.kubeClient.AppsV1().Deployments(sm.namespace).Delete(ctx, deployment.Name, metav1.DeleteOptions{})
+		return fmt.Errorf("failed to create service: %w", err)
+	}
+
+	fmt.Printf("SIDECAR_MANAGER: Successfully deployed generic sidecar for adapter %s\n", adapter.ID)
+	return nil
+}
+
+// deployGenericWithKubectl deploys a generic sidecar using kubectl
+func (sm *SidecarManager) deployGenericWithKubectl(adapter models.AdapterResource, image, command string) error {
+	var err error
+	// Get port from sidecar config, default to 8000
+	port := adapter.SidecarConfig.Port
+	if port == 0 {
+		port = 8000
+	}
+
+	// Build kubectl run command for generic container
+	args := []string{"run", fmt.Sprintf("mcp-sidecar-%s", adapter.ID),
+		fmt.Sprintf("--image=%s", image),
+		fmt.Sprintf("--port=%d", port),
+		"--expose",
+		"--namespace", sm.namespace,
+		"--command", "--", "sh", "-c", command} // Execute command in shell
+
+	// Add environment variables
+	if adapter.EnvironmentVariables != nil {
+		for key, value := range adapter.EnvironmentVariables {
+			args = append(args, fmt.Sprintf("--env=%s=%s", key, value))
+		}
+	}
+
+	// Add insecure TLS skip for development
+	kubeconfig := os.Getenv("KUBECONFIG")
+	fmt.Printf("SIDECAR_MANAGER: kubeconfig='%s', checking for insecure skip\n", kubeconfig)
+	if kubeconfig == "" || strings.Contains(kubeconfig, "localhost") || strings.Contains(kubeconfig, "127.0.0.1") {
+		fmt.Printf("SIDECAR_MANAGER: Adding --insecure-skip-tls-verify for development\n")
+		args = append([]string{"--insecure-skip-tls-verify"}, args...)
+	}
+
+	// Log the exact kubectl command being executed
+	fmt.Printf("SIDECAR_MANAGER: kubectl command: kubectl")
+	for _, arg := range args {
+		fmt.Printf(" %s", arg)
+	}
+	fmt.Printf("\n")
+
+	// Execute the kubectl command
+	cmd := exec.Command("kubectl", args...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to execute kubectl run: %w, output: %s", err, string(output))
+	}
+
+	fmt.Printf("SIDECAR_MANAGER: kubectl command completed successfully\n")
+	return nil
 }

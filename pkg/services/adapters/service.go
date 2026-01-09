@@ -119,22 +119,38 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		SidecarConfig:        sidecarConfig,
 	}
 
-	// Create MCP client configuration
-	adapterData.MCPClientConfig = models.MCPClientConfig{
-		MCPServers: map[string]models.MCPServerConfig{
-			name: {
-				Command: "remote",
-				Args: []string{
-					name,
-					fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
-					"--header",
-					fmt.Sprintf("Authorization: Bearer %s", token),
-				},
-				Env: map[string]string{
-					"AUTH_TOKEN": token,
+	// Create MCP client configuration based on connection type
+	if connectionType == models.ConnectionTypeStreamableHttp {
+		// For StreamableHttp adapters (proxy-based), set URL-based configuration
+		// We store the standard MCP client config, but the handlers will provide multiple formats
+		adapterData.MCPClientConfig = models.MCPClientConfig{
+			MCPServers: map[string]models.MCPServerConfig{
+				name: {
+					URL: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+					Headers: map[string]string{
+						"Authorization": fmt.Sprintf("Bearer %s", token),
+					},
 				},
 			},
-		},
+		}
+	} else {
+		// For stdio-based adapters, set command-based configuration
+		adapterData.MCPClientConfig = models.MCPClientConfig{
+			MCPServers: map[string]models.MCPServerConfig{
+				name: {
+					Command: "remote",
+					Args: []string{
+						name,
+						fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+						"--header",
+						fmt.Sprintf("Authorization: Bearer %s", token),
+					},
+					Env: map[string]string{
+						"AUTH_TOKEN": token,
+					},
+				},
+			},
+		}
 	}
 
 	// Set up authentication configuration

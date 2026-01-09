@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/session"
@@ -99,65 +101,93 @@ func NewProtocolHandler(sessionStore session.SessionStore, capabilityCache *Capa
 }
 
 // HandleMessage processes an incoming MCP message
-func (ph *ProtocolHandler) HandleMessage(ctx context.Context, message []byte, adapter models.AdapterResource, sessionID string) (*JSONRPCMessage, error) {
-	// Parse JSON-RPC message
-	var rpcMessage JSONRPCMessage
-	if err := json.Unmarshal(message, &rpcMessage); err != nil {
-		return nil, fmt.Errorf("parse error: %w", err)
+func (ph *ProtocolHandler) HandleMessage(ctx context.Context, messageBytes []byte, adapter models.AdapterResource, sessionID string) (*JSONRPCMessage, error) {
+	// Parse the message
+	var message JSONRPCMessage
+	if err := json.Unmarshal(messageBytes, &message); err != nil {
+		return nil, fmt.Errorf("failed to parse MCP message: %w", err)
 	}
 
-	// Validate JSON-RPC 2.0 structure
-	if rpcMessage.JSONRPC != "2.0" {
-		return nil, fmt.Errorf("invalid JSON-RPC version")
-	}
-
-	// Handle different message types
-	if rpcMessage.Method != "" {
-		// This is a request
-		return ph.handleRequest(ctx, &rpcMessage, adapter, sessionID)
-	} else if rpcMessage.Result != nil || rpcMessage.Error != nil {
-		// This is a response - forward to appropriate handler
-		return ph.handleResponse(&rpcMessage, adapter, sessionID)
-	}
-
-	// Invalid message
-	return nil, fmt.Errorf("invalid JSON-RPC message: missing method, result, or error")
-}
-
-// handleRequest processes an MCP request
-func (ph *ProtocolHandler) handleRequest(ctx context.Context, message *JSONRPCMessage, adapter models.AdapterResource, sessionID string) (*JSONRPCMessage, error) {
-	log.Printf("MCP Protocol: Handling request method: %s", message.Method)
-
+	// Route based on method
 	switch message.Method {
 	case "initialize":
-		return ph.handleInitialize(ctx, message, adapter, sessionID)
+		return ph.handleInitialize(ctx, &message, adapter, sessionID)
 	case "initialized":
-		return ph.handleInitialized(ctx, message, adapter, sessionID)
+		return ph.handleInitialized(ctx, &message, adapter, sessionID)
 	default:
-		// For other methods, we need to proxy to the target MCP server
-		return ph.proxyRequest(ctx, message, adapter, sessionID)
+		return ph.proxyRequest(ctx, &message, adapter, sessionID)
 	}
 }
 
-// handleInitialize processes MCP initialization
-func (ph *ProtocolHandler) handleInitialize(ctx context.Context, message *JSONRPCMessage, adapter models.AdapterResource, sessionID string) (*JSONRPCMessage, error) {
-	log.Printf("MCP Protocol: Handling initialize request")
+// forwardToSidecar forwards an MCP message to the sidecar and returns the response
+func (ph *ProtocolHandler) forwardToSidecar(ctx context.Context, message *JSONRPCMessage, sidecarURL string) (*JSONRPCMessage, error) {
+	// Marshal the message
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal message: %w", err)
+	}
 
-	// Parse initialize parameters
-	var params InitializeParams
-	if message.Params != nil {
-		if paramsBytes, err := json.Marshal(message.Params); err == nil {
-			if err := json.Unmarshal(paramsBytes, &params); err != nil {
-				return nil, fmt.Errorf("invalid initialize parameters: %w", err)
-			}
+	// Create HTTP request to sidecar
+	req, err := http.NewRequestWithContext(ctx, "POST", sidecarURL, bytes.NewReader(messageBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("MCP-Protocol-Version", ProtocolVersion)
+
+	// Send request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request to sidecar: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response from sidecar: %w", err)
+	}
+
+	// Unmarshal response
+	var response JSONRPCMessage
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response from sidecar: %w", err)
+	}
+
+	return &response, nil
+}
+
+// handleInitialize processes MCP initialization by forwarding to the actual MCP server
+func (ph *ProtocolHandler) handleInitialize(ctx context.Context, message *JSONRPCMessage, adapter models.AdapterResource, sessionID string) (*JSONRPCMessage, error) {
+	log.Printf("MCP Protocol: Handling initialize request for adapter %s", adapter.Name)
+
+	// For sidecar adapters, forward the initialize request to the actual MCP server
+	if adapter.ConnectionType == "StreamableHttp" && adapter.SidecarConfig != nil {
+		// Construct sidecar URL
+		sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.%s.svc.cluster.local:%d/mcp",
+			adapter.ID, "suse-ai-up-mcp", adapter.SidecarConfig.Port)
+
+		log.Printf("MCP Protocol: Forwarding initialize to sidecar at %s", sidecarURL)
+
+		// Forward the initialize request to the sidecar
+		response, err := ph.forwardToSidecar(ctx, message, sidecarURL)
+		if err != nil {
+			log.Printf("MCP Protocol: Failed to forward initialize to sidecar: %v", err)
+			// Fall back to cached capabilities
+		} else {
+			log.Printf("MCP Protocol: Successfully forwarded initialize to sidecar")
+			return response, nil
 		}
 	}
 
-	// Get target server capabilities
+	// Fallback: Get cached capabilities or return basic capabilities
 	capabilities, err := ph.capabilityCache.GetCapabilities(ctx, adapter)
 	if err != nil {
 		log.Printf("MCP Protocol: Failed to get capabilities: %v", err)
-		// Return basic capabilities for now
+		// Return basic capabilities
 		capabilities = map[string]interface{}{
 			"tools": map[string]interface{}{
 				"listChanged": true,
@@ -188,22 +218,18 @@ func (ph *ProtocolHandler) handleInitialize(ctx context.Context, message *JSONRP
 
 		// Store MCP-specific session information
 		ph.sessionStore.SetMCPServerInfo(sessionID, &session.MCPServerInfo{
-			Name:     adapter.Name,
-			Version:  "1.0.0",
-			Protocol: "MCP",
+			Name:     result.ServerInfo.Name,
+			Version:  result.ServerInfo.Version,
+			Protocol: ProtocolVersion,
 		})
-
-		// Store capabilities in session
-		ph.sessionStore.SetMCPCapabilities(sessionID, capabilities)
 	}
 
-	response := &JSONRPCMessage{
+	// Return success response
+	return &JSONRPCMessage{
 		JSONRPC: "2.0",
 		ID:      message.ID,
 		Result:  result,
-	}
-
-	return response, nil
+	}, nil
 }
 
 // handleInitialized processes MCP initialized notification

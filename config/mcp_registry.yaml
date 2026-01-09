@@ -58,8 +58,8 @@
     - bug-reports
     - suse
     sidecarConfig:
-      commandType: docker
-      command: "docker run --bugzilla-server https://bugzilla.example.com --host 0.0.0.0 --port 8000"
+      commandType: python
+      command: "uv run mcp-bugzilla --bugzilla-server https://bugzilla.example.com --host 127.0.0.1 --port 8000"
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'
@@ -84,8 +84,9 @@
   meta:
     category: productivity
     sidecarConfig:
-      commandType: docker
-      command: "docker run -i --rm -e NODE_ENV=production -e AIRTABLE_API_KEY=patABC123.def456ghi789jkl012mno345pqr678stu901vwx"
+      commandType: npx
+      command: "npx -y @nekzus/npm-sentinel-mcp"
+      port: 8000
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
     tags:

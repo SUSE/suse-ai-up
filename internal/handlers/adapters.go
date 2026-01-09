@@ -193,17 +193,35 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create MCP client configuration
-	mcpClientConfig := map[string]interface{}{
-		"mcpServers": []map[string]interface{}{
-			{
-				"url": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
-				"auth": map[string]interface{}{
-					"type":  "bearer",
-					"token": "adapter-session-token", // Would be generated properly
+	// Generate MCP client configurations for different client types
+	var mcpClientConfig map[string]interface{}
+	if adapter.ConnectionType != models.ConnectionTypeStreamableHttp {
+		mcpClientConfig = map[string]interface{}{"stdio": "format"}
+	} else {
+		mcpClientConfig = map[string]interface{}{
+			"gemini": map[string]interface{}{
+				"mcpServers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"httpUrl": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+					},
 				},
 			},
-		},
+			"vscode": map[string]interface{}{
+				"servers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"url": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+						"type": "http",
+					},
+				},
+				"inputs": []interface{}{},
+			},
+		}
 	}
 
 	response := CreateAdapterResponse{
@@ -241,36 +259,49 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Transform adapters to list response format
-	listAdapters := make([]ListAdapterResponse, len(adapters))
+	// Transform adapters to include multi-format MCP client configurations
+	listAdapters := make([]map[string]interface{}, len(adapters))
 	for i, adapter := range adapters {
-		// Convert MCPClientConfig to the expected format for JSON response
-		mcpClientConfig := make(map[string]interface{})
-		if adapter.MCPClientConfig.MCPServers != nil {
-			mcpServers := make(map[string]interface{})
-			for serverName, serverConfig := range adapter.MCPClientConfig.MCPServers {
-				mcpServers[serverName] = map[string]interface{}{
-					"command": serverConfig.Command,
-					"args":    serverConfig.Args,
-					"env":     serverConfig.Env,
-				}
-			}
-			mcpClientConfig["mcpServers"] = mcpServers
+		// Generate MCP client configurations for different client types
+		mcpClientConfig := map[string]interface{}{
+			"gemini": map[string]interface{}{
+				"mcpServers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"httpUrl": adapter.URL,
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+					},
+				},
+			},
+			"vscode": map[string]interface{}{
+				"servers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"url": adapter.URL,
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+						"type": "http",
+					},
+				},
+				"inputs": []interface{}{},
+			},
 		}
 
-		listAdapters[i] = ListAdapterResponse{
-			ID:              adapter.ID,
-			Name:            adapter.Name,
-			Description:     adapter.Description,
-			URL:             adapter.URL,
-			MCPClientConfig: mcpClientConfig,
-			Capabilities:    adapter.MCPFunctionality,
-			Status:          "ready", // TODO: Get actual status from deployment
-			CreatedAt:       adapter.CreatedAt,
-			LastUpdatedAt:   adapter.LastUpdatedAt,
-			CreatedBy:       adapter.CreatedBy,
-			ConnectionType:  adapter.ConnectionType,
+		adapterMap := map[string]interface{}{
+			"id":              adapter.ID,
+			"name":            adapter.Name,
+			"description":     adapter.Description,
+			"url":             adapter.URL,
+			"mcpClientConfig": mcpClientConfig,
+			"capabilities":    adapter.MCPFunctionality,
+			"status":          "ready",
+			"createdAt":       adapter.CreatedAt,
+			"lastUpdatedAt":   adapter.LastUpdatedAt,
+			"createdBy":       adapter.CreatedBy,
+			"connectionType":  adapter.ConnectionType,
 		}
+		listAdapters[i] = adapterMap
 	}
 
 	w.Header().Set("Content-Type", "application/json")
