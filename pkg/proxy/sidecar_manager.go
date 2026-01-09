@@ -71,11 +71,6 @@ func NewSidecarManagerWithoutClient(namespace string) *SidecarManager {
 
 // DeploySidecar deploys a sidecar container for the given adapter
 func (sm *SidecarManager) DeploySidecar(ctx context.Context, adapter models.AdapterResource) error {
-	if adapter.SidecarConfig == nil {
-		return fmt.Errorf("adapter does not have sidecar configuration")
-	}
-
-	fmt.Printf("SIDECAR_MANAGER: DeploySidecar called for adapter %s\n", adapter.ID)
 	fmt.Printf("SIDECAR_MANAGER: SidecarConfig: %+v\n", adapter.SidecarConfig)
 	fmt.Printf("SIDECAR_MANAGER: CommandType=%s, Command=%s\n", adapter.SidecarConfig.CommandType, adapter.SidecarConfig.Command)
 	fmt.Printf("SIDECAR_MANAGER: EnvironmentVariables: %+v\n", adapter.EnvironmentVariables)
@@ -256,7 +251,7 @@ func (sm *SidecarManager) deployWithKubeClient(ctx context.Context, adapter mode
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							Env: sm.buildEnvVars(envVars),
+							Env: sm.buildEnvVarsWithOverrides(envVars),
 							Resources: corev1.ResourceRequirements{
 								Limits: sm.defaultLimits,
 							},
@@ -385,6 +380,11 @@ func (sm *SidecarManager) parseDockerCommand(command string) (string, map[string
 
 // buildEnvVars converts map to Kubernetes env var format
 func (sm *SidecarManager) buildEnvVars(envMap map[string]string) []corev1.EnvVar {
+	return sm.buildEnvVarsWithOverrides(envMap)
+}
+
+// buildEnvVarsWithOverrides converts map to Kubernetes env var format with additional overrides
+func (sm *SidecarManager) buildEnvVarsWithOverrides(envMap map[string]string) []corev1.EnvVar {
 	var envVars []corev1.EnvVar
 	for key, value := range envMap {
 		envVars = append(envVars, corev1.EnvVar{
@@ -392,6 +392,13 @@ func (sm *SidecarManager) buildEnvVars(envMap map[string]string) []corev1.EnvVar
 			Value: value,
 		})
 	}
+
+	// Add UVICORN_HOST to ensure FastMCP servers bind to 0.0.0.0 instead of 127.0.0.1
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "UVICORN_HOST",
+		Value: "0.0.0.0",
+	})
+
 	return envVars
 }
 

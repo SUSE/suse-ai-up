@@ -282,6 +282,13 @@ registry:
   # Enable loading servers from YAML file
   enabled: true
 
+  # External registry URL (if set, will fetch registry from URL instead of ConfigMap)
+  # Leave empty to use ConfigMap-based registry
+  url: ""
+
+  # Timeout for registry URL fetch (only used when url is set)
+  timeout: "30s"
+
   # MCP servers configuration (will be loaded into ConfigMap)
   servers: |
     - name: uyuni

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
+	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
 	"suse-ai-up/pkg/models"
@@ -47,16 +49,18 @@ type RegistryHandler struct {
 	AdapterStore     clients.AdapterResourceStore
 	ToolDiscovery    *mcp.MCPToolDiscoveryService
 	UserGroupService *services.UserGroupService
+	Config           *config.Config
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore, userGroupService *services.UserGroupService) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore, userGroupService *services.UserGroupService, cfg *config.Config) *RegistryHandler {
 	handler := &RegistryHandler{
 		Store:            store,
 		RegistryManager:  registryManager,
 		AdapterStore:     adapterStore,
 		ToolDiscovery:    mcp.NewMCPToolDiscoveryService(),
 		UserGroupService: userGroupService,
+		Config:           cfg,
 	}
 
 	return handler
@@ -461,6 +465,145 @@ func (h *RegistryHandler) UploadBulkRegistryEntries(c *gin.Context) {
 	}
 
 	log.Printf("Bulk uploaded %d MCP servers", len(servers))
+	c.JSON(http.StatusOK, response)
+}
+
+// ReloadRegistry handles POST /registry/reload
+// @Summary Reload registry from configured source
+// @Description Reload MCP server registry from URL or local file based on configuration
+// @Tags registry
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {string} string "Internal Server Error"
+// @Router /api/v1/registry/reload [post]
+func (h *RegistryHandler) ReloadRegistry(c *gin.Context) {
+	log.Printf("Reloading MCP registry")
+
+	var source string
+	var serverCount int
+	var err error
+
+	// Try to load from URL first if configured
+	if h.Config.MCPRegistryURL != "" {
+		timeout, parseErr := time.ParseDuration(h.Config.RegistryTimeout)
+		if parseErr != nil {
+			log.Printf("Warning: Invalid registry timeout %s, using 30s: %v", h.Config.RegistryTimeout, parseErr)
+			timeout = 30 * time.Second
+		}
+
+		// Create a temporary registry manager to load from URL
+		// We'll need to pass the config to the load function, but since we can't modify the interface,
+		// let's implement the logic directly here
+		source = h.Config.MCPRegistryURL
+
+		client := &http.Client{
+			Timeout: timeout,
+		}
+
+		resp, httpErr := client.Get(source)
+		if httpErr != nil {
+			err = fmt.Errorf("failed to fetch from URL %s: %w", source, httpErr)
+		} else {
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf("URL returned status %d", resp.StatusCode)
+			} else {
+				data, readErr := io.ReadAll(resp.Body)
+				if readErr != nil {
+					err = fmt.Errorf("failed to read response body: %w", readErr)
+				} else {
+					// Parse and upload the YAML
+					var servers []map[string]interface{}
+					if parseErr := json.Unmarshal(data, &servers); parseErr != nil {
+						// Try YAML if JSON fails
+						servers = nil
+						if yamlErr := yaml.Unmarshal(data, &servers); yamlErr != nil {
+							err = fmt.Errorf("could not parse registry data from %s as JSON or YAML: %w", source, yamlErr)
+						}
+					}
+
+					if err == nil {
+						log.Printf("Loading %d MCP servers from %s", len(servers), source)
+						var mcpServers []*models.MCPServer
+
+						for _, serverData := range servers {
+							server := &models.MCPServer{}
+
+							if name, ok := serverData["name"].(string); ok {
+								server.ID = name
+								server.Name = name
+							} else {
+								log.Printf("Warning: Server missing name field, skipping: %+v", serverData)
+								continue
+							}
+
+							if desc, ok := serverData["description"].(string); ok {
+								server.Description = desc
+							}
+
+							if image, ok := serverData["image"].(string); ok {
+								server.Packages = []models.Package{
+									{
+										Identifier: image,
+										Transport: models.Transport{
+											Type: "stdio",
+										},
+									},
+								}
+							}
+
+							// Handle meta field
+							if meta, ok := serverData["meta"].(map[string]interface{}); ok {
+								server.Meta = meta
+							} else {
+								server.Meta = make(map[string]interface{})
+							}
+
+							server.Meta["source"] = "yaml"
+
+							// Include additional fields
+							if about, ok := serverData["about"].(map[string]interface{}); ok {
+								server.Meta["about"] = about
+							}
+							if sourceInfo, ok := serverData["source"].(map[string]interface{}); ok {
+								server.Meta["source_info"] = sourceInfo
+							}
+							if configField, ok := serverData["config"].(map[string]interface{}); ok {
+								server.Meta["config"] = configField
+							}
+							if serverType, ok := serverData["type"].(string); ok {
+								server.Meta["type"] = serverType
+							}
+
+							mcpServers = append(mcpServers, server)
+						}
+
+						// Upload all servers
+						if uploadErr := h.RegistryManager.UploadRegistryEntries(mcpServers); uploadErr != nil {
+							err = fmt.Errorf("could not upload registry entries: %w", uploadErr)
+						} else {
+							serverCount = len(mcpServers)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if err != nil {
+		log.Printf("Error reloading registry: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := map[string]interface{}{
+		"message":     "Registry reloaded successfully",
+		"source":      source,
+		"serverCount": serverCount,
+	}
+
+	log.Printf("Registry reloaded from %s with %d servers", source, serverCount)
 	c.JSON(http.StatusOK, response)
 }
 

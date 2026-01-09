@@ -42,6 +42,8 @@ type Config struct {
 	// Registry configuration
 	RegistrySyncInterval  string   `json:"registry_sync_interval"`
 	RegistryCustomSources []string `json:"registry_custom_sources"`
+	MCPRegistryURL        string   `json:"mcp_registry_url"`
+	RegistryTimeout       string   `json:"registry_timeout"`
 
 	// Local deployment configuration
 	LocalDeployment LocalDeploymentConfig `json:"local_deployment"`
@@ -102,6 +104,8 @@ func LoadConfig() *Config {
 
 		RegistrySyncInterval:  getEnv("REGISTRY_SYNC_INTERVAL", "1h"),
 		RegistryCustomSources: []string{}, // TODO: Parse from env
+		MCPRegistryURL:        getEnv("MCP_REGISTRY_URL", ""),
+		RegistryTimeout:       getEnv("REGISTRY_TIMEOUT", "30s"),
 
 		LocalDeployment: LocalDeploymentConfig{
 			MinPort: getEnvInt("LOCAL_DEPLOYMENT_MIN_PORT", 8000),

@@ -57,23 +57,14 @@ func generateID() string {
 	return hex.EncodeToString(bytes)
 }
 
-// loadRegistryFromFile loads MCP servers from config/mcp_registry.yaml
-func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
-	log.Printf("DEBUG: loadRegistryFromFile called")
-	registryFile := "config/mcp_registry.yaml"
-	data, err := os.ReadFile(registryFile)
-	if err != nil {
-		log.Printf("Warning: Could not read registry file %s: %v", registryFile, err)
-		return
-	}
-
+// parseAndUploadRegistryYAML parses YAML data and uploads MCP servers to registry
+func parseAndUploadRegistryYAML(data []byte, registryManager *handlers.DefaultRegistryManager, source string) error {
 	var servers []map[string]interface{}
 	if err := yaml.Unmarshal(data, &servers); err != nil {
-		log.Printf("Warning: Could not parse registry file %s: %v", registryFile, err)
-		return
+		return fmt.Errorf("could not parse registry YAML from %s: %w", source, err)
 	}
 
-	log.Printf("Loading %d MCP servers from %s", len(servers), registryFile)
+	log.Printf("Loading %d MCP servers from %s", len(servers), source)
 
 	var mcpServers []*models.MCPServer
 	log.Printf("DEBUG: Processing %d servers from YAML", len(servers))
@@ -122,8 +113,8 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 		if about, ok := serverData["about"].(map[string]interface{}); ok {
 			server.Meta["about"] = about
 		}
-		if source, ok := serverData["source"].(map[string]interface{}); ok {
-			server.Meta["source_info"] = source
+		if sourceInfo, ok := serverData["source"].(map[string]interface{}); ok {
+			server.Meta["source_info"] = sourceInfo
 		}
 		if config, ok := serverData["config"].(map[string]interface{}); ok {
 			server.Meta["config"] = config
@@ -138,10 +129,72 @@ func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager) {
 	// Use the registry manager to upload all servers
 	log.Printf("DEBUG: Uploading %d MCP servers to registry", len(mcpServers))
 	if err := registryManager.UploadRegistryEntries(mcpServers); err != nil {
-		log.Printf("Warning: Could not upload registry entries: %v", err)
-		return
+		return fmt.Errorf("could not upload registry entries: %w", err)
 	}
 	log.Printf("DEBUG: Successfully uploaded MCP servers")
+
+	return nil
+}
+
+// loadRegistryFromURL loads MCP servers from a URL
+func loadRegistryFromURL(registryManager *handlers.DefaultRegistryManager, url string, timeout time.Duration) error {
+	log.Printf("Loading MCP registry from URL: %s", url)
+
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to fetch from URL %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("URL returned status %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	return parseAndUploadRegistryYAML(data, registryManager, url)
+}
+
+// loadRegistryFromFile loads MCP servers from URL or config/mcp_registry.yaml
+func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager, cfg *config.Config) {
+	log.Printf("DEBUG: loadRegistryFromFile called")
+
+	// Try to load from URL first if configured
+	if cfg.MCPRegistryURL != "" {
+		timeout, err := time.ParseDuration(cfg.RegistryTimeout)
+		if err != nil {
+			log.Printf("Warning: Invalid registry timeout %s, using 30s: %v", cfg.RegistryTimeout, err)
+			timeout = 30 * time.Second
+		}
+
+		if err := loadRegistryFromURL(registryManager, cfg.MCPRegistryURL, timeout); err != nil {
+			log.Printf("Warning: Failed to load registry from URL %s: %v, falling back to local file", cfg.MCPRegistryURL, err)
+			// Fall through to local file loading
+		} else {
+			log.Printf("Successfully loaded MCP registry from URL: %s", cfg.MCPRegistryURL)
+			return
+		}
+	}
+
+	// Fallback to local file
+	registryFile := "config/mcp_registry.yaml"
+	data, err := os.ReadFile(registryFile)
+	if err != nil {
+		log.Printf("Warning: Could not read registry file %s: %v", registryFile, err)
+		return
+	}
+
+	if err := parseAndUploadRegistryYAML(data, registryManager, registryFile); err != nil {
+		log.Printf("Warning: Failed to parse and upload registry from file %s: %v", registryFile, err)
+		return
+	}
 
 	log.Printf("Successfully loaded MCP registry from %s", registryFile)
 }
@@ -497,10 +550,10 @@ func RunUniproxy() {
 		}
 	}
 
-	// Load MCP registry from config file
-	loadRegistryFromFile(registryManager)
+	// Load MCP registry from URL or config file
+	loadRegistryFromFile(registryManager, cfg)
 
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService)
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService, cfg)
 
 	// Initialize user/group and route assignment handlers
 	userGroupHandler := handlers.NewUserGroupHandler(userGroupService)
@@ -637,6 +690,7 @@ func RunUniproxy() {
 			registry.POST("/upload", registryHandler.UploadRegistryEntry)
 			registry.POST("/upload/bulk", registryHandler.UploadBulkRegistryEntries)
 			registry.POST("/upload/local-mcp", registryHandler.UploadLocalMCP)
+			registry.POST("/reload", registryHandler.ReloadRegistry)
 			registry.GET("/browse", registryHandler.BrowseRegistry)
 
 			registry.GET("/:id", registryHandler.GetMCPServer)

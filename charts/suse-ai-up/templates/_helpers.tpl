@@ -131,3 +131,15 @@ Return the proper Docker Image Registry Secret Names
 {{- end }}
 {{- $pullSecrets | uniq | toYaml }}
 {{- end }}
+
+{{/*
+Registry environment variables
+*/}}
+{{- define "suse-ai-up.registryEnvVars" -}}
+{{- if .Values.registry.url }}
+- name: MCP_REGISTRY_URL
+  value: "{{ .Values.registry.url }}"
+- name: REGISTRY_TIMEOUT
+  value: "{{ .Values.registry.timeout }}"
+{{- end }}
+{{- end }}

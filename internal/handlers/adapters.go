@@ -464,9 +464,8 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 		if adapter.SidecarConfig != nil {
 			port = adapter.SidecarConfig.Port
 		}
-		// For HTTP transport MCP servers, use root path (not /mcp)
-		sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/", adapterID, port)
-		fmt.Printf("DEBUG: Proxying MCP request to sidecar URL: %s\n", sidecarURL)
+		// For HTTP transport MCP servers, use internal DNS
+		sidecarURL := fmt.Sprintf("http://mcp-sidecar-%s.suse-ai-up-mcp.svc.cluster.local:%d/mcp", adapterID, port)
 		h.proxyToSidecar(w, r, sidecarURL)
 		return
 	}
@@ -505,8 +504,8 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 
 // proxyToSidecar proxies requests to the sidecar container
 func (h *AdapterHandler) proxyToSidecar(w http.ResponseWriter, r *http.Request, sidecarURL string) {
-	fmt.Printf("DEBUG: Attempting to proxy to sidecar URL: %s\n", sidecarURL)
-	fmt.Printf("DEBUG: Original request method: %s, path: %s\n", r.Method, r.URL.Path)
+
+	fmt.Printf("DEBUG: Request headers: %+v\n", r.Header)
 
 	// Extract adapter ID from the request path
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/"), "/")
@@ -529,12 +528,18 @@ func (h *AdapterHandler) proxyToSidecar(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
+	// Ensure Accept header includes required types for MCP HTTP transport
+	if sidecarReq.Header.Get("Accept") == "" {
+		sidecarReq.Header.Set("Accept", "application/json, text/event-stream")
+	}
+
+	// Set Host header to localhost for MCP servers that may check host
+	sidecarReq.Host = "localhost"
+
 	// Set Content-Type if not already set
 	if sidecarReq.Header.Get("Content-Type") == "" {
 		sidecarReq.Header.Set("Content-Type", "application/json")
 	}
-
-	fmt.Printf("DEBUG: Making request to sidecar: %s %s\n", sidecarReq.Method, sidecarReq.URL.String())
 
 	// Make the request to the sidecar
 	client := &http.Client{
@@ -549,7 +554,7 @@ func (h *AdapterHandler) proxyToSidecar(w http.ResponseWriter, r *http.Request, 
 		fmt.Printf("DEBUG: Failed to connect to sidecar: %v\n", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to connect to sidecar: " + err.Error()})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "UNIQUE_ERROR: Failed to connect to sidecar: " + err.Error()})
 		return
 	}
 	defer resp.Body.Close()

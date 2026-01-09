@@ -230,6 +230,22 @@ questions:
     type: string
     default: "10Gi"
 
+- variable: registry.url
+  label: "External Registry URL"
+  description: "URL to fetch MCP server registry from (leave empty to use ConfigMap)"
+  type: string
+  default: ""
+  group: "Registry Configuration"
+  show_if: "installType=custom"
+
+- variable: registry.timeout
+  label: "Registry Fetch Timeout"
+  description: "Timeout for fetching registry from external URL"
+  type: string
+  default: "30s"
+  group: "Registry Configuration"
+  show_if: "installType=custom && registry.url"
+
 - variable: logging.level
   label: "Log Level"
   description: "Set the logging level for all services"
@@ -238,11 +254,11 @@ questions:
   group: "Advanced Options"
   show_if: "installType=custom"
   options:
-  - label: "Error (minimal logging)"
-    value: "error"
-  - label: "Warning"
-    value: "warn"
-  - label: "Info (recommended)"
-    value: "info"
-  - label: "Debug (verbose)"
-    value: "debug"
+   - label: "Error (minimal logging)"
+     value: "error"
+   - label: "Warning"
+     value: "warn"
+   - label: "Info (recommended)"
+     value: "info"
+   - label: "Debug (verbose)"
+     value: "debug"
