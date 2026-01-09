@@ -86,6 +86,14 @@ The following table lists the configurable parameters of the SUSE AI Universal P
 | services.plugins.port | int | `8914` | HTTP port for plugins service |
 | services.plugins.tlsPort | int | `38914` | HTTPS port for plugins service |
 
+### Registry Configuration
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| registry.enabled | bool | `true` | Enable MCP server registry |
+| registry.url | string | `""` | External URL for registry YAML file (leave empty for ConfigMap) |
+| registry.timeout | string | `"30s"` | Timeout for fetching external registry |
+
 ### TLS Configuration
 
 | Key | Type | Default | Description |
@@ -185,6 +193,25 @@ helm install suse-ai-up ./charts/suse-ai-up \
   --set service.type=ClusterIP
 ```
 
+### External Registry Configuration
+
+Use an external registry URL for dynamic registry management:
+
+```bash
+# Install with GitHub-hosted registry
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set registry.url="https://raw.githubusercontent.com/your-org/mcp-registry/main/mcp_registry.yaml"
+
+# Reload registry at runtime (after updating the external file)
+curl -X POST "http://<SERVICE-IP>:8911/api/v1/registry/reload"
+```
+
+**Registry URL Requirements:**
+- Must serve valid YAML content
+- File structure should match the MCP registry format
+- Supports any URL (GitHub, GitLab, HTTP server, etc.)
+- Falls back to ConfigMap if URL is unavailable
+
 ### With Monitoring
 
 First, install Prometheus and Grafana separately:
@@ -249,6 +276,9 @@ After installation, the services will be available on the following ports:
 ```bash
 # Open Swagger UI
 open http://your-cluster-ip:8911/docs
+
+# Reload registry from configured URL
+curl -X POST "http://your-cluster-ip:8911/api/v1/registry/reload"
 ```
 
 ### Health Checks
