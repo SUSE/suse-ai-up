@@ -54,11 +54,58 @@ Each registry entry follows this YAML structure:
         value: <default-value>
 ```
 
+## Variable Templating System
+
+The registry supports variable templating in sidecar commands using the `{{variable.name}}` syntax. This allows dynamic substitution of environment variables from the `config.secrets` section.
+
+### Template Syntax
+
+Use double curly braces to reference variables:
+```yaml
+command: "docker run -it --rm {{myapp.api_key}} {{myapp.database_url}} myapp:latest"
+```
+
+### Templated Secrets Configuration
+
+Only secrets marked with `templated: true` can be used in templates:
+
+```yaml
+config:
+  secrets:
+    - env: API_KEY
+      name: myapp.api_key
+      templated: true          # Required for template usage
+      example: your_api_key
+    - env: DATABASE_URL
+      name: myapp.database_url
+      templated: true
+      example: postgresql://localhost/db
+    - env: DEBUG_MODE
+      name: myapp.debug
+      templated: false         # Not available for templating
+      example: 'false'
+```
+
+### Template Resolution
+
+**For Docker commands:**
+- `{{myapp.api_key}}` → `-e API_KEY=$API_KEY`
+
+**For Python/NPX commands:**
+- Environment variables are automatically available to the container
+- Template syntax may be preserved or resolved based on command type
+
+### Error Handling
+
+- Invalid template references are ignored (logged as warnings)
+- Variables without `templated: true` are skipped
+- Missing variables don't break command execution
+
 ## Command Types
 
 ### Docker Command Type
 
-For traditional Docker container deployments.
+For traditional Docker container deployments with support for variable templating.
 
 ```yaml
 - name: my-docker-server
@@ -71,7 +118,7 @@ For traditional Docker container deployments.
       - productivity
     sidecarConfig:
       commandType: docker
-      command: "docker run -i --rm -e API_KEY=your_key myorg/my-mcp-server:latest"
+      command: "docker run -it --rm {{myapp.api_key}} {{myapp.database_url}} myorg/my-mcp-server:latest"
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-12T10:00:00Z'
@@ -87,13 +134,19 @@ For traditional Docker container deployments.
     secrets:
       - env: API_KEY
         example: your_api_key_here
-        name: api_key
+        name: myapp.api_key
+        templated: true
+      - env: DATABASE_URL
+        example: postgresql://localhost/db
+        name: myapp.database_url
+        templated: true
 ```
 
 **Notes:**
 - The `image` field is required for docker deployments
-- The `command` should be a complete docker run command
-- Environment variables can be templated using the adapter's environment variables
+- Use `{{variable.name}}` syntax to reference templated secrets
+- Only secrets with `templated: true` can be used in templates
+- Templates are resolved to `-e ENV_VAR=$ENV_VAR` format
 
 ### Python Command Type
 
@@ -142,6 +195,7 @@ For Python-based MCP servers that require repository cloning and uv setup.
 
 **Notes:**
 - The `source.project` field is required for python deployments
+- Use `{{variable.name}}` syntax to reference templated secrets
 - The system automatically handles the complete setup process
 - Repository URL should be publicly accessible or authentication should be configured
 

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -84,6 +85,9 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		extractedConfig := as.getSidecarConfig(server)
 		if extractedConfig != nil {
 			sidecarConfig = extractedConfig
+			// Process template variables in the command
+			processedConfig := as.processCommandTemplates(sidecarConfig, server)
+			sidecarConfig = processedConfig
 			connectionType = models.ConnectionTypeStreamableHttp
 			logging.AdapterLogger.Success("Created sidecar config with commandType: %s", sidecarConfig.CommandType)
 		} else {
@@ -221,6 +225,144 @@ func getMapKeys(m map[string]interface{}) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// processCommandTemplates processes template variables in the sidecar command
+func (as *AdapterService) processCommandTemplates(sidecarConfig *models.SidecarConfig, server *models.MCPServer) *models.SidecarConfig {
+	if sidecarConfig == nil || sidecarConfig.Command == "" {
+		return sidecarConfig
+	}
+
+	// Check if the command contains template variables
+	if !strings.Contains(sidecarConfig.Command, "{{") {
+		return sidecarConfig
+	}
+
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing templates in command: %s\n", sidecarConfig.Command)
+
+	// Create a copy of the config to modify
+	processedConfig := *sidecarConfig
+
+	// Process template variables based on command type
+	switch sidecarConfig.CommandType {
+	case "docker":
+		processedConfig.Command = as.processDockerTemplates(sidecarConfig.Command, server)
+	case "python", "npx":
+		// For python/npx, templates are processed but the command structure may remain similar
+		processedConfig.Command = as.processGenericTemplates(sidecarConfig.Command, server)
+	default:
+		// For unknown types, leave as-is
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Unknown command type %s, skipping template processing\n", sidecarConfig.CommandType)
+	}
+
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Processed command: %s\n", processedConfig.Command)
+	return &processedConfig
+}
+
+// processDockerTemplates processes templates for docker commands
+func (as *AdapterService) processDockerTemplates(command string, server *models.MCPServer) string {
+	return as.processTemplates(command, server, func(varName, envName string) string {
+		return fmt.Sprintf("-e %s=$%s", envName, envName)
+	})
+}
+
+// processGenericTemplates processes templates for python/npx commands
+func (as *AdapterService) processGenericTemplates(command string, server *models.MCPServer) string {
+	// For generic commands, we can either substitute directly or leave as environment variables
+	// For now, we'll leave the template syntax for the container to handle
+	return command
+}
+
+// processTemplates processes template variables using a custom substitution function
+func (as *AdapterService) processTemplates(command string, server *models.MCPServer, substituteFunc func(varName, envName string) string) string {
+	// Find all template variables in the command
+	templateRegex := regexp.MustCompile(`\{\{([^}]+)\}\}`)
+	matches := templateRegex.FindAllStringSubmatch(command, -1)
+
+	result := command
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		varName := strings.TrimSpace(match[1])
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found template variable: %s\n", varName)
+
+		// Look up the variable in config.secrets
+		envName := as.lookupTemplatedVariable(varName, server)
+		if envName == "" {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s not found or not templated, skipping\n", varName)
+			continue
+		}
+
+		// Apply the substitution function
+		substitution := substituteFunc(varName, envName)
+		templatePattern := fmt.Sprintf("{{%s}}", varName)
+		result = strings.ReplaceAll(result, templatePattern, substitution)
+
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Replaced %s with %s\n", templatePattern, substitution)
+	}
+
+	return result
+}
+
+// lookupTemplatedVariable looks up a variable name in the server's config.secrets
+func (as *AdapterService) lookupTemplatedVariable(varName string, server *models.MCPServer) string {
+	if server.Meta == nil {
+		return ""
+	}
+
+	configRaw, ok := server.Meta["config"]
+	if !ok {
+		return ""
+	}
+
+	configMap, ok := configRaw.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	secretsRaw, ok := configMap["secrets"]
+	if !ok {
+		return ""
+	}
+
+	secretsSlice, ok := secretsRaw.([]interface{})
+	if !ok {
+		return ""
+	}
+
+	for _, secretRaw := range secretsSlice {
+		secretMap, ok := secretRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if this secret matches the variable name
+		name, ok := secretMap["name"].(string)
+		if !ok || name != varName {
+			continue
+		}
+
+		// Check if templated flag is true
+		templated, ok := secretMap["templated"].(bool)
+		if !ok || !templated {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s found but not templated\n", varName)
+			return ""
+		}
+
+		// Get the environment variable name
+		envName, ok := secretMap["env"].(string)
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s missing env field\n", varName)
+			return ""
+		}
+
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found templated variable %s -> %s\n", varName, envName)
+		return envName
+	}
+
+	return ""
 }
 
 // getSidecarConfig extracts the complete sidecar configuration from server metadata
