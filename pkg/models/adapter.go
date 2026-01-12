@@ -40,6 +40,7 @@ type SidecarConfig struct {
 	// Metadata
 	Source      string `json:"source" example:"manual-config"`
 	LastUpdated string `json:"lastUpdated,omitempty" example:"2025-12-12T10:00:00Z"`
+	ProjectURL  string `json:"projectURL,omitempty" example:"https://github.com/user/repo"`
 }
 
 // AdapterData represents the data for creating or updating an adapter

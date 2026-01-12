@@ -79,18 +79,13 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 
 	if as.hasStdioPackage(server) || strings.Contains(server.Name, "uyuni") || strings.Contains(server.Name, "bugzilla") {
 		logging.AdapterLogger.Info("Will create sidecar for server %s", server.Name)
-		// Get the docker command from the server metadata
-		dockerCommand := as.getDockerCommand(server)
-		logging.AdapterLogger.Info("Docker command: '%s'", dockerCommand)
 
-		if dockerCommand != "" {
-			sidecarConfig = &models.SidecarConfig{
-				CommandType: "docker",
-				Command:     dockerCommand,
-				Port:        8000, // Fixed port
-			}
+		// Extract sidecar configuration from server metadata
+		extractedConfig := as.getSidecarConfig(server)
+		if extractedConfig != nil {
+			sidecarConfig = extractedConfig
 			connectionType = models.ConnectionTypeStreamableHttp
-			logging.AdapterLogger.Success("Created docker sidecar config")
+			logging.AdapterLogger.Success("Created sidecar config with commandType: %s", sidecarConfig.CommandType)
 		} else {
 			// Fallback: try to create a generic sidecar configuration
 			sidecarConfig = &models.SidecarConfig{
@@ -228,97 +223,75 @@ func getMapKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-// getDockerCommand extracts the docker command from server metadata
-func (as *AdapterService) getDockerCommand(server *models.MCPServer) string {
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: getDockerCommand called for server %s\n", server.Name)
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Image: %s\n", server.Image)
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta keys: %v\n", getMapKeys(server.Meta))
+// getSidecarConfig extracts the complete sidecar configuration from server metadata
+func (as *AdapterService) getSidecarConfig(server *models.MCPServer) *models.SidecarConfig {
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: getSidecarConfig called for server %s\n", server.Name)
+
 	if server.Meta == nil {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta is nil\n")
-		return ""
+		return nil
 	}
 
-	sidecarConfig, ok := server.Meta["sidecarConfig"]
+	sidecarConfigRaw, ok := server.Meta["sidecarConfig"]
 	if !ok {
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig not found in meta\n")
-		return ""
+		return nil
 	}
 
-	configMap, ok := sidecarConfig.(map[string]interface{})
+	configMap, ok := sidecarConfigRaw.(map[string]interface{})
 	if !ok {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig is not a map, type: %T, value: %v\n", sidecarConfig, sidecarConfig)
-		return ""
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig is not a map, type: %T, value: %v\n", sidecarConfigRaw, sidecarConfigRaw)
+		return nil
 	}
 
 	fmt.Printf("ADAPTER_SERVICE_DEBUG: sidecarConfig keys: %v\n", getMapKeys(configMap))
+
 	commandType, ok := configMap["commandType"].(string)
-	if !ok || commandType != "docker" {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: commandType is not docker or not found: %v (type: %T)\n", configMap["commandType"], configMap["commandType"])
-		return ""
+	if !ok || commandType == "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: commandType not found or empty\n")
+		return nil
 	}
 
-	// First try to get the full command
 	command, ok := configMap["command"].(string)
-	if ok && command != "" {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found full docker command: %s\n", command)
+	if !ok || command == "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: command not found or empty\n")
+		return nil
+	}
 
-		// Check if the command already contains an image (non-flag argument)
-		parts := strings.Fields(command)
-		hasImage := false
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking command parts: %v\n", parts)
-		for i := 2; i < len(parts); i++ {
-			arg := parts[i]
-			fmt.Printf("ADAPTER_SERVICE_DEBUG: Checking arg %d: %s\n", i, arg)
-			if !strings.HasPrefix(arg, "-") && arg != "" {
-				hasImage = true
-				fmt.Printf("ADAPTER_SERVICE_DEBUG: Found image in command: %s\n", arg)
-				break
-			}
-			// Skip -e flag arguments
-			if arg == "-e" && i+1 < len(parts) {
-				i++
+	port := 8000 // Default port
+	if portRaw, ok := configMap["port"]; ok {
+		if portFloat, ok := portRaw.(float64); ok {
+			port = int(portFloat)
+		}
+	}
+
+	sidecarConfig := &models.SidecarConfig{
+		CommandType: commandType,
+		Command:     command,
+		Port:        port,
+	}
+
+	// Extract source and lastUpdated if available
+	if source, ok := configMap["source"].(string); ok {
+		sidecarConfig.Source = source
+	}
+	if lastUpdated, ok := configMap["lastUpdated"].(string); ok {
+		sidecarConfig.LastUpdated = lastUpdated
+	}
+
+	// Extract project URL from server source_info metadata
+	// The source information is stored in Meta["source_info"] during YAML parsing
+	if sourceInfo, ok := server.Meta["source_info"]; ok {
+		if sourceMap, ok := sourceInfo.(map[string]interface{}); ok {
+			if project, ok := sourceMap["project"].(string); ok && project != "" {
+				sidecarConfig.ProjectURL = project
+				fmt.Printf("ADAPTER_SERVICE_DEBUG: Found project URL: %s\n", project)
 			}
 		}
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: hasImage=%v, server.Image='%s'\n", hasImage, server.Image)
-
-		// If no image in command, append the server's image
-		if !hasImage {
-			var imageToAppend string
-			if server.Image != "" {
-				imageToAppend = server.Image
-			} else if len(server.Packages) > 0 && server.Packages[0].Identifier != "" {
-				imageToAppend = server.Packages[0].Identifier
-			}
-
-			if imageToAppend != "" {
-				// Remove trailing space and append image
-				command = strings.TrimSpace(command) + " " + imageToAppend
-				fmt.Printf("ADAPTER_SERVICE_DEBUG: Appended image to command: %s\n", command)
-			}
-		}
-
-		return command
 	}
 
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: Full command not found, trying to reconstruct\n")
-
-	// If no full command, try to reconstruct from dockerCommand and dockerImage
-	dockerCommand, ok := configMap["dockerCommand"].(string)
-	if !ok || dockerCommand == "" {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerCommand not found or empty: %v\n", configMap["dockerCommand"])
-		return ""
-	}
-
-	dockerImage, ok := configMap["dockerImage"].(string)
-	if !ok || dockerImage == "" {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: dockerImage not found or empty: %v\n", configMap["dockerImage"])
-		return ""
-	}
-
-	// Reconstruct the docker command with just the image (env vars come from adapter)
-	fullCommand := fmt.Sprintf("docker run -it --rm %s %s", dockerImage, dockerCommand)
-	fmt.Printf("ADAPTER_SERVICE_DEBUG: Reconstructed docker command: %s\n", fullCommand)
-	return fullCommand
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Created sidecar config: %+v\n", sidecarConfig)
+	return sidecarConfig
 }
 
 // sidecarMeta represents sidecar configuration from server metadata

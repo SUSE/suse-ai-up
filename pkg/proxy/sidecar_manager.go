@@ -215,6 +215,19 @@ func (sm *SidecarManager) deployWithKubeClient(ctx context.Context, adapter mode
 		return fmt.Errorf("kubernetes client not available")
 	}
 
+	// Handle different command types
+	switch adapter.SidecarConfig.CommandType {
+	case "docker":
+		return sm.deployDockerWithKubeClient(ctx, adapter)
+	case "python", "npx":
+		return sm.deployGenericWithKubeClient(ctx, adapter, sm.getImageForCommandType(adapter.SidecarConfig.CommandType), adapter.SidecarConfig.Command)
+	default:
+		return fmt.Errorf("unsupported command type: %s", adapter.SidecarConfig.CommandType)
+	}
+}
+
+// deployDockerWithKubeClient deploys a docker-based sidecar using the Kubernetes Go client
+func (sm *SidecarManager) deployDockerWithKubeClient(ctx context.Context, adapter models.AdapterResource) error {
 	// Parse the docker command to extract image and environment variables
 	image, envVars, port, err := sm.parseDockerCommand(adapter.SidecarConfig.Command)
 	if err != nil {
@@ -317,7 +330,7 @@ func (sm *SidecarManager) deployWithKubeClient(ctx context.Context, adapter mode
 		return fmt.Errorf("failed to create service: %w", err)
 	}
 
-	fmt.Printf("SIDECAR_MANAGER: Successfully deployed sidecar for adapter %s\n", adapter.ID)
+	fmt.Printf("SIDECAR_MANAGER: Successfully deployed docker sidecar for adapter %s\n", adapter.ID)
 	return nil
 }
 
@@ -482,6 +495,37 @@ func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapt
 
 	fmt.Printf("SIDECAR_MANAGER: Deploying generic with Go client - image: %s, port: %d, command: %s, envVars: %+v\n", image, port, command, envVars)
 
+	// Prepare the command with dependencies for python
+	finalCommand := command
+	if adapter.SidecarConfig.CommandType == "python" {
+		// For python commands, we need to:
+		// 1. Install uv
+		// 2. Install git
+		// 3. Clone the repository
+		// 4. Run uv sync
+		// 5. Run the original command
+		projectURL := adapter.SidecarConfig.ProjectURL
+		if projectURL != "" {
+			// Extract repo name from URL
+			parts := strings.Split(projectURL, "/")
+			repoName := parts[len(parts)-1]
+			if strings.HasSuffix(repoName, ".git") {
+				repoName = repoName[:len(repoName)-4]
+			}
+
+			setupScript := fmt.Sprintf(
+				"pip install uv && zypper -n in git && git clone %s && cd %s && uv sync && %s",
+				projectURL,
+				repoName,
+				command,
+			)
+			finalCommand = setupScript
+		} else {
+			// Fallback: just install uv
+			finalCommand = fmt.Sprintf("pip install uv && %s", command)
+		}
+	}
+
 	// Create deployment
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -512,7 +556,7 @@ func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapt
 						{
 							Name:    "mcp-server",
 							Image:   image,
-							Command: []string{"sh", "-c", command}, // Execute command in shell
+							Command: []string{"sh", "-c", finalCommand}, // Execute command in shell
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: int32(port),
@@ -574,6 +618,18 @@ func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapt
 	return nil
 }
 
+// getImageForCommandType returns the appropriate container image for a command type
+func (sm *SidecarManager) getImageForCommandType(commandType string) string {
+	switch commandType {
+	case "python":
+		return "registry.suse.com/bci/python:3.11"
+	case "npx":
+		return "registry.suse.com/bci/nodejs:22"
+	default:
+		return "python:3.11-slim" // fallback
+	}
+}
+
 // deployGenericWithKubectl deploys a generic sidecar using kubectl
 func (sm *SidecarManager) deployGenericWithKubectl(adapter models.AdapterResource, image, command string) error {
 	var err error
@@ -583,13 +639,44 @@ func (sm *SidecarManager) deployGenericWithKubectl(adapter models.AdapterResourc
 		port = 8000
 	}
 
+	// Prepare the command with dependencies for python
+	finalCommand := command
+	if adapter.SidecarConfig.CommandType == "python" {
+		// For python commands, we need to:
+		// 1. Install uv
+		// 2. Install git
+		// 3. Clone the repository
+		// 4. Run uv sync
+		// 5. Run the original command
+		projectURL := adapter.SidecarConfig.ProjectURL
+		if projectURL != "" {
+			// Extract repo name from URL
+			parts := strings.Split(projectURL, "/")
+			repoName := parts[len(parts)-1]
+			if strings.HasSuffix(repoName, ".git") {
+				repoName = repoName[:len(repoName)-4]
+			}
+
+			setupScript := fmt.Sprintf(
+				"pip install uv && zypper -n in git && git clone %s && cd %s && uv sync && %s",
+				projectURL,
+				repoName,
+				command,
+			)
+			finalCommand = setupScript
+		} else {
+			// Fallback: just install uv
+			finalCommand = fmt.Sprintf("pip install uv && %s", command)
+		}
+	}
+
 	// Build kubectl run command for generic container
 	args := []string{"run", fmt.Sprintf("mcp-sidecar-%s", adapter.ID),
 		fmt.Sprintf("--image=%s", image),
 		fmt.Sprintf("--port=%d", port),
 		"--expose",
 		"--namespace", sm.namespace,
-		"--command", "--", "sh", "-c", command} // Execute command in shell
+		"--command", "--", "sh", "-c", finalCommand} // Execute command in shell
 
 	// Add environment variables
 	if adapter.EnvironmentVariables != nil {
