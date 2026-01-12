@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -25,44 +26,88 @@ func NewCapabilityDiscoveryService() *CapabilityDiscoveryService {
 
 // DiscoverCapabilities discovers the capabilities of a remote MCP server
 func (cds *CapabilityDiscoveryService) DiscoverCapabilities(ctx context.Context, serverURL string, auth *models.AdapterAuthConfig) (*models.MCPFunctionality, error) {
-	// Create MCP client connection to discover capabilities
-	client := NewMCPClient(serverURL, auth)
+	log.Printf("CAPABILITY_DISCOVERY: Starting discovery for server URL: %s", serverURL)
 
-	// Initialize the connection
-	if err := client.Initialize(ctx); err != nil {
-		return nil, fmt.Errorf("failed to initialize MCP client: %w", err)
-	}
-	defer client.Close()
+	// Create real MCP client connection to discover capabilities
+	client := NewClient(serverURL, 30*time.Second)
+	log.Printf("CAPABILITY_DISCOVERY: Created MCP client for %s", serverURL)
 
-	// Discover tools
-	tools, err := client.ListTools(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to discover tools: %w", err)
-	}
-
-	// Discover resources
-	resources, err := client.ListResources(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to discover resources: %w", err)
+	// Set up authentication headers if provided
+	if auth != nil && auth.BearerToken != nil && auth.BearerToken.Token != "" {
+		// For now, we'll set a session ID if we have bearer token
+		// In a real implementation, this might need more sophisticated auth handling
+		client.sessionID = "discovery-session"
+		log.Printf("CAPABILITY_DISCOVERY: Set session ID for authenticated discovery")
 	}
 
-	// Discover prompts
-	prompts, err := client.ListPrompts(ctx)
+	// Use InterrogateServer to discover all capabilities at once
+	log.Printf("CAPABILITY_DISCOVERY: Calling InterrogateServer for %s", serverURL)
+	_, serverInfo, tools, resources, prompts, _, err := client.InterrogateServer(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover prompts: %w", err)
+		log.Printf("CAPABILITY_DISCOVERY: Server interrogation failed for %s: %v", serverURL, err)
+		// Return basic functionality with empty lists instead of erroring
+		return &models.MCPFunctionality{
+			ServerInfo: models.MCPServerInfo{
+				Name:    "MCP Server",
+				Version: "1.0.0",
+			},
+			Tools:         []models.MCPTool{},
+			Resources:     []models.MCPResource{},
+			Prompts:       []models.MCPPrompt{},
+			LastRefreshed: time.Now(),
+		}, nil
 	}
 
-	// Get server info
-	serverInfo, err := client.GetServerInfo(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get server info: %w", err)
+	log.Printf("CAPABILITY_DISCOVERY: Successfully interrogated server %s - found %d tools, %d resources, %d prompts",
+		serverURL, len(tools), len(resources), len(prompts))
+
+	// Convert the discovered data to our models format
+	mcpTools := make([]models.MCPTool, len(tools))
+	for i, tool := range tools {
+		mcpTools[i] = models.MCPTool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			InputSchema: tool.InputSchema,
+		}
+	}
+
+	mcpResources := make([]models.MCPResource, len(resources))
+	for i, resource := range resources {
+		mcpResources[i] = models.MCPResource{
+			URI:         resource.URI,
+			Name:        resource.Name,
+			Description: resource.Description,
+			MimeType:    resource.MimeType,
+		}
+	}
+
+	mcpPrompts := make([]models.MCPPrompt, len(prompts))
+	for i, prompt := range prompts {
+		// Convert McpArgument to MCPArgument
+		args := make([]models.MCPArgument, len(prompt.Arguments))
+		for j, arg := range prompt.Arguments {
+			args[j] = models.MCPArgument{
+				Name:        arg.Name,
+				Description: arg.Description,
+				Required:    arg.Required,
+			}
+		}
+
+		mcpPrompts[i] = models.MCPPrompt{
+			Name:        prompt.Name,
+			Description: prompt.Description,
+			Arguments:   args,
+		}
 	}
 
 	return &models.MCPFunctionality{
-		ServerInfo:    *serverInfo,
-		Tools:         tools,
-		Resources:     resources,
-		Prompts:       prompts,
+		ServerInfo: models.MCPServerInfo{
+			Name:    serverInfo.Name,
+			Version: serverInfo.Version,
+		},
+		Tools:         mcpTools,
+		Resources:     mcpResources,
+		Prompts:       mcpPrompts,
 		LastRefreshed: time.Now(),
 	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -112,8 +113,9 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	adapterData := &models.AdapterData{
 		Name:                 name,
 		ConnectionType:       connectionType,
-		EnvironmentVariables: envVars,    // Use the provided environment variables
-		RemoteUrl:            server.URL, // Use the OAuth URL as remote URL
+		Status:               models.AdapterLifecycleStatusNotReady, // Start as not ready
+		EnvironmentVariables: envVars,                               // Use the provided environment variables
+		RemoteUrl:            server.URL,                            // Use the OAuth URL as remote URL
 		URL:                  fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
 		SidecarConfig:        sidecarConfig,
 	}
@@ -162,11 +164,6 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		},
 	}
 
-	// Discover capabilities
-	if err := as.discoverCapabilities(ctx, adapterData); err != nil {
-		return nil, fmt.Errorf("failed to discover capabilities: %w", err)
-	}
-
 	// Create adapter resource
 	adapter := &models.AdapterResource{}
 	adapter.Create(*adapterData, userID, time.Now())
@@ -189,16 +186,55 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 			logging.AdapterLogger.Info("Deploying sidecar for adapter %s", adapter.ID)
 			if err := as.sidecarManager.DeploySidecar(ctx, *adapter); err != nil {
 				logging.AdapterLogger.Error("Sidecar deployment failed for adapter %s: %v", adapter.ID, err)
+				// Set status to error before cleanup
+				adapter.Status = models.AdapterLifecycleStatusError
+				as.store.Update(ctx, *adapter) // Update status before deletion
 				// If sidecar deployment fails, we should clean up the adapter
 				as.store.Delete(ctx, adapter.ID)
 				return nil, fmt.Errorf("failed to deploy sidecar: %w", err)
 			}
 			logging.AdapterLogger.Success("Sidecar deployment successful for adapter %s", adapter.ID)
-			// Update the stored adapter with the allocated port
-			as.store.Update(ctx, *adapter)
+			logging.AdapterLogger.Info("Waiting for sidecar to be ready before capability discovery...")
+
+			// Wait longer for the sidecar to be fully ready (MCP servers need time to start)
+			time.Sleep(10 * time.Second)
+
+			// Discover actual capabilities from the deployed sidecar
+			logging.AdapterLogger.Info("Starting capability discovery for adapter %s", adapter.ID)
+			if err := as.discoverCapabilitiesFromSidecar(ctx, adapter); err != nil {
+				logging.AdapterLogger.Warn("Failed to discover capabilities from sidecar for adapter %s: %v", adapter.ID, err)
+				// Set status to error if capability discovery fails
+				adapter.Status = models.AdapterLifecycleStatusError
+				// Don't fail the entire creation - just log the warning
+				// The adapter will still work with basic capabilities
+			} else {
+				logging.AdapterLogger.Success("Successfully discovered capabilities from sidecar for adapter %s", adapter.ID)
+				// Set status to ready if capability discovery succeeds
+				adapter.Status = models.AdapterLifecycleStatusReady
+			}
+
+			// Check sidecar health and update status accordingly
+			if err := as.checkAndUpdateSidecarHealth(ctx, adapter); err != nil {
+				logging.AdapterLogger.Warn("Failed to check sidecar health for adapter %s: %v", adapter.ID, err)
+				// Continue anyway - health check failure doesn't prevent adapter creation
+			}
+
+			// Update the stored adapter with the allocated port, discovered capabilities, and status
+			if err := as.store.Update(ctx, *adapter); err != nil {
+				logging.AdapterLogger.Error("Failed to update adapter in store: %v", err)
+				return nil, fmt.Errorf("failed to update adapter: %w", err)
+			}
 		}
 	} else {
 		logging.AdapterLogger.Info("ADAPTER_SERVICE: Sidecar deployment NOT needed - SidecarConfig nil: %v, ConnectionType: %v", adapter.SidecarConfig == nil, adapter.ConnectionType)
+		// For non-sidecar adapters, set status to ready immediately
+		adapter.Status = models.AdapterLifecycleStatusReady
+
+		// Update the stored adapter with the ready status
+		if err := as.store.Update(ctx, *adapter); err != nil {
+			logging.AdapterLogger.Error("Failed to update adapter status in store: %v", err)
+			return nil, fmt.Errorf("failed to update adapter: %w", err)
+		}
 	}
 
 	logging.AdapterLogger.Success("CreateAdapter completed successfully for adapter %s", adapter.ID)
@@ -229,16 +265,22 @@ func getMapKeys(m map[string]interface{}) []string {
 
 // processCommandTemplates processes template variables in the sidecar command
 func (as *AdapterService) processCommandTemplates(sidecarConfig *models.SidecarConfig, server *models.MCPServer) *models.SidecarConfig {
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: processCommandTemplates called with command: %s\n", sidecarConfig.Command)
+
 	if sidecarConfig == nil || sidecarConfig.Command == "" {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Returning early - sidecarConfig nil or empty command\n")
 		return sidecarConfig
 	}
 
 	// Check if the command contains template variables
 	if !strings.Contains(sidecarConfig.Command, "{{") {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: No template variables found in command\n")
 		return sidecarConfig
 	}
 
 	fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing templates in command: %s\n", sidecarConfig.Command)
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Server meta keys: %+v\n", getMapKeys(server.Meta))
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Server meta: %+v\n", server.Meta)
 
 	// Create a copy of the config to modify
 	processedConfig := *sidecarConfig
@@ -306,31 +348,46 @@ func (as *AdapterService) processTemplates(command string, server *models.MCPSer
 	return result
 }
 
-// lookupTemplatedVariable looks up a variable name in the server's config.secrets
+// lookupTemplatedVariable looks up a variable name in the server's secrets
 func (as *AdapterService) lookupTemplatedVariable(varName string, server *models.MCPServer) string {
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: lookupTemplatedVariable called for varName: %s\n", varName)
+
 	if server.Meta == nil {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta is nil\n")
 		return ""
 	}
 
-	configRaw, ok := server.Meta["config"]
+	// First try direct secrets (new format)
+	secretsRaw, ok := server.Meta["secrets"]
 	if !ok {
-		return ""
-	}
+		// Fall back to config.secrets (old format)
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets not found directly, trying config.secrets\n")
+		configRaw, ok := server.Meta["config"]
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: config not found in server.Meta, available keys: %+v\n", getMapKeys(server.Meta))
+			return ""
+		}
 
-	configMap, ok := configRaw.(map[string]interface{})
-	if !ok {
-		return ""
-	}
+		configMap, ok := configRaw.(map[string]interface{})
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: config is not a map, type: %T\n", configRaw)
+			return ""
+		}
 
-	secretsRaw, ok := configMap["secrets"]
-	if !ok {
-		return ""
+		secretsRaw, ok = configMap["secrets"]
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets not found in config, available config keys: %+v\n", getMapKeys(configMap))
+			return ""
+		}
 	}
 
 	secretsSlice, ok := secretsRaw.([]interface{})
 	if !ok {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets is not a slice, type: %T, value: %+v\n", secretsRaw, secretsRaw)
 		return ""
 	}
+
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Found %d secrets\n", len(secretsSlice))
 
 	for _, secretRaw := range secretsSlice {
 		secretMap, ok := secretRaw.(map[string]interface{})
@@ -679,35 +736,232 @@ func (as *AdapterService) SyncAdapterCapabilities(ctx context.Context, userID, a
 	return as.store.Update(ctx, *adapter)
 }
 
+// CheckAdapterHealth checks and updates the health status of an adapter
+func (as *AdapterService) CheckAdapterHealth(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) error {
+	// Get adapter
+	adapter, err := as.GetAdapter(ctx, userID, adapterID, userGroupService)
+	if err != nil {
+		return err
+	}
+
+	// Check and update sidecar health
+	if err := as.checkAndUpdateSidecarHealth(ctx, adapter); err != nil {
+		return fmt.Errorf("failed to check adapter health: %w", err)
+	}
+
+	return nil
+}
+
 // discoverCapabilities discovers MCP capabilities for an adapter
+// discoverCapabilities sets basic capabilities for adapters without sidecars
 func (as *AdapterService) discoverCapabilities(ctx context.Context, adapterData *models.AdapterData) error {
-	// For now, create a basic capability set
-	// In a real implementation, this would connect to the remote server
+	// For adapters without sidecars (remote connections), set basic capabilities
 	adapterData.MCPFunctionality = &models.MCPFunctionality{
 		ServerInfo: models.MCPServerInfo{
 			Name:    adapterData.Name,
 			Version: "1.0.0",
 		},
-		Tools: []models.MCPTool{
-			{
-				Name:        "example_tool",
-				Description: "Example tool from remote server",
-				InputSchema: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"input": map[string]interface{}{
-							"type": "string",
-						},
-					},
-				},
-			},
-		},
+		Tools:         []models.MCPTool{},
 		Resources:     []models.MCPResource{},
 		Prompts:       []models.MCPPrompt{},
 		LastRefreshed: time.Now(),
 	}
 
 	return nil
+}
+
+// discoverCapabilitiesFromSidecar discovers capabilities from a deployed sidecar
+func (as *AdapterService) discoverCapabilitiesFromSidecar(ctx context.Context, adapter *models.AdapterResource) error {
+	logging.AdapterLogger.Info("Starting capability discovery for sidecar adapter %s", adapter.ID)
+
+	// Use the internal sidecar service URL instead of the external proxy URL
+	sidecarServiceURL := fmt.Sprintf("http://mcp-sidecar-%s.suseai.svc.cluster.local:8000", adapter.ID)
+	logging.AdapterLogger.Info("Using sidecar service URL: %s", sidecarServiceURL)
+
+	// For sidecar communication, we don't need authentication since it's internal cluster communication
+	auth := (*models.AdapterAuthConfig)(nil) // No auth needed for internal service calls
+
+	// First, try a health check to see if the sidecar is responding
+	if err := as.healthCheckSidecar(ctx, sidecarServiceURL); err != nil {
+		logging.AdapterLogger.Warn("Sidecar health check failed for adapter %s: %v", adapter.ID, err)
+		// Continue with discovery attempt anyway
+	} else {
+		logging.AdapterLogger.Info("Sidecar health check passed for adapter %s", adapter.ID)
+	}
+
+	// Use the capability discovery service to get real tools with retry logic
+	logging.AdapterLogger.Info("Calling MCP capability discovery service for adapter %s", adapter.ID)
+	capabilities, err := as.discoverCapabilitiesWithRetry(ctx, sidecarServiceURL, auth)
+	if err != nil {
+		logging.AdapterLogger.Warn("MCP capability discovery failed for adapter %s: %v", adapter.ID, err)
+
+		// Try to get basic server info as fallback
+		logging.AdapterLogger.Info("Attempting to get basic server info as fallback for adapter %s", adapter.ID)
+		serverInfo, infoErr := as.getBasicServerInfo(ctx, sidecarServiceURL, auth)
+		if infoErr != nil {
+			logging.AdapterLogger.Warn("Basic server info discovery also failed for adapter %s: %v", adapter.ID, infoErr)
+			// Set minimal capabilities
+			adapter.MCPFunctionality = &models.MCPFunctionality{
+				ServerInfo: models.MCPServerInfo{
+					Name:    adapter.Name,
+					Version: "1.0.0",
+				},
+				Tools:         []models.MCPTool{},
+				Resources:     []models.MCPResource{},
+				Prompts:       []models.MCPPrompt{},
+				LastRefreshed: time.Now(),
+			}
+			logging.AdapterLogger.Info("Set minimal capabilities for adapter %s due to discovery failures", adapter.ID)
+			return nil
+		}
+
+		// Set capabilities with discovered server info but no tools
+		adapter.MCPFunctionality = &models.MCPFunctionality{
+			ServerInfo:    *serverInfo,
+			Tools:         []models.MCPTool{},
+			Resources:     []models.MCPResource{},
+			Prompts:       []models.MCPPrompt{},
+			LastRefreshed: time.Now(),
+		}
+		logging.AdapterLogger.Info("Set server info capabilities for adapter %s (%d tools found via basic discovery)", adapter.ID, len(capabilities.Tools))
+		return nil
+	}
+
+	// Update adapter with discovered capabilities
+	adapter.MCPFunctionality = capabilities
+	logging.AdapterLogger.Success("Successfully discovered capabilities for adapter %s: %d tools, %d resources, %d prompts",
+		adapter.ID, len(capabilities.Tools), len(capabilities.Resources), len(capabilities.Prompts))
+
+	return nil
+}
+
+// discoverCapabilitiesWithRetry attempts capability discovery with exponential backoff retry
+func (as *AdapterService) discoverCapabilitiesWithRetry(ctx context.Context, serverURL string, auth *models.AdapterAuthConfig) (*models.MCPFunctionality, error) {
+	maxRetries := 3
+	baseDelay := 2 * time.Second
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(attempt) * baseDelay
+			logging.AdapterLogger.Info("Retrying capability discovery in %v (attempt %d/%d)", delay, attempt+1, maxRetries)
+			time.Sleep(delay)
+		}
+
+		capabilities, err := mcp.NewCapabilityDiscoveryService().DiscoverCapabilities(ctx, serverURL, auth)
+		if err == nil {
+			return capabilities, nil
+		}
+
+		logging.AdapterLogger.Warn("Capability discovery attempt %d/%d failed: %v", attempt+1, maxRetries, err)
+
+		// If this is the last attempt, return the error
+		if attempt == maxRetries-1 {
+			return nil, err
+		}
+	}
+
+	// This should never be reached, but just in case
+	return nil, fmt.Errorf("capability discovery failed after %d attempts", maxRetries)
+}
+
+// healthCheckSidecar performs a basic health check on the sidecar
+func (as *AdapterService) healthCheckSidecar(ctx context.Context, serverURL string) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/health", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create health check request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("health check request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health check returned status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// getBasicServerInfo attempts to get basic server information
+func (as *AdapterService) getBasicServerInfo(ctx context.Context, serverURL string, auth *models.AdapterAuthConfig) (*models.MCPServerInfo, error) {
+	// For internal cluster communication, create client without auth
+	client := mcp.NewMCPClient(serverURL, nil)
+
+	if err := client.Initialize(ctx); err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	return client.GetServerInfo(ctx)
+}
+
+// checkAndUpdateSidecarHealth checks the health of sidecar deployments and updates adapter status
+func (as *AdapterService) checkAndUpdateSidecarHealth(ctx context.Context, adapter *models.AdapterResource) error {
+	if adapter.SidecarConfig == nil || adapter.ConnectionType != models.ConnectionTypeStreamableHttp {
+		// Non-sidecar adapters are always ready
+		return nil
+	}
+
+	if as.sidecarManager == nil {
+		logging.AdapterLogger.Warn("SidecarManager not available for health check of adapter %s", adapter.ID)
+		return nil
+	}
+
+	// Check if sidecar is healthy (this would need to be implemented in SidecarManager)
+	// For now, we'll check if we can reach the sidecar service
+	sidecarServiceURL := fmt.Sprintf("http://mcp-sidecar-%s.suseai.svc.cluster.local:8000", adapter.ID)
+
+	healthy, err := as.isSidecarHealthy(ctx, sidecarServiceURL)
+	if err != nil {
+		logging.AdapterLogger.Warn("Failed to check sidecar health for adapter %s: %v", adapter.ID, err)
+		// Don't change status on check failure - might be temporary network issue
+		return nil
+	}
+
+	// Update status based on health
+	oldStatus := adapter.Status
+	if healthy {
+		if adapter.Status == models.AdapterLifecycleStatusError {
+			logging.AdapterLogger.Info("Sidecar for adapter %s is now healthy, changing status from error to ready", adapter.ID)
+			adapter.Status = models.AdapterLifecycleStatusReady
+		}
+	} else {
+		if adapter.Status == models.AdapterLifecycleStatusReady {
+			logging.AdapterLogger.Warn("Sidecar for adapter %s is unhealthy, changing status from ready to error", adapter.ID)
+			adapter.Status = models.AdapterLifecycleStatusError
+		}
+	}
+
+	// Update in store if status changed
+	if oldStatus != adapter.Status {
+		if err := as.store.Update(ctx, *adapter); err != nil {
+			logging.AdapterLogger.Error("Failed to update adapter status for %s: %v", adapter.ID, err)
+			return err
+		}
+		logging.AdapterLogger.Info("Updated adapter %s status from %s to %s", adapter.ID, oldStatus, adapter.Status)
+	}
+
+	return nil
+}
+
+// isSidecarHealthy checks if the sidecar service is responding
+func (as *AdapterService) isSidecarHealthy(ctx context.Context, serviceURL string) (bool, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", serviceURL+"/health", nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK, nil
 }
 
 // generateSecureToken generates a cryptographically secure random token

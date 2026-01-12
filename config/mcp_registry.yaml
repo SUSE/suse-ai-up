@@ -5,8 +5,7 @@
     category: system-management
     sidecarConfig:
       commandType: docker
-      command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}}
-        -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 ghcr.io/uyuni-project/mcp-server-uyuni:latest
+      command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}} -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'
@@ -56,7 +55,7 @@
       name: uyuni.ssh_priv_key_pass
       templated: false
 - name: bugzilla
-  image: kskarthik/mcp-bugzilla:latest
+  image: none
   type: server
   meta:
     category: issue-tracking
@@ -4395,7 +4394,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i --rm -e '-e GITHUB_PERSONAL_ACCESS_TOKEN=<YOUR_TOKEN>'
+      command: docker run -i --rm -e {{github.personal_access_token}}
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
@@ -4411,7 +4410,7 @@
     secrets:
     - description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
       env: GITHUB_PERSONAL_ACCESS_TOKEN
-      example: <YOUR_TOKEN>
+      example: "gh_1234..."
       name: github.personal_access_token
       templated: true
 - name: gitmcp

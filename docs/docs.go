@@ -261,6 +261,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/adapters/{name}/health": {
+            "post": {
+                "description": "Check the health of an adapter's sidecar and update its status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Check adapter health",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/adapters/{name}/mcp": {
             "post": {
                 "description": "Proxy MCP protocol requests (tools, resources, prompts) to the adapter",
@@ -301,6 +355,256 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/prompts": {
+            "get": {
+                "description": "Get the list of prompts available from the MCP server",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "List MCP prompts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with prompts list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/prompts/{promptName}": {
+            "get": {
+                "description": "Get the content of a specific MCP prompt by name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "Get MCP prompt",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Prompt name",
+                        "name": "promptName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with prompt content",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter or prompt not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/resources": {
+            "get": {
+                "description": "Get the list of resources available from the MCP server",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "List MCP resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with resources list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/resources/{uri}": {
+            "get": {
+                "description": "Read the content of a specific MCP resource by URI",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "Read MCP resource",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource URI",
+                        "name": "uri",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with resource content",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter or resource not found",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -665,6 +969,146 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/tools": {
+            "get": {
+                "description": "Get the list of tools available from the MCP server",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "List MCP tools",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with tools list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/tools/{toolName}/call": {
+            "post": {
+                "description": "Execute a specific MCP tool with given arguments",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "Call MCP tool",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tool name",
+                        "name": "toolName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tool call request with arguments",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mcp.MCPMessage"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response with tool result",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter or tool not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -1662,6 +2106,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/registry/reload": {
+            "post": {
+                "description": "Reload MCP server registry from URL or local file based on configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Reload registry from configured source",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/registry/upload": {
             "post": {
                 "description": "Upload a single MCP server registry entry",
@@ -2560,6 +3031,84 @@ const docTemplate = `{
                 }
             }
         },
+        "mcp.ErrorType": {
+            "type": "string",
+            "enum": [
+                "protocol",
+                "transport",
+                "auth",
+                "validation",
+                "timeout",
+                "network",
+                "parsing",
+                "capability",
+                "session"
+            ],
+            "x-enum-varnames": [
+                "ErrorTypeProtocol",
+                "ErrorTypeTransport",
+                "ErrorTypeAuth",
+                "ErrorTypeValidation",
+                "ErrorTypeTimeout",
+                "ErrorTypeNetwork",
+                "ErrorTypeParsing",
+                "ErrorTypeCapability",
+                "ErrorTypeSession"
+            ]
+        },
+        "mcp.MCPError": {
+            "type": "object",
+            "properties": {
+                "adapterName": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "message": {
+                    "type": "string"
+                },
+                "retryable": {
+                    "type": "boolean"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/mcp.ErrorType"
+                }
+            }
+        },
+        "mcp.MCPMessage": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/mcp.MCPError"
+                },
+                "id": {},
+                "jsonrpc": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "params": {},
+                "result": {}
+            }
+        },
         "models.APIKeyConfig": {
             "type": "object",
             "properties": {
@@ -2702,6 +3251,14 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterLifecycleStatus"
+                        }
+                    ],
+                    "example": "ready"
+                },
                 "tools": {
                     "description": "For VirtualMCP tools configuration",
                     "type": "array",
@@ -2717,6 +3274,19 @@ const docTemplate = `{
                     "example": false
                 }
             }
+        },
+        "models.AdapterLifecycleStatus": {
+            "type": "string",
+            "enum": [
+                "not ready",
+                "ready",
+                "error"
+            ],
+            "x-enum-varnames": [
+                "AdapterLifecycleStatusNotReady",
+                "AdapterLifecycleStatusReady",
+                "AdapterLifecycleStatusError"
+            ]
         },
         "models.AdapterResource": {
             "type": "object",
@@ -2832,6 +3402,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.SidecarConfig"
                         }
                     ]
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterLifecycleStatus"
+                        }
+                    ],
+                    "example": "ready"
                 },
                 "tools": {
                     "description": "For VirtualMCP tools configuration",
@@ -3346,6 +3924,15 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },
@@ -3729,6 +4316,10 @@ const docTemplate = `{
                     "description": "Port assignment",
                     "type": "integer",
                     "example": 8000
+                },
+                "projectURL": {
+                    "type": "string",
+                    "example": "https://github.com/user/repo"
                 },
                 "source": {
                     "description": "Metadata",

@@ -295,7 +295,7 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 			"url":             adapter.URL,
 			"mcpClientConfig": mcpClientConfig,
 			"capabilities":    adapter.MCPFunctionality,
-			"status":          "ready",
+			"status":          adapter.Status,
 			"createdAt":       adapter.CreatedAt,
 			"lastUpdatedAt":   adapter.LastUpdatedAt,
 			"createdBy":       adapter.CreatedBy,
@@ -351,6 +351,15 @@ func (h *AdapterHandler) GetAdapter(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(adapter)
 }
 
+// CheckAdapterHealth checks and updates the health status of an adapter
+// @Summary Check adapter health
+// @Description Check the health of an adapter's sidecar and update its status
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter name"
+// @Success 200 {object} map[string]string
 // UpdateAdapter updates an existing adapter
 // @Summary Update adapter
 // @Description Update an existing adapter's configuration
@@ -358,11 +367,12 @@ func (h *AdapterHandler) GetAdapter(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param X-User-ID header string false "User ID" default(default-user)
-// @Param name path string true "Adapter ID"
-// @Param adapter body models.AdapterResource true "Updated adapter data"
-// @Success 200 {object} models.AdapterResource "Updated adapter"
-// @Failure 404 {object} ErrorResponse "Adapter not found"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Param name path string true "Adapter name"
+// @Param adapter body models.AdapterData true "Updated adapter data"
+// @Success 200 {object} models.AdapterResource
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/v1/adapters/{name} [put]
 func (h *AdapterHandler) UpdateAdapter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
@@ -379,31 +389,93 @@ func (h *AdapterHandler) UpdateAdapter(w http.ResponseWriter, r *http.Request) {
 		userID = "default-user"
 	}
 
-	var adapter models.AdapterResource
-	if err := json.NewDecoder(r.Body).Decode(&adapter); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid JSON: " + err.Error()})
-		return
-	}
-
-	// Ensure the ID matches the path parameter
-	adapter.ID = adapterID
-
-	if err := h.adapterService.UpdateAdapter(r.Context(), userID, adapter); err != nil {
+	// Get current adapter
+	currentAdapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID, h.userGroupService)
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if err.Error() == "adapter not found" {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: "Adapter not found"})
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to update adapter: " + err.Error()})
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to get adapter: " + err.Error()})
+		}
+		return
+	}
+
+	// Parse request body
+	var updateAdapter models.AdapterResource
+	if err := json.NewDecoder(r.Body).Decode(&updateAdapter); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	// Preserve system fields
+	updateAdapter.ID = currentAdapter.ID
+	updateAdapter.CreatedBy = currentAdapter.CreatedBy
+	updateAdapter.CreatedAt = currentAdapter.CreatedAt
+	updateAdapter.LastUpdatedAt = time.Now().UTC()
+
+	// Update adapter
+	if err := h.adapterService.UpdateAdapter(r.Context(), userID, updateAdapter); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to update adapter: " + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updateAdapter)
+}
+
+// CheckAdapterHealth checks and updates the health status of an adapter
+// @Summary Check adapter health
+// @Description Check the health of an adapter's sidecar and update its status
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Adapter name"
+// @Success 200 {object} map[string]string
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/adapters/{name}/health [post]
+func (h *AdapterHandler) CheckAdapterHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract adapter ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	pathParts := strings.Split(path, "/")
+	adapterID := pathParts[0]
+
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	// Check adapter health
+	if err := h.adapterService.CheckAdapterHealth(r.Context(), userID, adapterID, h.userGroupService); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(err.Error(), "not found") {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Adapter not found"})
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to check adapter health: " + err.Error()})
 		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(adapter)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message":   "Adapter health check completed",
+		"adapterId": adapterID,
+	})
 }
 
 // DeleteAdapter deletes an adapter and its associated sidecar resources

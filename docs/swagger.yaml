@@ -152,6 +152,64 @@ definitions:
       name:
         type: string
     type: object
+  mcp.ErrorType:
+    enum:
+    - protocol
+    - transport
+    - auth
+    - validation
+    - timeout
+    - network
+    - parsing
+    - capability
+    - session
+    type: string
+    x-enum-varnames:
+    - ErrorTypeProtocol
+    - ErrorTypeTransport
+    - ErrorTypeAuth
+    - ErrorTypeValidation
+    - ErrorTypeTimeout
+    - ErrorTypeNetwork
+    - ErrorTypeParsing
+    - ErrorTypeCapability
+    - ErrorTypeSession
+  mcp.MCPError:
+    properties:
+      adapterName:
+        type: string
+      code:
+        type: integer
+      details:
+        additionalProperties: true
+        type: object
+      message:
+        type: string
+      retryable:
+        type: boolean
+      sessionId:
+        type: string
+      suggestions:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: string
+      type:
+        $ref: '#/definitions/mcp.ErrorType'
+    type: object
+  mcp.MCPMessage:
+    properties:
+      error:
+        $ref: '#/definitions/mcp.MCPError'
+      id: {}
+      jsonrpc:
+        type: string
+      method:
+        type: string
+      params: {}
+      result: {}
+    type: object
   models.APIKeyConfig:
     properties:
       key:
@@ -243,6 +301,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.SidecarConfig'
         description: For sidecar stdio deployment
+      status:
+        allOf:
+        - $ref: '#/definitions/models.AdapterLifecycleStatus'
+        example: ready
       tools:
         description: For VirtualMCP tools configuration
         items: {}
@@ -255,6 +317,16 @@ definitions:
         example: false
         type: boolean
     type: object
+  models.AdapterLifecycleStatus:
+    enum:
+    - not ready
+    - ready
+    - error
+    type: string
+    x-enum-varnames:
+    - AdapterLifecycleStatusNotReady
+    - AdapterLifecycleStatusReady
+    - AdapterLifecycleStatusError
   models.AdapterResource:
     properties:
       apiBaseUrl:
@@ -328,6 +400,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.SidecarConfig'
         description: For sidecar stdio deployment
+      status:
+        allOf:
+        - $ref: '#/definitions/models.AdapterLifecycleStatus'
+        example: ready
       tools:
         description: For VirtualMCP tools configuration
         items: {}
@@ -675,6 +751,12 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      url:
+        type: string
     type: object
   models.MCPServerInfo:
     properties:
@@ -938,6 +1020,9 @@ definitions:
         description: Port assignment
         example: 8000
         type: integer
+      projectURL:
+        example: https://github.com/user/repo
+        type: string
       source:
         description: Metadata
         example: manual-config
@@ -1273,6 +1358,42 @@ paths:
       tags:
       - adapters
       - authentication
+  /api/v1/adapters/{name}/health:
+    post:
+      consumes:
+      - application/json
+      description: Check the health of an adapter's sidecar and update its status
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Check adapter health
+      tags:
+      - adapters
   /api/v1/adapters/{name}/mcp:
     post:
       consumes:
@@ -1307,6 +1428,176 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Proxy MCP protocol requests
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/prompts:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of prompts available from the MCP server
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with prompts list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP prompts
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/prompts/{promptName}:
+    get:
+      consumes:
+      - application/json
+      description: Get the content of a specific MCP prompt by name
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Prompt name
+        in: path
+        name: promptName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with prompt content
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or prompt not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get MCP prompt
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/resources:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of resources available from the MCP server
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with resources list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP resources
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/resources/{uri}:
+    get:
+      consumes:
+      - application/json
+      description: Read the content of a specific MCP resource by URI
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Resource URI
+        in: path
+        name: uri
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with resource content
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or resource not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Read MCP resource
       tags:
       - adapters
       - mcp
@@ -1551,6 +1842,101 @@ paths:
       summary: Validate token
       tags:
       - tokens
+  /api/v1/adapters/{name}/tools:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of tools available from the MCP server
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with tools list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP tools
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/tools/{toolName}/call:
+    post:
+      consumes:
+      - application/json
+      description: Execute a specific MCP tool with given arguments
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Tool name
+        in: path
+        name: toolName
+        required: true
+        type: string
+      - description: Tool call request with arguments
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/mcp.MCPMessage'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with tool result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or tool not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Call MCP tool
+      tags:
+      - adapters
+      - mcp
   /api/v1/adapters/{name}/validate-auth:
     post:
       consumes:
@@ -2284,6 +2670,24 @@ paths:
               $ref: '#/definitions/models.MCPServer'
             type: array
       summary: Browse registry servers with search and filters
+      tags:
+      - registry
+  /api/v1/registry/reload:
+    post:
+      description: Reload MCP server registry from URL or local file based on configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Reload registry from configured source
       tags:
       - registry
   /api/v1/registry/upload:

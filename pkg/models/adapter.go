@@ -22,6 +22,15 @@ const (
 	ServerProtocolMCP ServerProtocol = "MCP"
 )
 
+// AdapterLifecycleStatus represents the lifecycle status of an adapter
+type AdapterLifecycleStatus string
+
+const (
+	AdapterLifecycleStatusNotReady AdapterLifecycleStatus = "not ready"
+	AdapterLifecycleStatusReady    AdapterLifecycleStatus = "ready"
+	AdapterLifecycleStatusError    AdapterLifecycleStatus = "error"
+)
+
 // SidecarConfig represents configuration for sidecar container deployment
 type SidecarConfig struct {
 	// Command execution type
@@ -45,15 +54,16 @@ type SidecarConfig struct {
 
 // AdapterData represents the data for creating or updating an adapter
 type AdapterData struct {
-	Name                 string            `json:"name" example:"my-adapter"`
-	ImageName            string            `json:"imageName,omitempty" example:"nginx"`
-	ImageVersion         string            `json:"imageVersion,omitempty" example:"latest"`
-	Protocol             ServerProtocol    `json:"protocol" example:"MCP"`
-	ConnectionType       ConnectionType    `json:"connectionType" example:"StreamableHttp"`
-	EnvironmentVariables map[string]string `json:"environmentVariables"`
-	ReplicaCount         int               `json:"replicaCount,omitempty" example:"1"`
-	Description          string            `json:"description" example:"My MCP adapter"`
-	UseWorkloadIdentity  bool              `json:"useWorkloadIdentity,omitempty" example:"false"`
+	Name                 string                 `json:"name" example:"my-adapter"`
+	ImageName            string                 `json:"imageName,omitempty" example:"nginx"`
+	ImageVersion         string                 `json:"imageVersion,omitempty" example:"latest"`
+	Protocol             ServerProtocol         `json:"protocol" example:"MCP"`
+	ConnectionType       ConnectionType         `json:"connectionType" example:"StreamableHttp"`
+	Status               AdapterLifecycleStatus `json:"status" example:"ready"`
+	EnvironmentVariables map[string]string      `json:"environmentVariables"`
+	ReplicaCount         int                    `json:"replicaCount,omitempty" example:"1"`
+	Description          string                 `json:"description" example:"My MCP adapter"`
+	UseWorkloadIdentity  bool                   `json:"useWorkloadIdentity,omitempty" example:"false"`
 	// Adapter MCP endpoint URL
 	URL string `json:"url,omitempty" example:"http://localhost:8911/api/v1/adapters/my-adapter/mcp"`
 	// For remote HTTP
@@ -83,6 +93,7 @@ func NewAdapterData(name, imageName, imageVersion string) *AdapterData {
 		ImageVersion:         imageVersion,
 		Protocol:             ServerProtocolMCP,
 		ConnectionType:       ConnectionTypeStreamableHttp,
+		Status:               AdapterLifecycleStatusNotReady,
 		EnvironmentVariables: make(map[string]string),
 		ReplicaCount:         1,
 		Description:          "",
