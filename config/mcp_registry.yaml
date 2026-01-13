@@ -28,32 +28,39 @@
       example: http://uyuni.example.com
       name: uyuni.server
       templated: true
+      type: text
     - env: UYUNI_USER
       example: admin
       name: uyuni.user
       templated: true
+      type: text
     - env: UYUNI_PASS
       example: your_password_here
       name: uyuni.pass
       templated: true
+      type: secret
     - env: UYUNI_MCP_SSL_VERIFY
       example: 'true'
       name: uyuni.ssl_verify
       templated: false
+      type: bool
     - env: UYUNI_MCP_WRITE_TOOLS_ENABLED
       example: 'false'
       name: uyuni.write_tools_enabled
       templated: false
+      type: bool
     - env: UYUNI_SSH_PRIV_KEY
       example: '-----BEGIN OPENSSH PRIVATE KEY-----
 
         ...'
       name: uyuni.ssh_priv_key
       templated: false
+      type: text
     - env: UYUNI_SSH_PRIV_KEY_PASS
       example: your_key_passphrase
       name: uyuni.ssh_priv_key_pass
       templated: false
+      type: text
 - name: bugzilla
   image: none
   type: server
@@ -83,10 +90,12 @@
     - env: BUGZILLA_SERVER
       example: https://bugzilla.suse.com
       name: bugzilla.server
+      type: text
       templated: true
     - env: BUGZILLA_APIKEY
       example: your_api_key_here
       name: bugzilla.apikey
+      type: secret
       templated: true
 - name: airtable-mcp-server
   image: mcp/airtable-mcp-server
@@ -114,20 +123,12 @@
     project: https://github.com/domdomegg/airtable-mcp-server
   config:
     description: Configure the connection to Airtable mcp server
-    env:
-    - example: production
-      name: NODE_ENV
-      value: '{{airtable-mcp-server.nodeenv}}'
-    parameters:
-      properties:
-        nodeenv:
-          type: string
-      type: object
     secrets:
     - env: AIRTABLE_API_KEY
       example: patABC123.def456ghi789jkl012mno345pqr678stu901vwx
       name: airtable-mcp-server.api_key
       templated: true
+      type: secret
 - name: aks
   image: mcp/aks
   type: server
@@ -140,7 +141,7 @@
     - aks
     sidecarConfig:
       commandType: docker
-      command: docker run -i --rm -v /local-directory:/local-directory --transport=streamable-http
+      command: docker run -i --rm --transport=streamable-http
         '--access-level={{aks.access_level}}' '--allow-namespaces={{aks.allow_namespaces}}'
         '--additional-tools={{aks.additional_tools}}'
       source: manual-config
@@ -362,29 +363,6 @@
       example: your-aws-session-token
       name: amazon-qbusiness-anonymous.aws_session_token
       templated: true
-- name: apify
-  image: ''
-  type: remote
-  meta:
-    category: automation
-    tags:
-    - automation
-    - web-scraping
-    - data-extraction
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Apify is the world's largest marketplace of tools for web scraping,
-      data extraction, and web automation. You can extract structured data from social
-      media, e-commerce, search engines, maps, travel sites, or any other website.
-    icon: https://www.google.com/s2/favicons?domain=apify.com&sz=64
-    title: Apify Remote
-  source: {}
-  config:
-    secrets:
-    - env: APIFY_API_KEY
-      example: <YOUR_API_KEY>
-      name: apify.api_key
 - name: apify-mcp-server
   image: mcp/apify-mcp-server
   type: server
@@ -434,40 +412,7 @@
       example: your-apify-token
       name: apify-mcp-server.apify_token
       templated: true
-- name: apollo-mcp-server
-  image: ghcr.io/apollographql/apollo-mcp-server
-  type: server
-  meta:
-    category: ai
-    tags:
-    - ai
-    sidecarConfig: {}
-  about:
-    description: Enable graph-based API orchestration with AI
-    icon: https://www.apollographql.com/favicon/android-icon-192x192.png
-    title: Apollo
-  source:
-    commit: f481f59105966975c04febbed9efc8b62a93ec32
-    project: https://github.com/apollographql/apollo-mcp-server
-  config:
-    description: Configure the connection to Apollo MCP Server
-    env:
-    - example: service:mygraph:1234567890
-      name: APOLLO_KEY
-      value: '{{apollo-mcp-server.apollo-key}}'
-    - example: MyGraph@current
-      name: APOLLO_GRAPH_REF
-      value: '{{apollo-mcp-server.apollo-graph-ref}}'
-    parameters:
-      properties:
-        apollo-graph-ref:
-          type: string
-        apollo-key:
-          type: string
-      required:
-      - apollo-key
-      - apollo-graph-ref
-      type: object
+      type: secret
 - name: arxiv-mcp-server
   image: mcp/arxiv-mcp-server
   type: server
@@ -520,23 +465,6 @@
       required:
       - storage_path
       type: object
-- name: asana
-  image: ''
-  type: remote
-  meta:
-    category: productivity
-    tags:
-    - productivity
-    - project-management
-    - collaboration
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Interact with your Asana workspace
-    icon: https://www.google.com/s2/favicons?domain=asana.com&sz=64
-    title: Asana
-  source: {}
-  config: {}
 - name: ast-grep
   image: mcp/ast-grep
   type: server
@@ -605,7 +533,7 @@
       name: astra-db.application_token
       templated: true
 - name: astro-docs
-  image: ''
+  image: 'https://mcp.docs.astro.build/mcp'
   type: remote
   meta:
     category: documentation
@@ -690,7 +618,7 @@
           type: string
       type: object
 - name: atlassian
-  image: mcp/atlassian
+  image: ghcr.io/sooperset/mcp-atlassian:latest
   type: server
   meta:
     category: productivity
@@ -698,7 +626,10 @@
     - atlassian
     - confluence
     - jira
-    sidecarConfig: {}
+    sidecarConfig: {
+      commandType: docker,
+      command: "docker run --rm -i -e {{atlassian.confluence.api_token}} -e {{atlassian.confluence.personal_token}} -e {{atlassian.jira.api_token}} -e {{atlassian.jira.personal_token}}"
+    }
   about:
     description: Tools for Atlassian products (Confluence and Jira). This integration
       supports both Atlassian Cloud and Jira Server/Data Center deployments.
@@ -804,24 +735,6 @@
       example: your_token_here
       name: audiense-insights.twitter_bearer_token
       templated: true
-- name: audioscrape
-  image: ''
-  type: remote
-  meta:
-    category: ai
-    tags:
-    - ai
-    - rag
-    - audio
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Search and analyze audio content from a massive database of podcasts,
-      interviews, and other talks
-    icon: https://www.google.com/s2/favicons?domain=audioscrape.com&sz=64
-    title: Audioscrape
-  source: {}
-  config: {}
 - name: aws-api
   image: mcp/aws-api-mcp-server
   type: server
@@ -2387,24 +2300,6 @@
         camundahost:
           type: string
       type: object
-- name: carbon-voice
-  image: ''
-  type: remote
-  meta:
-    category: productivity
-    tags:
-    - productivity
-    - voice
-    - automation
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Communicate asynchronously with voice messages featuring AI transcription,
-      summaries, and automated action item extraction
-    icon: https://www.google.com/s2/favicons?domain=carbonvoice.app&sz=64
-    title: Carbon Voice
-  source: {}
-  config: {}
 - name: cdata-connectcloud
   image: mcp/cdata-connectcloud
   type: server
@@ -2641,28 +2536,6 @@
       example: <YOUR_CLICKHOUSE_PASSWORD_HERE>
       name: clickhouse.password
       templated: true
-- name: close
-  image: ''
-  type: remote
-  meta:
-    category: crm
-    tags:
-    - crm
-    - sales
-    - customer-management
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Streamline sales processes with integrated calling, email, SMS, and
-      automated workflows for small and scaling businesses
-    icon: https://www.google.com/s2/favicons?domain=close.com&sz=64
-    title: Close
-  source: {}
-  config:
-    secrets:
-    - env: CLOSE_API_KEY
-      example: <YOUR_API_KEY>
-      name: close.api_key
 - name: cloud-run-mcp
   image: mcp/cloud-run-mcp
   type: server
@@ -3123,20 +2996,6 @@
       example: <CB_PASSWORD>
       name: couchbase.cb_password
       templated: true
-- name: curl
-  image: ''
-  type: poci
-  meta:
-    category: devops
-    tags:
-    - http
-    sidecarConfig: {}
-  about:
-    description: Standard curl tool.
-    icon: https://avatars.githubusercontent.com/u/16928085?s=200&v=4
-    title: Curl
-  source: {}
-  config: {}
 - name: cylera-mcp-server
   image: mcp/cylera-mcp-server
   type: server
@@ -3229,29 +3088,6 @@
       example: YOUR_API_KEY_HERE
       name: dappier.api_key
       templated: true
-- name: dappier-remote
-  image: ''
-  type: remote
-  meta:
-    category: ai
-    tags:
-    - ai
-    - rag
-    - knowledge-base
-    - remote
-    sidecarConfig: {}
-  about:
-    description: "Enable fast, free real-time web search and access premium data from\
-      \ trusted media brands\u2014news, financial markets, sports, entertainment,\
-      \ weather, and more. Build powerful AI agents with Dappier."
-    icon: https://avatars.githubusercontent.com/u/152645347?s=200&v=4
-    title: Dappier Remote
-  source: {}
-  config:
-    secrets:
-    - env: DAPPIER_REMOTE_API_KEY
-      example: <YOUR_API_KEY>
-      name: dappier-remote.api_key
 - name: dart
   image: mcp/dart
   type: server
@@ -3492,38 +3328,6 @@
       example: YOUR_SECRET_HERE
       name: devhub-cms.api_secret
       templated: true
-- name: dialer
-  image: ''
-  type: remote
-  meta:
-    category: communication
-    tags:
-    - communication
-    - telephony
-    - outbound
-    - remote
-    sidecarConfig: {}
-  about:
-    description: Enable AI agents to conduct professional outbound calls for research,
-      interviews, and market validation using your phone number
-    icon: https://www.google.com/s2/favicons?domain=getdialer.app&sz=64
-    title: Dialer
-  source: {}
-  config: {}
-- name: docker
-  image: ''
-  type: poci
-  meta:
-    category: devops
-    tags:
-    - docker
-    sidecarConfig: {}
-  about:
-    description: Use the Docker CLI.
-    icon: https://avatars.githubusercontent.com/u/5429470?s=200&v=4
-    title: Docker
-  source: {}
-  config: {}
 - name: dockerhub
   image: mcp/dockerhub
   type: server
@@ -3966,21 +3770,6 @@
     directory: src/fetch
     project: https://github.com/modelcontextprotocol/servers
   config: {}
-- name: ffmpeg
-  image: ''
-  type: poci
-  meta:
-    category: video
-    tags:
-    - ffmpeg
-    - video
-    sidecarConfig: {}
-  about:
-    description: Use ffmpeg to process video files.
-    icon: https://cdn.jsdelivr.net/npm/simple-icons@v7/icons/ffmpeg.svg
-    title: FFmpeg
-  source: {}
-  config: {}
 - name: fibery
   image: mcp/fibery
   type: server
@@ -4394,7 +4183,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i --rm -e {{github.personal_access_token}}
+      command: docker run -i -e {{github.personal_access_token}}
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
