@@ -107,7 +107,7 @@
       - suse
     sidecarConfig:
       commandType: docker
-      command: docker run  {{trento-mcp-server.serverurl}}  {{trento-mcp-server.mcp_tag_filter}}  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest
+      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest -e {{trento-mcp-server.serverurl}} -e {{trento-mcp-server.mcp_tag_filter}}  
       port: 5000
       source: manual-config
       lastUpdated: ''
@@ -4222,7 +4222,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i {{github.personal_access_token}} ghcr.io/github/github-mcp-server
+      command: docker run -i ghcr.io/github/github-mcp-server -e {{github.personal_access_token}} 
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
