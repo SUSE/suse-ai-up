@@ -4224,7 +4224,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i ghcr.io/github/github-mcp-server {{github.personal_access_token}} 
+      command: docker run -i ghcr.io/github/github-mcp-server {{github.personal_access_token}} {{github.host}}
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
@@ -4237,12 +4237,19 @@
     commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
     project: https://github.com/github/github-mcp-server
   config:
+    description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
     secrets:
-    - description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
-      env: GITHUB_PERSONAL_ACCESS_TOKEN
+    - env: GITHUB_PERSONAL_ACCESS_TOKEN
       example: "gh_1234..."
       name: github.personal_access_token
       templated: true
+      type: text
+    - env: GITHUB_HOST
+      example: "https://github.com"
+      name: github.host
+      templated: true
+      type: text
+
 - name: gitmcp
   image: ''
   type: remote
