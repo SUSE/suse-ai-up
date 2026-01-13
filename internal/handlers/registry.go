@@ -150,16 +150,33 @@ func (h *RegistryHandler) updateRegistryConfigMap(ctx context.Context, registryD
 		return nil
 	}
 
-	// Get namespace from environment or default
+	// Get namespace from environment variables or service account token location
 	namespace := os.Getenv("NAMESPACE")
 	if namespace == "" {
-		namespace = "default"
+		// Try to get namespace from service account token path
+		if data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+			namespace = string(data)
+		} else {
+			// Fallback to environment variables that might be set
+			namespace = os.Getenv("POD_NAMESPACE")
+			if namespace == "" {
+				namespace = "default"
+			}
+		}
 	}
 
 	// Get ConfigMap name from environment or construct it
 	configMapName := os.Getenv("REGISTRY_CONFIGMAP_NAME")
 	if configMapName == "" {
-		configMapName = "suse-ai-up-registry"
+		// Try to construct name based on common patterns
+		deploymentName := os.Getenv("DEPLOYMENT_NAME")
+		if deploymentName == "" {
+			deploymentName = os.Getenv("HOSTNAME") // Might contain deployment info
+			if deploymentName == "" {
+				deploymentName = "suse-ai-up"
+			}
+		}
+		configMapName = deploymentName + "-registry"
 	}
 
 	// Get the current ConfigMap
