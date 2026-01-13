@@ -73,7 +73,7 @@
     - suse
     sidecarConfig:
       commandType: python
-      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key
+      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key {{bugzilla.apikey}}
         {{bugzilla.apikey}} --host 0.0.0.0 --port 8000
       port: 8000
       source: manual-config
@@ -97,6 +97,40 @@
       name: bugzilla.apikey
       type: secret
       templated: true
+- name: trento
+  image: registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: infrastructure
+    tags:
+      - sap
+      - suse
+    sidecarConfig:
+      commandType: docker
+      command: docker run -d  --name mcp-server-trento  -e {{trento-mcp-server.serverurl}}  -e {{trento-mcp-server.mcp_tag_filter}}  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest
+      port: 5000
+      source: manual-config
+      lastUpdated: ''
+  about:
+    icon: https://avatars.githubusercontent.com/u/80825642
+    title: SUSE Trento
+    description: "The Trento MCP Server is a Model Context Protocol (MCP) implementation that bridges the gap between AI assistants and the Trento Project. Instead of navigating through web interfaces, you can now manage and monitor your SAP systems by simply conversing with your AI assistant in natural language."
+  source:
+    commit: none
+    project: https://github.com/trento-project/mcp-server  # Required for python type
+  config:
+    description: Configure Treno server connection
+    secrets:
+      - env: TRENTO_MCP_TRENTO_URL
+        example: https://demo.trento-project.io/
+        name: trento-mcp-server.serverurl
+        type: text
+        templated: true
+      - env: TRENTO_MCP_TAG_FILTER
+        example: MCP
+        name: trento-mcp-server.mcp_tag_filter
+        type: text
+        templated: true
 - name: airtable-mcp-server
   image: mcp/airtable-mcp-server
   type: server
@@ -104,7 +138,7 @@
     category: productivity
     sidecarConfig:
       commandType: npx
-      command: npx -y @nekzus/npm-sentinel-mcp
+      command: npx -y @nekzus/npm-sentinel-mcp --{{airtable-mcp-server.api_key}} --airtable-mcp-server.transport
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
@@ -129,6 +163,11 @@
       name: airtable-mcp-server.api_key
       templated: true
       type: secret
+    - env: MCP_TRANSPORT
+      example: http
+      name: airtable-mcp-server.transport
+      templated: true
+      type: text
 - name: aks
   image: mcp/aks
   type: server

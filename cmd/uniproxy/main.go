@@ -559,7 +559,16 @@ func RunUniproxy() {
 	// Load MCP registry from URL or config file
 	loadRegistryFromFile(registryManager, cfg)
 
-	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService, cfg)
+	// Initialize Kubernetes client for ConfigMap updates (optional)
+	var k8sClient kubernetes.Interface
+	if config, err := rest.InClusterConfig(); err == nil {
+		k8sClient, _ = kubernetes.NewForConfig(config)
+		log.Printf("Kubernetes client initialized for ConfigMap updates")
+	} else {
+		log.Printf("Not running in Kubernetes cluster, ConfigMap updates disabled")
+	}
+
+	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService, cfg, k8sClient)
 
 	// Initialize user/group and route assignment handlers
 	userGroupHandler := handlers.NewUserGroupHandler(userGroupService)

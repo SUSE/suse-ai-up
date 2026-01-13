@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/mcp"
@@ -122,10 +125,11 @@ type RegistryHandler struct {
 	ToolDiscovery    *mcp.MCPToolDiscoveryService
 	UserGroupService *services.UserGroupService
 	Config           *config.Config
+	K8sClient        kubernetes.Interface // Kubernetes client for ConfigMap updates
 }
 
 // NewRegistryHandler creates a new registry handler
-func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore, userGroupService *services.UserGroupService, cfg *config.Config) *RegistryHandler {
+func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInterface, adapterStore clients.AdapterResourceStore, userGroupService *services.UserGroupService, cfg *config.Config, k8sClient kubernetes.Interface) *RegistryHandler {
 	handler := &RegistryHandler{
 		Store:            store,
 		RegistryManager:  registryManager,
@@ -133,9 +137,53 @@ func NewRegistryHandler(store MCPServerStore, registryManager RegistryManagerInt
 		ToolDiscovery:    mcp.NewMCPToolDiscoveryService(),
 		UserGroupService: userGroupService,
 		Config:           cfg,
+		K8sClient:        k8sClient,
 	}
 
 	return handler
+}
+
+// updateRegistryConfigMap updates the Kubernetes ConfigMap with new registry data
+func (h *RegistryHandler) updateRegistryConfigMap(ctx context.Context, registryData []byte) error {
+	if h.K8sClient == nil {
+		// Not running in Kubernetes, skip ConfigMap update
+		return nil
+	}
+
+	// Get namespace from environment or default
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	// Get ConfigMap name from environment or construct it
+	configMapName := os.Getenv("REGISTRY_CONFIGMAP_NAME")
+	if configMapName == "" {
+		configMapName = "suse-ai-up-registry"
+	}
+
+	// Get the current ConfigMap
+	configMap, err := h.K8sClient.CoreV1().ConfigMaps(namespace).Get(ctx, configMapName, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("Warning: Failed to get ConfigMap %s/%s: %v", namespace, configMapName, err)
+		return fmt.Errorf("failed to get ConfigMap: %w", err)
+	}
+
+	// Update the mcp_registry.yaml data
+	if configMap.Data == nil {
+		configMap.Data = make(map[string]string)
+	}
+	configMap.Data["mcp_registry.yaml"] = string(registryData)
+
+	// Update the ConfigMap
+	_, err = h.K8sClient.CoreV1().ConfigMaps(namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		log.Printf("Warning: Failed to update ConfigMap %s/%s: %v", namespace, configMapName, err)
+		return fmt.Errorf("failed to update ConfigMap: %w", err)
+	}
+
+	log.Printf("Successfully updated ConfigMap %s/%s with new registry data", namespace, configMapName)
+	return nil
 }
 
 // DetectServerType determines the type of MCP server from registry metadata and package information
@@ -659,6 +707,12 @@ func (h *RegistryHandler) ReloadRegistry(c *gin.Context) {
 							err = fmt.Errorf("could not upload registry entries: %w", uploadErr)
 						} else {
 							serverCount = len(mcpServers)
+
+							// Update ConfigMap with new registry data for persistence
+							if updateErr := h.updateRegistryConfigMap(c.Request.Context(), data); updateErr != nil {
+								log.Printf("Warning: Failed to update registry ConfigMap: %v", updateErr)
+								// Don't fail the reload if ConfigMap update fails
+							}
 						}
 					}
 				}
