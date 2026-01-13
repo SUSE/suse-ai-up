@@ -4183,7 +4183,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i -e {{github.personal_access_token}}
+      command: docker run -i -e {{github.personal_access_token}} ghcr.io/github/github-mcp-server
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
