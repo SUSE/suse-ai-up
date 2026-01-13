@@ -167,6 +167,11 @@ func loadRegistryFromURL(registryManager *handlers.DefaultRegistryManager, url s
 func loadRegistryFromFile(registryManager *handlers.DefaultRegistryManager, cfg *config.Config) {
 	log.Printf("DEBUG: loadRegistryFromFile called")
 
+	// Clear existing registry for clean startup state
+	if err := registryManager.Clear(); err != nil {
+		log.Printf("Warning: Failed to clear registry at startup: %v", err)
+	}
+
 	// Try to load from URL first if configured
 	if cfg.MCPRegistryURL != "" {
 		timeout, err := time.ParseDuration(cfg.RegistryTimeout)

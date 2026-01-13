@@ -19,5 +19,5 @@ metadata:
     {{- include "suse-ai-up.labels" . | nindent 4 }}
 data:
   mcp_registry.yaml: |
-{{ .Files.Get "mcp_registry.yaml" | indent 4 }}
+{{ .Values.registry.servers | indent 4 }}
 {{- end }}

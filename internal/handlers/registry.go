@@ -102,6 +102,7 @@ type RegistryManagerInterface interface {
 	UploadRegistryEntries(entries []*models.MCPServer) error
 	LoadFromCustomSource(sourceURL string) error
 	SearchServers(query string, filters map[string]interface{}) ([]*models.MCPServer, error)
+	Clear() error
 }
 
 // MCPServerStore interface for MCP server storage operations
@@ -645,6 +646,12 @@ func (h *RegistryHandler) ReloadRegistry(c *gin.Context) {
 							}
 
 							mcpServers = append(mcpServers, server)
+						}
+
+						// Clear existing registry before uploading new entries
+						if clearErr := h.RegistryManager.Clear(); clearErr != nil {
+							log.Printf("Warning: Failed to clear registry before reload: %v", clearErr)
+							// Continue anyway - better to have some servers than none
 						}
 
 						// Upload all servers

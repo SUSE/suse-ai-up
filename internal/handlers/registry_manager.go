@@ -32,6 +32,17 @@ func (rm *DefaultRegistryManager) UploadRegistryEntries(entries []*models.MCPSer
 	return nil
 }
 
+// Clear removes all MCP servers from the registry
+func (rm *DefaultRegistryManager) Clear() error {
+	servers := rm.store.ListMCPServers()
+	for _, server := range servers {
+		if err := rm.store.DeleteMCPServer(server.ID); err != nil {
+			return fmt.Errorf("failed to delete server %s: %w", server.ID, err)
+		}
+	}
+	return nil
+}
+
 // LoadFromCustomSource loads registry entries from a custom source URL
 func (rm *DefaultRegistryManager) LoadFromCustomSource(sourceURL string) error {
 	resp, err := http.Get(sourceURL)
