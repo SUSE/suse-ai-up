@@ -73,7 +73,7 @@
     - suse
     sidecarConfig:
       commandType: python
-      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key {{bugzilla.apikey}}
+      command: uv run mcp-bugzilla {{bugzilla.server}} {{bugzilla.apikey}}
         {{bugzilla.apikey}} --host 0.0.0.0 --port 8000
       port: 8000
       source: manual-config
@@ -107,7 +107,7 @@
       - suse
     sidecarConfig:
       commandType: docker
-      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest -e {{trento-mcp-server.port}} -e {{trento-mcp-server.serverurl}} -e {{trento-mcp-server.mcp_tag_filter}}  
+      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest {{trento-mcp-server.port}} {{trento-mcp-server.serverurl}} {{trento-mcp-server.mcp_tag_filter}}  
       port: 8000
       source: manual-config
       lastUpdated: ''
@@ -4063,7 +4063,7 @@
       name: firewalla-mcp-server.msp_token
       templated: true
 - name: flexprice
-  image: mcp/flexprice
+  image: flexprice-mcp
   type: server
   meta:
     category: devops
@@ -4072,7 +4072,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i --rm -e BASE_URL=https://api.cloud.flexprice.io -e -e
+      command: docker run -i --rm {{flexprice.base_url}} {{flexprice.api_key}} flexprice-mcp
         API_KEY=your_api_key_here
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
@@ -4084,16 +4084,13 @@
     project: https://github.com/flexprice/mcp-server
   config:
     description: Configure the connection to Redis
-    env:
-    - example: https://api.cloud.flexprice.io
-      name: BASE_URL
-      value: '{{flexprice.base_url}}'
-    parameters:
-      properties:
-        base_url:
-          type: string
-      type: object
     secrets:
+    - env:
+      example: https://api.cloud.flexprice.io
+      name: BASE_URL
+      value: flexprice.base_url
+      templated: true
+      type: text  
     - env: API_KEY
       example: your_api_key_here
       name: flexprice.api_key
@@ -4227,7 +4224,7 @@
     - devops
     sidecarConfig:
       commandType: docker
-      command: docker run -i ghcr.io/github/github-mcp-server -e {{github.personal_access_token}} 
+      command: docker run -i ghcr.io/github/github-mcp-server {{github.personal_access_token}} 
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
