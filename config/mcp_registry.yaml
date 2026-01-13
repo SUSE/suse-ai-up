@@ -18,6 +18,7 @@
   about:
     icon: https://apps.rancher.io/logos/suse-ai-deployer.png
     title: SUSE Uyuni
+    description: "Uyuni mcp server"
   source:
     commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
     project: https://github.com/uyuni-project/mcp-server-uyuni
