@@ -107,7 +107,7 @@
       - suse
     sidecarConfig:
       commandType: docker
-      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest -e PORT=8000 -e {{trento-mcp-server.serverurl}} -e {{trento-mcp-server.mcp_tag_filter}}  
+      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest -e {{trento-mcp-server.port}} -e {{trento-mcp-server.serverurl}} -e {{trento-mcp-server.mcp_tag_filter}}  
       port: 5000
       source: manual-config
       lastUpdated: ''
@@ -129,6 +129,11 @@
       - env: TRENTO_MCP_TAG_FILTER
         example: MCP
         name: trento-mcp-server.mcp_tag_filter
+        type: text
+        templated: true
+      - env: TRENTO_MCP_PORT
+        example: 8000
+        name: trento-mcp-server.port
         type: text
         templated: true
 - name: airtable-mcp-server
