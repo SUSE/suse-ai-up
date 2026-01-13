@@ -131,8 +131,8 @@
         name: trento-mcp-server.mcp_tag_filter
         type: text
         templated: true
-      - env: PORT
-        example: 8000
+      - env: TRENTO_MCP_PORT
+        example: "8000"
         name: trento-mcp-server.port
         type: text
         templated: true
