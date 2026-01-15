@@ -483,9 +483,9 @@ func RunUniproxy() {
 	userAuthService := auth.NewUserAuthService(userStore, tokenManager, userAuthConfig)
 
 	// Create initial groups
-	log.Printf("CreateInitialGroups: %v, Groups count: %d", cfg.CreateInitialGroups, len(cfg.InitialGroups))
+	log.Printf("DEBUG: CreateInitialGroups: %v, Groups count: %d", cfg.CreateInitialGroups, len(cfg.InitialGroups))
 	if cfg.CreateInitialGroups {
-		log.Printf("Creating %d initial groups", len(cfg.InitialGroups))
+		log.Printf("DEBUG: Creating %d initial groups", len(cfg.InitialGroups))
 		for _, initialGroup := range cfg.InitialGroups {
 			log.Printf("Processing group: %s", initialGroup.ID)
 			group := models.Group{
@@ -506,9 +506,9 @@ func RunUniproxy() {
 	}
 
 	// Create initial users
-	log.Printf("CreateInitialUsers: %v, Users count: %d", cfg.CreateInitialUsers, len(cfg.InitialUsers))
+	log.Printf("DEBUG: CreateInitialUsers: %v, Users count: %d", cfg.CreateInitialUsers, len(cfg.InitialUsers))
 	if cfg.CreateInitialUsers {
-		log.Printf("Creating %d initial users", len(cfg.InitialUsers))
+		log.Printf("DEBUG: Creating %d initial users", len(cfg.InitialUsers))
 		for _, initialUser := range cfg.InitialUsers {
 			log.Printf("Processing user: %s", initialUser.ID)
 			user := models.User{

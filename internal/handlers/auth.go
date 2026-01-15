@@ -54,7 +54,7 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password"`
 }
 
-// Login handles POST /auth/login
+// Login handles POST /api/v1/auth/login
 // @Summary User login
 // @Description Authenticate a user with username/password
 // @Tags auth
@@ -64,7 +64,7 @@ type ChangePasswordRequest struct {
 // @Success 200 {object} LoginResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -115,7 +115,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Param oauth body OAuthLoginRequest true "OAuth provider"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} ErrorResponse
-// @Router /auth/oauth/login [post]
+// @Router /api/v1/auth/oauth/login [post]
 func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 	var req OAuthLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -162,7 +162,7 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 // @Success 200 {object} LoginResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /auth/oauth/callback [post]
+// @Router /api/v1/auth/oauth/callback [post]
 func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 	var req OAuthCallbackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -220,7 +220,7 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /auth/password [put]
+// @Router /api/v1/auth/password [put]
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	userInterface, exists := c.Get("user")
 	if !exists {
@@ -281,7 +281,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Success 200 {object} map[string]string
-// @Router /auth/logout [post]
+// @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// In a stateless JWT system, logout is handled client-side by removing the token
 	// In the future, you could implement token blacklisting here

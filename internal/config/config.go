@@ -274,6 +274,7 @@ func defaultInitialUsers() []InitialUser {
 			ID:           "admin",
 			Name:         "System Administrator",
 			Email:        "admin@suse.ai",
+			Password:     "", // Will use ADMIN_PASSWORD env var
 			Groups:       "mcp-admins",
 			AuthProvider: "local",
 		},
