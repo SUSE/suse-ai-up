@@ -326,13 +326,7 @@ questions:
   group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
-- variable: initialGroups.groups[0].permissions
-  label: "Admin Permissions"
-  description: "Permissions for the admin group (comma-separated) - full administrative access"
-  type: string
-  default: "user:create,user:read,user:update,user:delete,group:create,group:read,group:update,group:delete,adapter:create,adapter:read,adapter:update,adapter:delete,adapter:assign,server:create,server:read,server:update,server:delete,discovery:create,discovery:read,discovery:update,discovery:delete,registry:create,registry:read,registry:update,registry:delete"
-  group: "Groups"
-  show_if: "initialGroups.enabled && auth.mode!=dev"
+
 
 - variable: initialGroups.groups[1].id
   label: "User Group ID"
@@ -350,13 +344,7 @@ questions:
   group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
-- variable: initialGroups.groups[1].permissions
-  label: "User Permissions"
-  description: "Permissions for the user group (comma-separated) - basic access with limited adapter operations"
-  type: string
-  default: "server:read,adapter:read,adapter:create,adapter:assign"
-  group: "Groups"
-  show_if: "initialGroups.enabled && auth.mode!=dev"
+
 
 # Service Resource Configuration
 - variable: serviceResources

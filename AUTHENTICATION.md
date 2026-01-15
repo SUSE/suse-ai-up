@@ -186,8 +186,8 @@ When deploying via Rancher UI, the questions.yml provides an organized interface
 
 #### **Groups Section**
 1. **Create Initial Groups**: Enable/disable automatic group creation
-2. **Admin Group**: Configure the administrators group with full permissions
-3. **User Group**: Configure the regular users group with limited permissions
+2. **Admin Group**: Configure the administrators group (full permissions predefined)
+3. **User Group**: Configure the regular users group (limited permissions predefined)
 
 ### Security in Kubernetes
 
