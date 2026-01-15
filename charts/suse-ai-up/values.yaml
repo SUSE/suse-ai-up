@@ -123,12 +123,29 @@ initialGroups:
   groups:
     - id: "mcp-admins"
       name: "MCP Administrators"
-      description: "Full administrative access to MCP servers and proxy"
-      permissions: ["user:manage", "group:manage", "server:manage", "adapter:manage"]
+      description: "Full administrative access to all MCP proxy features"
+      permissions: [
+        # User management - full CRUD
+        "user:create", "user:read", "user:update", "user:delete",
+        # Group management - full CRUD
+        "group:create", "group:read", "group:update", "group:delete",
+        # Adapter management - full CRUD
+        "adapter:create", "adapter:read", "adapter:update", "adapter:delete", "adapter:assign",
+        # Server/Discovery management - full CRUD
+        "server:create", "server:read", "server:update", "server:delete",
+        "discovery:create", "discovery:read", "discovery:update", "discovery:delete",
+        # Registry management - full CRUD
+        "registry:create", "registry:read", "registry:update", "registry:delete"
+      ]
     - id: "mcp-users"
       name: "MCP Users"
-      description: "Basic access to MCP servers"
-      permissions: ["server:read", "adapter:read"]
+      description: "Basic access to MCP servers and limited adapter operations"
+      permissions: [
+        # Basic read access
+        "server:read", "adapter:read",
+        # Limited adapter operations (POST/GET, no delete)
+        "adapter:create", "adapter:assign"
+      ]
 
 # Monitoring Configuration
 monitoring:

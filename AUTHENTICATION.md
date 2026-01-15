@@ -146,22 +146,42 @@ initialGroups:
   groups:
     - id: "mcp-admins"
       name: "MCP Administrators"
-      description: "Full administrative access"
-      permissions: ["user:manage", "group:manage", "server:manage", "adapter:manage"]
+      description: "Full administrative access to all MCP proxy features"
+      permissions: [
+        "user:create", "user:read", "user:update", "user:delete",
+        "group:create", "group:read", "group:update", "group:delete",
+        "adapter:create", "adapter:read", "adapter:update", "adapter:delete", "adapter:assign",
+        "server:create", "server:read", "server:update", "server:delete",
+        "discovery:create", "discovery:read", "discovery:update", "discovery:delete",
+        "registry:create", "registry:read", "registry:update", "registry:delete"
+      ]
     - id: "mcp-users"
       name: "MCP Users"
-      description: "Basic access to MCP servers"
-      permissions: ["server:read", "adapter:read"]
+      description: "Basic access to MCP servers with limited adapter operations"
+      permissions: [
+        "server:read", "adapter:read",
+        "adapter:create", "adapter:assign"
+      ]
 ```
 
 ### Rancher UI Integration
 
-When deploying via Rancher UI, the questions.yml provides an intuitive interface for configuring authentication:
+When deploying via Rancher UI, the questions.yml provides an intuitive interface organized into separate sections:
 
-1. **Installation Type**: Choose Quick Start or Custom Configuration
-2. **Authentication Mode**: Select local, GitHub OAuth, Rancher OIDC, or dev mode
-3. **Provider Configuration**: Enter OAuth credentials and settings
-4. **User Setup**: Configure initial admin user and groups
+#### **Authentication Section**
+1. **Authentication Mode**: Select local, GitHub OAuth, Rancher OIDC, or dev mode
+2. **Provider Configuration**: Enter OAuth credentials and settings based on selected mode
+3. **Development Mode**: Enable/disable development authentication bypass
+
+#### **Initial Users Section**
+1. **Create Initial Users**: Enable/disable automatic user creation
+2. **Admin User Configuration**: Set admin user details (ID, name, email, password, groups)
+3. **Additional Users**: Configure additional users if needed
+
+#### **Initial Groups Section**
+1. **Create Initial Groups**: Enable/disable automatic group creation
+2. **Admin Group**: Configure the administrators group with full permissions
+3. **User Group**: Configure the regular users group with limited permissions
 
 ### Security in Kubernetes
 
@@ -394,14 +414,64 @@ curl -X GET http://localhost:8911/api/v1/users \
 
 ### Default Groups
 
-- `mcp-users`: Basic users with access to MCP services
-- `mcp-admins`: Administrators with full access
+- **`mcp-admins`**: Full administrative access to all MCP proxy features
+  - **Users**: Create, read, update, delete users
+  - **Groups**: Create, read, update, delete groups
+  - **Adapters**: Full CRUD operations plus assignment capabilities
+  - **Servers**: Create, read, update, delete MCP servers
+  - **Discovery**: Full CRUD operations for service discovery
+  - **Registry**: Full CRUD operations for MCP server registry
+
+- **`mcp-users`**: Basic access to MCP servers with limited adapter operations
+  - **Servers**: Read access to MCP servers
+  - **Adapters**: Read access plus create and assign (POST/GET, no delete)
+
+### Available Permissions
+
+The system supports granular permissions for different operations:
+
+#### User Management
+- `user:create` - Create new users
+- `user:read` - View user information
+- `user:update` - Modify user details
+- `user:delete` - Delete users
+
+#### Group Management
+- `group:create` - Create new groups
+- `group:read` - View group information
+- `group:update` - Modify group details
+- `group:delete` - Delete groups
+
+#### Adapter Management
+- `adapter:create` - Create new adapters
+- `adapter:read` - View adapter information
+- `adapter:update` - Modify adapter configuration
+- `adapter:delete` - Delete adapters
+- `adapter:assign` - Assign adapters to groups/users
+
+#### Server Management
+- `server:create` - Register new MCP servers
+- `server:read` - View server information
+- `server:update` - Modify server configuration
+- `server:delete` - Unregister servers
+
+#### Discovery Management
+- `discovery:create` - Create discovery configurations
+- `discovery:read` - View discovery information
+- `discovery:update` - Modify discovery settings
+- `discovery:delete` - Delete discovery configurations
+
+#### Registry Management
+- `registry:create` - Add servers to registry
+- `registry:read` - View registry information
+- `registry:update` - Modify registry entries
+- `registry:delete` - Remove servers from registry
 
 ### Permission Mapping
 
-- GitHub: Users in admin teams get `mcp-admins` group
-- Rancher: Users in admin groups get `mcp-admins` group
-- Local: Groups assigned during user creation
+- **GitHub**: Users in configured admin teams automatically get `mcp-admins` group
+- **Rancher**: Users in configured admin groups automatically get `mcp-admins` group
+- **Local**: Groups assigned during user creation or via API
 
 ## Development Mode
 

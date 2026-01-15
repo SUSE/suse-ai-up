@@ -4,6 +4,12 @@
 categories:
 - name: "SUSE AI Universal Proxy"
   class: "default"
+- name: "Authentication"
+  class: "default"
+- name: "Initial Users"
+  class: "default"
+- name: "Initial Groups"
+  class: "default"
 
 questions:
 # Installation Type Selection
@@ -244,13 +250,13 @@ questions:
   group: "Authentication"
   show_if: "auth.mode=rancher"
 
-# Initial Users and Groups Configuration
+# Initial Users Configuration
 - variable: initialUsers.enabled
   label: "Create Initial Users"
-  description: "Create initial users and groups during installation"
+  description: "Create initial users during installation"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "auth.mode!=dev"
 
 - variable: initialUsers.users[0].id
@@ -258,7 +264,7 @@ questions:
   description: "User ID for the initial administrator"
   type: string
   default: "admin"
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -267,7 +273,7 @@ questions:
   description: "Display name for the administrator"
   type: string
   default: "System Administrator"
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -276,7 +282,7 @@ questions:
   description: "Email address for the administrator"
   type: string
   default: "admin@suse.ai"
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -285,7 +291,7 @@ questions:
   description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
   type: password
   default: ""
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "initialUsers.enabled && auth.mode=local"
 
 - variable: initialUsers.users[0].groups
@@ -293,7 +299,7 @@ questions:
   description: "Groups to assign to the admin user (comma-separated)"
   type: string
   default: "mcp-admins"
-  group: "Authentication"
+  group: "Initial Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
 
 - variable: initialGroups.enabled
@@ -301,7 +307,7 @@ questions:
   description: "Create default user groups during installation"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Initial Groups"
   show_if: "initialUsers.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].id
@@ -309,7 +315,7 @@ questions:
   description: "ID for the administrators group"
   type: string
   default: "mcp-admins"
-  group: "Authentication"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].name
@@ -317,15 +323,15 @@ questions:
   description: "Display name for the administrators group"
   type: string
   default: "MCP Administrators"
-  group: "Authentication"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].permissions
   label: "Admin Permissions"
-  description: "Permissions for the admin group (comma-separated)"
+  description: "Permissions for the admin group (comma-separated) - full administrative access"
   type: string
-  default: "user:manage,group:manage,server:manage,adapter:manage"
-  group: "Authentication"
+  default: "user:create,user:read,user:update,user:delete,group:create,group:read,group:update,group:delete,adapter:create,adapter:read,adapter:update,adapter:delete,adapter:assign,server:create,server:read,server:update,server:delete,discovery:create,discovery:read,discovery:update,discovery:delete,registry:create,registry:read,registry:update,registry:delete"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].id
@@ -333,7 +339,7 @@ questions:
   description: "ID for the regular users group"
   type: string
   default: "mcp-users"
-  group: "Authentication"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].name
@@ -341,15 +347,15 @@ questions:
   description: "Display name for the regular users group"
   type: string
   default: "MCP Users"
-  group: "Authentication"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].permissions
   label: "User Permissions"
-  description: "Permissions for the user group (comma-separated)"
+  description: "Permissions for the user group (comma-separated) - basic access with limited adapter operations"
   type: string
-  default: "server:read,adapter:read"
-  group: "Authentication"
+  default: "server:read,adapter:read,adapter:create,adapter:assign"
+  group: "Initial Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 # Service Resource Configuration
