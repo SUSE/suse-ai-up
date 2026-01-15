@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"strconv"
@@ -70,6 +71,35 @@ type Config struct {
 	RancherRedirectURI   string   `json:"rancher_redirect_uri"`
 	RancherAdminGroups   []string `json:"rancher_admin_groups"`
 	RancherFallbackLocal bool     `json:"rancher_fallback_local"`
+
+	// Initial Users and Groups
+	CreateInitialUsers  bool           `json:"create_initial_users"`
+	InitialUsers        []InitialUser  `json:"initial_users"`
+	CreateInitialGroups bool           `json:"create_initial_groups"`
+	InitialGroups       []InitialGroup `json:"initial_groups"`
+
+	// OpenTelemetry configuration
+	OtelEnabled  bool   `json:"otel_enabled"`
+	OtelEndpoint string `json:"otel_endpoint"`
+	OtelProtocol string `json:"otel_protocol"`
+}
+
+// InitialUser represents an initial user to be created
+type InitialUser struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	Password     string `json:"password,omitempty"`
+	Groups       string `json:"groups"` // comma-separated
+	AuthProvider string `json:"auth_provider"`
+}
+
+// InitialGroup represents an initial group to be created
+type InitialGroup struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Permissions string `json:"permissions"` // comma-separated
 
 	// OpenTelemetry configuration
 	OtelEnabled  bool   `json:"otel_enabled"`
@@ -153,6 +183,13 @@ func LoadConfig() *Config {
 		RancherAdminGroups:   parseStringSlice(getEnv("RANCHER_ADMIN_GROUPS", "")),
 		RancherFallbackLocal: getEnvBool("RANCHER_FALLBACK_LOCAL", true),
 
+		// Initial Users and Groups
+		CreateInitialUsers:  getEnvBool("CREATE_INITIAL_USERS", true),
+		InitialUsers:        parseInitialUsers(getEnv("INITIAL_USERS", "")),
+		CreateInitialGroups: getEnvBool("CREATE_INITIAL_GROUPS", true),
+		InitialGroups:       parseInitialGroups(getEnv("INITIAL_GROUPS", "")),
+
+		// OpenTelemetry configuration
 		OtelEnabled:  getEnvBool("OTEL_ENABLED", false),
 		OtelEndpoint: getEnv("OTEL_ENDPOINT", "http://localhost:4318"),
 		OtelProtocol: getEnv("OTEL_PROTOCOL", "grpc"),
@@ -202,6 +239,63 @@ func parseStringSlice(value string) []string {
 		}
 	}
 	return result
+}
+
+// parseInitialUsers parses initial users from JSON string
+func parseInitialUsers(jsonStr string) []InitialUser {
+	if jsonStr == "" {
+		return defaultInitialUsers()
+	}
+	var users []InitialUser
+	if err := json.Unmarshal([]byte(jsonStr), &users); err != nil {
+		log.Printf("Warning: Failed to parse INITIAL_USERS: %v, using defaults", err)
+		return defaultInitialUsers()
+	}
+	return users
+}
+
+// parseInitialGroups parses initial groups from JSON string
+func parseInitialGroups(jsonStr string) []InitialGroup {
+	if jsonStr == "" {
+		return defaultInitialGroups()
+	}
+	var groups []InitialGroup
+	if err := json.Unmarshal([]byte(jsonStr), &groups); err != nil {
+		log.Printf("Warning: Failed to parse INITIAL_GROUPS: %v, using defaults", err)
+		return defaultInitialGroups()
+	}
+	return groups
+}
+
+// defaultInitialUsers returns default initial users
+func defaultInitialUsers() []InitialUser {
+	return []InitialUser{
+		{
+			ID:           "admin",
+			Name:         "System Administrator",
+			Email:        "admin@suse.ai",
+			Groups:       "mcp-admins",
+			AuthProvider: "local",
+		},
+	}
+}
+
+// defaultInitialGroups returns default initial groups
+func defaultInitialGroups() []InitialGroup {
+	return []InitialGroup{
+		{
+			ID:          "mcp-admins",
+			Name:        "MCP Administrators",
+			Description: "Full administrative access to all MCP proxy features",
+			Permissions: "user:create,user:read,user:update,user:delete,group:create,group:read,group:update,group:delete,adapter:create,adapter:read,adapter:update,adapter:delete,adapter:assign,server:create,server:read,server:update,server:delete,discovery:create,discovery:read,discovery:update,discovery:delete,registry:create,registry:read,registry:update,registry:delete",
+		},
+		{
+			ID:          "mcp-users",
+			Name:        "MCP Users",
+			Description: "Basic access to MCP servers with limited adapter operations",
+			Permissions: "server:read,adapter:read,adapter:create,adapter:assign",
+		},
+	}
 }
 
 // GetServiceTimeout returns the timeout duration for a service

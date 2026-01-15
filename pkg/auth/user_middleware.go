@@ -224,6 +224,17 @@ func UserAuthMiddleware(authService *UserAuthService) gin.HandlerFunc {
 					return
 				}
 			}
+			// Check if request comes from development origins (allow anonymous access)
+			origin := c.GetHeader("Origin")
+			if origin != "" && (strings.Contains(origin, "localhost") ||
+				strings.Contains(origin, "127.0.0.1") ||
+				strings.Contains(origin, "192.168.") ||
+				strings.Contains(origin, "10.")) {
+				// Allow anonymous access from development origins
+				c.Set("user", &models.User{ID: "anonymous", Name: "Anonymous User", AuthProvider: "dev"})
+				c.Next()
+				return
+			}
 			// If no valid user, set anonymous
 			c.Set("user", &models.User{ID: "anonymous"})
 			c.Next()

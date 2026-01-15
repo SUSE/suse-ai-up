@@ -482,23 +482,60 @@ func RunUniproxy() {
 	// Initialize auth service
 	userAuthService := auth.NewUserAuthService(userStore, tokenManager, userAuthConfig)
 
-	// Initialize default groups and admin user
-	if err := userGroupService.InitializeDefaultGroups(context.Background()); err != nil {
-		log.Printf("Warning: Failed to initialize default groups: %v", err)
+	// Create initial groups
+	log.Printf("CreateInitialGroups: %v, Groups count: %d", cfg.CreateInitialGroups, len(cfg.InitialGroups))
+	if cfg.CreateInitialGroups {
+		log.Printf("Creating %d initial groups", len(cfg.InitialGroups))
+		for _, initialGroup := range cfg.InitialGroups {
+			log.Printf("Processing group: %s", initialGroup.ID)
+			group := models.Group{
+				ID:          initialGroup.ID,
+				Name:        initialGroup.Name,
+				Description: initialGroup.Description,
+				Permissions: strings.Split(initialGroup.Permissions, ","),
+			}
+			if err := userGroupService.CreateGroup(context.Background(), group); err != nil {
+				// Group might already exist, log but continue
+				log.Printf("Note: Could not create initial group %s: %v", initialGroup.ID, err)
+			} else {
+				log.Printf("Created initial group: %s", initialGroup.ID)
+			}
+		}
+	} else {
+		log.Printf("CreateInitialGroups is disabled")
 	}
 
-	// Create default admin user with authentication
-	adminUser := models.User{
-		ID:           "admin",
-		Name:         "System Administrator",
-		Email:        "admin@suse.ai",
-		Groups:       []string{"mcp-admins"},
-		AuthProvider: string(models.UserAuthProviderLocal),
-	}
-	if _, err := userGroupService.GetUser(context.Background(), "admin"); err != nil {
-		if err := userAuthService.CreateUser(context.Background(), adminUser, cfg.AdminPassword); err != nil {
-			log.Printf("Warning: Failed to create admin user: %v", err)
+	// Create initial users
+	log.Printf("CreateInitialUsers: %v, Users count: %d", cfg.CreateInitialUsers, len(cfg.InitialUsers))
+	if cfg.CreateInitialUsers {
+		log.Printf("Creating %d initial users", len(cfg.InitialUsers))
+		for _, initialUser := range cfg.InitialUsers {
+			log.Printf("Processing user: %s", initialUser.ID)
+			user := models.User{
+				ID:           initialUser.ID,
+				Name:         initialUser.Name,
+				Email:        initialUser.Email,
+				Groups:       strings.Split(initialUser.Groups, ","),
+				AuthProvider: initialUser.AuthProvider,
+			}
+
+			password := initialUser.Password
+			if password == "" && initialUser.AuthProvider == string(models.UserAuthProviderLocal) {
+				password = cfg.AdminPassword
+			}
+
+			if _, err := userGroupService.GetUser(context.Background(), initialUser.ID); err != nil {
+				if err := userAuthService.CreateUser(context.Background(), user, password); err != nil {
+					log.Printf("Warning: Failed to create initial user %s: %v", initialUser.ID, err)
+				} else {
+					log.Printf("Created initial user: %s", initialUser.ID)
+				}
+			} else {
+				log.Printf("User %s already exists", initialUser.ID)
+			}
 		}
+	} else {
+		log.Printf("CreateInitialUsers is disabled")
 	}
 
 	// Initialize MCP components
@@ -620,7 +657,7 @@ func RunUniproxy() {
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+		if origin != "" && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") || strings.Contains(origin, "192.168.") || strings.Contains(origin, "10.")) {
 			c.Header("Access-Control-Allow-Origin", origin)
 		} else {
 			c.Header("Access-Control-Allow-Origin", "*")
@@ -792,29 +829,6 @@ func RunUniproxy() {
 				groups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
 				groups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
 			}
-		}
-
-		// User/Group management routes (legacy - to be removed)
-		logging.ProxyLogger.Info("Registering legacy user/group routes")
-		users := v1.Group("/users")
-		{
-			logging.ProxyLogger.Info("Users group created: %v", users != nil)
-			users.GET("", ginToHTTPHandler(userGroupHandler.ListUsers))
-			users.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
-			users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
-			users.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))
-			users.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteUser))
-		}
-
-		groups := v1.Group("/groups")
-		{
-			groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
-			groups.POST("", ginToHTTPHandler(userGroupHandler.HandleGroups))
-			groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
-			groups.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateGroup))
-			groups.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteGroup))
-			groups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
-			groups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
 		}
 
 		// Route assignment routes (under registry)

@@ -392,6 +392,90 @@ curl -X GET http://localhost:8911/api/v1/users \
   -H "Authorization: Bearer <your_token>"
 ```
 
+## Swagger UI with Authentication
+
+The API includes interactive Swagger documentation that requires authentication for protected endpoints.
+
+### Accessing Swagger UI
+
+```bash
+# Local development
+open http://localhost:8911/docs/
+
+# Kubernetes deployment
+open http://your-service-url:8911/docs/
+```
+
+### Authentication Methods in Swagger
+
+#### Method 1: JWT Token Authentication (Recommended)
+
+1. **Login first** to obtain a JWT token:
+   ```bash
+   curl -X POST http://localhost:8911/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{
+       "user_id": "admin",
+       "password": "your_password"
+     }'
+   ```
+
+2. **Authorize in Swagger UI**:
+   - Click the **"Authorize"** button (lock icon) at the top of the page
+   - Enter: `Bearer <your_jwt_token>` (replace with actual token)
+   - Click **"Authorize"**
+
+3. **All API calls** will now include the authentication header automatically
+
+#### Method 2: Development Mode (No Authentication)
+
+For development/testing, enable dev mode to bypass authentication:
+
+```bash
+# Environment variables
+export AUTH_MODE=dev
+export DEV_MODE=true
+
+# Or with Helm
+helm install suse-ai-up ./charts/suse-ai-up --set auth.mode=dev --set auth.devMode=true
+```
+
+In dev mode, requests from development IPs (localhost, 192.168.*, 10.*) are allowed anonymous access.
+
+#### Method 3: X-User-ID Header (Development Only)
+
+For quick testing, you can use the X-User-ID header:
+
+```bash
+curl -H "X-User-ID: admin" http://localhost:8911/api/v1/users
+```
+
+**Note**: This method is only available in dev mode and should not be used in production.
+
+### Swagger UI Features
+
+- **Interactive API Testing**: Try API endpoints directly from the browser
+- **Request/Response Examples**: See actual data structures
+- **Authentication Persistence**: Token remains active during your session
+- **Schema Validation**: Automatic validation of request/response formats
+
+### Troubleshooting Swagger Issues
+
+#### CORS Errors
+If you see CORS errors when accessing Swagger from different origins:
+- Ensure the request origin is allowed in CORS configuration
+- For Kubernetes deployments, add your IP range to allowed origins
+
+#### Authentication Errors
+- Verify your JWT token is valid and not expired
+- Check that you're using the correct token format: `Bearer <token>`
+- Ensure the user has appropriate permissions for the requested operation
+
+#### Dev Mode Not Working
+- Confirm `AUTH_MODE=dev` and `DEV_MODE=true` are set
+- Check that your request comes from an allowed development IP range
+- Verify the X-User-ID header is set correctly (if using that method)
+
 ### User Management
 
 #### Create User (Admin Only)

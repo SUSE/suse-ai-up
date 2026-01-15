@@ -84,6 +84,15 @@ spec:
             - name: RANCHER_FALLBACK_LOCAL
               value: "{{ .Values.auth.rancher.fallbackLocal }}"
 {{- end }}
+            # Initial Users and Groups Configuration
+            - name: CREATE_INITIAL_USERS
+              value: "{{ .Values.initialUsers.enabled }}"
+            - name: INITIAL_USERS
+              value: {{ .Values.initialUsers.users | toJson | quote }}
+            - name: CREATE_INITIAL_GROUPS
+              value: "{{ .Values.initialGroups.enabled }}"
+            - name: INITIAL_GROUPS
+              value: {{ .Values.initialGroups.groups | toJson | quote }}
           volumeMounts:
             {{- if .Values.registry.enabled }}
             - name: registry-config
