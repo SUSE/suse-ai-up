@@ -386,6 +386,59 @@ type AdapterAuthConfig struct {
 	APIKey      *APIKeyConfig      `json:"apiKey,omitempty"`
 }
 
+// UserAuthProvider represents supported user authentication providers
+type UserAuthProvider string
+
+const (
+	UserAuthProviderLocal   UserAuthProvider = "local"
+	UserAuthProviderGitHub  UserAuthProvider = "github"
+	UserAuthProviderRancher UserAuthProvider = "rancher"
+)
+
+// UserAuthConfig represents the complete authentication configuration
+type UserAuthConfig struct {
+	Mode    string             `json:"mode"`     // "local", "github", "rancher", "dev"
+	DevMode bool               `json:"dev_mode"` // Bypass authentication in dev
+	Local   *LocalAuthConfig   `json:"local,omitempty"`
+	GitHub  *GitHubAuthConfig  `json:"github,omitempty"`
+	Rancher *RancherAuthConfig `json:"rancher,omitempty"`
+}
+
+// LocalAuthConfig represents local password authentication configuration
+type LocalAuthConfig struct {
+	DefaultAdminPassword string `json:"default_admin_password,omitempty"`
+	ForcePasswordChange  bool   `json:"force_password_change"`
+	PasswordMinLength    int    `json:"password_min_length"`
+}
+
+// GitHubAuthConfig represents GitHub OAuth configuration
+type GitHubAuthConfig struct {
+	ClientID     string   `json:"client_id"`
+	ClientSecret string   `json:"client_secret"`
+	RedirectURI  string   `json:"redirect_uri"`
+	AllowedOrgs  []string `json:"allowed_orgs,omitempty"`
+	AdminTeams   []string `json:"admin_teams,omitempty"`
+}
+
+// RancherAuthConfig represents Rancher OIDC configuration
+type RancherAuthConfig struct {
+	IssuerURL     string   `json:"issuer_url"`
+	ClientID      string   `json:"client_id"`
+	ClientSecret  string   `json:"client_secret"`
+	RedirectURI   string   `json:"redirect_uri"`
+	AdminGroups   []string `json:"admin_groups"`
+	FallbackLocal bool     `json:"fallback_local"`
+}
+
+// AuthToken represents a JWT token for user authentication
+type AuthToken struct {
+	Token     string    `json:"token"`
+	TokenType string    `json:"token_type"` // "Bearer"
+	ExpiresAt time.Time `json:"expires_at"`
+	UserID    string    `json:"user_id"`
+	Provider  string    `json:"provider"`
+}
+
 // RegistrySource represents a source of MCP registry data
 type RegistrySource struct {
 	ID        string    `json:"id"`
@@ -465,12 +518,18 @@ type CapabilityValidation struct {
 
 // User represents a system user
 type User struct {
-	ID        string    `json:"id" example:"user123"`
-	Name      string    `json:"name" example:"John Doe"`
-	Email     string    `json:"email" example:"john@example.com"`
-	Groups    []string  `json:"groups" example:"[\"mcp-users\",\"weather-team\"]"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID                string     `json:"id" example:"user123"`
+	Name              string     `json:"name" example:"John Doe"`
+	Email             string     `json:"email" example:"john@example.com"`
+	Groups            []string   `json:"groups" example:"[\"mcp-users\",\"weather-team\"]"`
+	AuthProvider      string     `json:"auth_provider,omitempty" example:"local"`
+	ExternalID        string     `json:"external_id,omitempty" example:"github123"`
+	ProviderGroups    []string   `json:"provider_groups,omitempty" example:"[\"org/team\"]"`
+	PasswordHash      string     `json:"-"` // Never serialize password hash
+	PasswordChangedAt *time.Time `json:"password_changed_at,omitempty"`
+	LastLoginAt       *time.Time `json:"last_login_at,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 // Group represents a user group with permissions

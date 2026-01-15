@@ -453,20 +453,50 @@ func RunUniproxy() {
 	groupStore := clients.NewInMemoryGroupStore()
 	userGroupService := services.NewUserGroupService(userStore, groupStore)
 
+	// Create user auth configuration
+	userAuthConfig := &models.UserAuthConfig{
+		Mode:    cfg.AuthMode,
+		DevMode: cfg.DevMode,
+		Local: &models.LocalAuthConfig{
+			DefaultAdminPassword: cfg.AdminPassword,
+			ForcePasswordChange:  cfg.ForcePasswordChange,
+			PasswordMinLength:    cfg.PasswordMinLength,
+		},
+		GitHub: &models.GitHubAuthConfig{
+			ClientID:     cfg.GitHubClientID,
+			ClientSecret: cfg.GitHubClientSecret,
+			RedirectURI:  cfg.GitHubRedirectURI,
+			AllowedOrgs:  cfg.GitHubAllowedOrgs,
+			AdminTeams:   cfg.GitHubAdminTeams,
+		},
+		Rancher: &models.RancherAuthConfig{
+			IssuerURL:     cfg.RancherIssuerURL,
+			ClientID:      cfg.RancherClientID,
+			ClientSecret:  cfg.RancherClientSecret,
+			RedirectURI:   cfg.RancherRedirectURI,
+			AdminGroups:   cfg.RancherAdminGroups,
+			FallbackLocal: cfg.RancherFallbackLocal,
+		},
+	}
+
+	// Initialize auth service
+	userAuthService := auth.NewUserAuthService(userStore, tokenManager, userAuthConfig)
+
 	// Initialize default groups and admin user
 	if err := userGroupService.InitializeDefaultGroups(context.Background()); err != nil {
 		log.Printf("Warning: Failed to initialize default groups: %v", err)
 	}
 
-	// Create default admin user if not exists
+	// Create default admin user with authentication
 	adminUser := models.User{
-		ID:     "admin",
-		Name:   "System Administrator",
-		Email:  "admin@suse.ai",
-		Groups: []string{"mcp-admins"},
+		ID:           "admin",
+		Name:         "System Administrator",
+		Email:        "admin@suse.ai",
+		Groups:       []string{"mcp-admins"},
+		AuthProvider: string(models.UserAuthProviderLocal),
 	}
 	if _, err := userGroupService.GetUser(context.Background(), "admin"); err != nil {
-		if err := userGroupService.CreateUser(context.Background(), adminUser); err != nil {
+		if err := userAuthService.CreateUser(context.Background(), adminUser, cfg.AdminPassword); err != nil {
 			log.Printf("Warning: Failed to create admin user: %v", err)
 		}
 	}
@@ -572,6 +602,7 @@ func RunUniproxy() {
 
 	// Initialize user/group and route assignment handlers
 	userGroupHandler := handlers.NewUserGroupHandler(userGroupService)
+	authHandler := handlers.NewAuthHandler(userAuthService)
 	routeAssignmentHandler := handlers.NewRouteAssignmentHandler(userGroupService, registryStore)
 	logging.ProxyLogger.Info("UserGroupHandler created: %v", userGroupHandler != nil)
 	logging.ProxyLogger.Info("RouteAssignmentHandler created: %v", routeAssignmentHandler != nil)
@@ -725,8 +756,46 @@ func RunUniproxy() {
 			plugins.GET("/services/:serviceId/health", pluginHandler.GetServiceHealth)
 		}
 
-		// User/Group management routes
-		logging.ProxyLogger.Info("Registering user/group routes")
+		// Authentication routes
+		authRoutes := v1.Group("/auth")
+		{
+			authRoutes.POST("/login", authHandler.Login)
+			authRoutes.POST("/oauth/login", authHandler.OAuthLogin)
+			authRoutes.POST("/oauth/callback", authHandler.OAuthCallback)
+			authRoutes.PUT("/password", authHandler.ChangePassword)
+			authRoutes.POST("/logout", authHandler.Logout)
+		}
+
+		// Apply authentication middleware to protected routes
+		protected := v1.Group("")
+		protected.Use(auth.UserAuthMiddleware(userAuthService))
+		{
+			// User/Group management routes
+			logging.ProxyLogger.Info("Registering user/group routes")
+			users := protected.Group("/users")
+			{
+				logging.ProxyLogger.Info("Users group created: %v", users != nil)
+				users.GET("", ginToHTTPHandler(userGroupHandler.ListUsers))
+				users.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
+				users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
+				users.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))
+				users.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteUser))
+			}
+
+			groups := protected.Group("/groups")
+			{
+				groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+				groups.POST("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+				groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
+				groups.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateGroup))
+				groups.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteGroup))
+				groups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
+				groups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
+			}
+		}
+
+		// User/Group management routes (legacy - to be removed)
+		logging.ProxyLogger.Info("Registering legacy user/group routes")
 		users := v1.Group("/users")
 		{
 			logging.ProxyLogger.Info("Users group created: %v", users != nil)

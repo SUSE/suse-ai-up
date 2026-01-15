@@ -45,7 +45,11 @@ func (ugs *UserGroupService) UpdateUser(ctx context.Context, user models.User) e
 
 // DeleteUser deletes a user
 func (ugs *UserGroupService) DeleteUser(ctx context.Context, id string) error {
-	return ugs.userStore.Delete(ctx, id)
+	user, err := ugs.userStore.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return ugs.userStore.Delete(ctx, *user)
 }
 
 // GetUserByEmail gets a user by email

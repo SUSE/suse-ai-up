@@ -258,6 +258,11 @@ func (tm *TokenManager) GetPublicKey() *rsa.PublicKey {
 	return &tm.privateKey.PublicKey
 }
 
+// GetPrivateKey returns the private key for token signing
+func (tm *TokenManager) GetPrivateKey() *rsa.PrivateKey {
+	return tm.privateKey
+}
+
 // generateTokenID generates a unique token ID
 func (tm *TokenManager) generateTokenID() string {
 	bytes := make([]byte, 16)

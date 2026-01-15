@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"suse-ai-up/pkg/models"
 )
 
@@ -18,8 +19,10 @@ type UserStore interface {
 	Get(ctx context.Context, id string) (*models.User, error)
 	List(ctx context.Context) ([]models.User, error)
 	Update(ctx context.Context, user models.User) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, user models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	GetByExternalID(ctx context.Context, provider, externalID string) (*models.User, error)
+	Authenticate(ctx context.Context, id, password string) (*models.User, error)
 }
 
 // GroupStore defines the interface for group storage
@@ -112,15 +115,15 @@ func (s *FileUserStore) Update(ctx context.Context, user models.User) error {
 }
 
 // Delete removes a user
-func (s *FileUserStore) Delete(ctx context.Context, id string) error {
+func (s *FileUserStore) Delete(ctx context.Context, user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.users[id]; !exists {
-		return fmt.Errorf("user with ID %s not found", id)
+	if _, exists := s.users[user.ID]; !exists {
+		return fmt.Errorf("user with ID %s not found", user.ID)
 	}
 
-	delete(s.users, id)
+	delete(s.users, user.ID)
 	return s.saveToFile()
 }
 
@@ -137,6 +140,48 @@ func (s *FileUserStore) GetByEmail(ctx context.Context, email string) (*models.U
 	}
 
 	return nil, fmt.Errorf("user with email %s not found", email)
+}
+
+// GetByExternalID retrieves a user by external provider ID
+func (s *FileUserStore) GetByExternalID(ctx context.Context, provider, externalID string) (*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, user := range s.users {
+		if user.AuthProvider == provider && user.ExternalID == externalID {
+			userCopy := user
+			return &userCopy, nil
+		}
+	}
+
+	return nil, fmt.Errorf("user with external ID %s not found for provider %s", externalID, provider)
+}
+
+// Authenticate verifies user credentials
+func (s *FileUserStore) Authenticate(ctx context.Context, id, password string) (*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	user, exists := s.users[id]
+	if !exists {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	if user.AuthProvider != string(models.UserAuthProviderLocal) {
+		return nil, fmt.Errorf("user uses external authentication")
+	}
+
+	if user.PasswordHash == "" {
+		return nil, fmt.Errorf("password not set")
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		return nil, fmt.Errorf("invalid password")
+	}
+
+	userCopy := user
+	return &userCopy, nil
 }
 
 // loadFromFile loads users from the JSON file
@@ -466,15 +511,15 @@ func (s *InMemoryUserStore) Update(ctx context.Context, user models.User) error 
 }
 
 // Delete removes a user from memory
-func (s *InMemoryUserStore) Delete(ctx context.Context, id string) error {
+func (s *InMemoryUserStore) Delete(ctx context.Context, user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.users[id]; !exists {
-		return fmt.Errorf("user with ID %s not found", id)
+	if _, exists := s.users[user.ID]; !exists {
+		return fmt.Errorf("user with ID %s not found", user.ID)
 	}
 
-	delete(s.users, id)
+	delete(s.users, user.ID)
 	return nil
 }
 
@@ -491,6 +536,48 @@ func (s *InMemoryUserStore) GetByEmail(ctx context.Context, email string) (*mode
 	}
 
 	return nil, fmt.Errorf("user with email %s not found", email)
+}
+
+// GetByExternalID retrieves a user by external provider ID from memory
+func (s *InMemoryUserStore) GetByExternalID(ctx context.Context, provider, externalID string) (*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, user := range s.users {
+		if user.AuthProvider == provider && user.ExternalID == externalID {
+			userCopy := user
+			return &userCopy, nil
+		}
+	}
+
+	return nil, fmt.Errorf("user with external ID %s not found for provider %s", externalID, provider)
+}
+
+// Authenticate verifies user credentials in memory
+func (s *InMemoryUserStore) Authenticate(ctx context.Context, id, password string) (*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	user, exists := s.users[id]
+	if !exists {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	if user.AuthProvider != string(models.UserAuthProviderLocal) {
+		return nil, fmt.Errorf("user uses external authentication")
+	}
+
+	if user.PasswordHash == "" {
+		return nil, fmt.Errorf("password not set")
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		return nil, fmt.Errorf("invalid password")
+	}
+
+	userCopy := user
+	return &userCopy, nil
 }
 
 // InMemoryGroupStore provides an in-memory implementation for testing
