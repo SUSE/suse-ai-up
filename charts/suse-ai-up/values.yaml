@@ -70,27 +70,62 @@ serviceApiKeys: ""
 
 # Authentication Configuration
 auth:
-  method: "none"  # oauth, bearer, apikey, basic, none
+  mode: "local"  # local, github, rancher, dev
+  devMode: false  # Enable development mode (bypass auth)
 
-  # OAuth 2.0 configuration
-  oauth:
-    enabled: false
-    clientId: ""
-    clientSecret: ""
-    authorizationUrl: ""
-    tokenUrl: ""
-    redirectUrl: ""
+  # Local authentication (password-based)
+  local:
+    defaultAdminPassword: "admin"  # Initial admin password
+    forcePasswordChange: true     # Force password change on first login
+    passwordMinLength: 8          # Minimum password length
 
-  # API Key configuration
-  apikey:
-    enabled: false
-    header: "X-API-Key"
-    secretName: ""
+  # GitHub OAuth configuration
+  github:
+    clientId: ""        # GitHub OAuth App Client ID
+    clientSecret: ""    # GitHub OAuth App Client Secret
+    redirectUri: ""     # OAuth callback URL (auto-generated if empty)
+    allowedOrgs: []     # List of allowed GitHub organizations
+    adminTeams: []      # GitHub teams that get admin permissions
 
-  # Bearer token configuration
-  bearer:
-    enabled: false
-    token: ""
+  # Rancher OIDC configuration
+  rancher:
+    issuerUrl: ""       # Rancher OIDC issuer URL
+    clientId: ""        # Rancher OIDC Client ID
+    clientSecret: ""    # Rancher OIDC Client Secret
+    redirectUri: ""     # OIDC callback URL (auto-generated if empty)
+    adminGroups: []     # Rancher groups that get admin permissions
+    fallbackLocal: true # Allow local auth fallback
+
+# Initial Users Configuration (for Helm setup)
+initialUsers:
+  enabled: true
+  users:
+    - id: "admin"
+      name: "System Administrator"
+      email: "admin@suse.ai"
+      password: ""  # If empty, uses auth.local.defaultAdminPassword
+      groups: ["mcp-admins"]
+      authProvider: "local"
+  # Additional users can be added here
+  # - id: "user1"
+  #   name: "Example User"
+  #   email: "user1@company.com"
+  #   password: "secure_password"
+  #   groups: ["mcp-users"]
+  #   authProvider: "local"
+
+# Initial Groups Configuration
+initialGroups:
+  enabled: true
+  groups:
+    - id: "mcp-admins"
+      name: "MCP Administrators"
+      description: "Full administrative access to MCP servers and proxy"
+      permissions: ["user:manage", "group:manage", "server:manage", "adapter:manage"]
+    - id: "mcp-users"
+      name: "MCP Users"
+      description: "Basic access to MCP servers"
+      permissions: ["server:read", "adapter:read"]
 
 # Monitoring Configuration
 monitoring:

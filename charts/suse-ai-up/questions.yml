@@ -96,48 +96,151 @@ questions:
     required: true
 
 # Authentication Configuration
-- variable: auth.method
-  label: "Authentication Method"
+- variable: auth.mode
+  label: "Authentication Mode"
   description: "Choose how users will authenticate with the proxy"
   type: enum
-  default: "oauth"
+  default: "local"
   group: "Authentication"
   options:
-  - label: "OAuth 2.0 (recommended for production)"
-    value: "oauth"
-  - label: "API Key"
-    value: "apikey"
-  - label: "Bearer Token"
-    value: "bearer"
-  - label: "No Authentication (development only)"
-    value: "none"
+  - label: "Local Authentication (username/password)"
+    value: "local"
+  - label: "GitHub OAuth"
+    value: "github"
+  - label: "Rancher OIDC"
+    value: "rancher"
+  - label: "Development Mode (no auth)"
+    value: "dev"
   required: true
-  show_subquestion_if: "oauth"
+
+- variable: auth.local.defaultAdminPassword
+  label: "Admin Password"
+  description: "Initial password for the admin user (must be changed on first login)"
+  type: password
+  default: "admin"
+  group: "Authentication"
+  show_if: "auth.mode=local"
+  required: true
+
+- variable: auth.local.forcePasswordChange
+  label: "Force Password Change"
+  description: "Require admin to change password on first login"
+  type: boolean
+  default: true
+  group: "Authentication"
+  show_if: "auth.mode=local"
+
+- variable: auth.local.passwordMinLength
+  label: "Minimum Password Length"
+  description: "Minimum length for user passwords"
+  type: int
+  default: 8
+  min: 6
+  max: 32
+  group: "Authentication"
+  show_if: "auth.mode=local"
+
+- variable: auth.github.clientId
+  label: "GitHub Client ID"
+  description: "GitHub OAuth App Client ID"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=github"
+  required: true
+
+- variable: auth.github.clientSecret
+  label: "GitHub Client Secret"
+  description: "GitHub OAuth App Client Secret"
+  type: password
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=github"
+  required: true
+
+- variable: auth.github.allowedOrgs
+  label: "Allowed Organizations"
+  description: "Comma-separated list of allowed GitHub organizations (leave empty to allow all)"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=github"
+
+- variable: auth.github.adminTeams
+  label: "Admin Teams"
+  description: "Comma-separated list of GitHub teams that get admin permissions"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=github"
+
+- variable: auth.rancher.issuerUrl
+  label: "Rancher Issuer URL"
+  description: "Rancher OIDC issuer URL (e.g., https://rancher.example.com/oidc)"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.clientId
+  label: "Rancher Client ID"
+  description: "Rancher OIDC Client ID"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.clientSecret
+  label: "Rancher Client Secret"
+  description: "Rancher OIDC Client Secret"
+  type: password
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.adminGroups
+  label: "Admin Groups"
+  description: "Comma-separated list of Rancher groups that get admin permissions"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+
+- variable: auth.rancher.fallbackLocal
+  label: "Allow Local Fallback"
+  description: "Allow local authentication as fallback when Rancher is unavailable"
+  type: boolean
+  default: true
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+
+- variable: auth.devMode
+  label: "Enable Dev Mode"
+  description: "Bypass authentication for development (allows X-User-ID headers)"
+  type: boolean
+  default: true
+  group: "Authentication"
+  show_if: "auth.mode=dev"
+
+# Initial Users Configuration
+- variable: initialUsers.enabled
+  label: "Create Initial Users"
+  description: "Create initial users and groups during installation"
+  type: boolean
+  default: true
+  group: "Authentication"
+  show_if: "auth.mode!=dev"
+  show_subquestion_if: true
   subquestions:
-  - variable: auth.oauth.clientId
-    label: "OAuth Client ID"
-    description: "OAuth 2.0 Client ID from your identity provider"
-    type: string
+  - variable: initialUsers.users[0].password
+    label: "Admin Password Override"
+    description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
+    type: password
     default: ""
-    required: true
-  - variable: auth.oauth.clientSecret
-    label: "OAuth Client Secret"
-    description: "OAuth 2.0 Client Secret from your identity provider"
-    type: string
-    default: ""
-    required: true
-  - variable: auth.oauth.authorizationUrl
-    label: "Authorization URL"
-    description: "OAuth authorization endpoint URL"
-    type: string
-    default: ""
-    required: true
-  - variable: auth.oauth.tokenUrl
-    label: "Token URL"
-    description: "OAuth token endpoint URL"
-    type: string
-    default: ""
-    required: true
+    show_if: "auth.mode=local"
 
 # Service Resource Configuration
 - variable: serviceResources
