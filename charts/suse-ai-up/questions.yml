@@ -4,19 +4,25 @@
 categories:
 - name: "SUSE AI Universal Proxy"
   class: "default"
+- name: "MCP Registry"
+  class: "default"
+- name: "Users"
+  class: "default"
+- name: "Groups"
+  class: "default"
 
 questions:
 # Installation Type Selection
 - variable: installType
   label: "Installation Type"
-  description: "Choose installation type - Quick Start uses recommended defaults, Custom allows detailed configuration"
+  description: "Choose installation type - Quick Start uses recommended defaults, Advanced allows detailed configuration"
   type: enum
   default: "quickstart"
   group: "Installation"
   options:
   - label: "Quick Start (recommended)"
     value: "quickstart"
-  - label: "Custom Configuration"
+  - label: "Advanced Configuration"
     value: "custom"
   required: true
 
@@ -95,13 +101,13 @@ questions:
     default: "suse-ai-up-proxy-sa"
     required: true
 
-# Authentication Configuration
+# User Authentication Configuration
 - variable: auth.mode
   label: "Authentication Mode"
   description: "Choose how users will authenticate with the proxy"
   type: enum
   default: "local"
-  group: "Authentication"
+  group: "Users"
   options:
   - label: "Local Authentication (username/password)"
     value: "local"
@@ -118,7 +124,7 @@ questions:
   description: "Bypass authentication for development (allows X-User-ID headers)"
   type: boolean
   default: false
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=dev"
 
 # Local Authentication Configuration
@@ -127,7 +133,7 @@ questions:
   description: "Initial password for the admin user (must be changed on first login)"
   type: password
   default: "admin"
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=local"
   required: true
 
@@ -136,7 +142,7 @@ questions:
   description: "Require admin to change password on first login"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=local"
 
 - variable: auth.local.passwordMinLength
@@ -146,7 +152,7 @@ questions:
   default: 8
   min: 6
   max: 32
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=local"
 
 # GitHub OAuth Configuration
@@ -155,7 +161,7 @@ questions:
   description: "GitHub OAuth App Client ID"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=github"
   required: true
 
@@ -164,7 +170,7 @@ questions:
   description: "GitHub OAuth App Client Secret"
   type: password
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=github"
   required: true
 
@@ -173,7 +179,7 @@ questions:
   description: "OAuth callback URL (auto-generated if empty)"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=github"
 
 - variable: auth.github.allowedOrgs
@@ -181,7 +187,7 @@ questions:
   description: "Comma-separated list of allowed GitHub organizations (leave empty to allow all)"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=github"
 
 - variable: auth.github.adminTeams
@@ -189,7 +195,7 @@ questions:
   description: "Comma-separated list of GitHub teams that get admin permissions"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=github"
 
 # Rancher OIDC Configuration
@@ -198,7 +204,7 @@ questions:
   description: "Rancher OIDC issuer URL (e.g., https://rancher.example.com/oidc)"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
   required: true
 
@@ -207,7 +213,7 @@ questions:
   description: "Rancher OIDC Client ID"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
   required: true
 
@@ -216,7 +222,7 @@ questions:
   description: "Rancher OIDC Client Secret"
   type: password
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
   required: true
 
@@ -225,7 +231,7 @@ questions:
   description: "OIDC callback URL (auto-generated if empty)"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
 
 - variable: auth.rancher.adminGroups
@@ -233,7 +239,7 @@ questions:
   description: "Comma-separated list of Rancher groups that get admin permissions"
   type: string
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
 
 - variable: auth.rancher.fallbackLocal
@@ -241,7 +247,7 @@ questions:
   description: "Allow local authentication as fallback when Rancher is unavailable"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode=rancher"
 
 # Initial Users Configuration
@@ -250,7 +256,7 @@ questions:
   description: "Create initial users during installation"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Users"
   show_if: "auth.mode!=dev"
 
 - variable: initialUsers.users[0].id
@@ -258,7 +264,7 @@ questions:
   description: "User ID for the initial administrator"
   type: string
   default: "admin"
-  group: "Authentication"
+  group: "Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -267,7 +273,7 @@ questions:
   description: "Display name for the administrator"
   type: string
   default: "System Administrator"
-  group: "Authentication"
+  group: "Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -276,7 +282,7 @@ questions:
   description: "Email address for the administrator"
   type: string
   default: "admin@suse.ai"
-  group: "Authentication"
+  group: "Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
   required: true
 
@@ -285,7 +291,7 @@ questions:
   description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
   type: password
   default: ""
-  group: "Authentication"
+  group: "Users"
   show_if: "initialUsers.enabled && auth.mode=local"
 
 - variable: initialUsers.users[0].groups
@@ -293,7 +299,7 @@ questions:
   description: "Groups to assign to the admin user (comma-separated)"
   type: string
   default: "mcp-admins"
-  group: "Authentication"
+  group: "Users"
   show_if: "initialUsers.enabled && auth.mode!=dev"
 
 - variable: initialGroups.enabled
@@ -301,7 +307,7 @@ questions:
   description: "Create default user groups during installation"
   type: boolean
   default: true
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialUsers.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].id
@@ -309,7 +315,7 @@ questions:
   description: "ID for the administrators group"
   type: string
   default: "mcp-admins"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].name
@@ -317,7 +323,7 @@ questions:
   description: "Display name for the administrators group"
   type: string
   default: "MCP Administrators"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[0].permissions
@@ -325,7 +331,7 @@ questions:
   description: "Permissions for the admin group (comma-separated) - full administrative access"
   type: string
   default: "user:create,user:read,user:update,user:delete,group:create,group:read,group:update,group:delete,adapter:create,adapter:read,adapter:update,adapter:delete,adapter:assign,server:create,server:read,server:update,server:delete,discovery:create,discovery:read,discovery:update,discovery:delete,registry:create,registry:read,registry:update,registry:delete"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].id
@@ -333,7 +339,7 @@ questions:
   description: "ID for the regular users group"
   type: string
   default: "mcp-users"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].name
@@ -341,7 +347,7 @@ questions:
   description: "Display name for the regular users group"
   type: string
   default: "MCP Users"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 - variable: initialGroups.groups[1].permissions
@@ -349,7 +355,7 @@ questions:
   description: "Permissions for the user group (comma-separated) - basic access with limited adapter operations"
   type: string
   default: "server:read,adapter:read,adapter:create,adapter:assign"
-  group: "Authentication"
+  group: "Groups"
   show_if: "initialGroups.enabled && auth.mode!=dev"
 
 # Service Resource Configuration
@@ -448,14 +454,14 @@ questions:
   description: "URL to fetch MCP server registry from (leave empty to use ConfigMap)"
   type: string
   default: ""
-  group: "SUSE AI Universal Proxy"
+  group: "MCP Registry"
 
 - variable: registry.timeout
   label: "Registry Fetch Timeout"
   description: "Timeout for fetching registry from external URL"
   type: string
   default: "30s"
-  group: "SUSE AI Universal Proxy"
+  group: "MCP Registry"
   show_if: "registry.url"
 
 - variable: logging.level
