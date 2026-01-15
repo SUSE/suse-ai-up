@@ -682,8 +682,8 @@ func RunUniproxy() {
 		})
 	})
 
-	// Swagger UI
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("http://localhost:8911/docs/doc.json")))
+	// Swagger UI - use relative URL for deployment compatibility
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/docs/doc.json")))
 
 	// API v1 routes
 	logging.ProxyLogger.Info("Setting up API v1 routes")
@@ -803,31 +803,43 @@ func RunUniproxy() {
 			authRoutes.POST("/logout", authHandler.Logout)
 		}
 
-		// Apply authentication middleware to protected routes
-		protected := v1.Group("")
-		protected.Use(auth.UserAuthMiddleware(userAuthService))
-		{
-			// User/Group management routes
-			logging.ProxyLogger.Info("Registering user/group routes")
-			users := protected.Group("/users")
-			{
-				logging.ProxyLogger.Info("Users group created: %v", users != nil)
-				users.GET("", ginToHTTPHandler(userGroupHandler.ListUsers))
-				users.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
-				users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
-				users.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))
-				users.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteUser))
-			}
+		// Unauthenticated auth mode endpoint
+		r.GET("/auth/mode", authHandler.GetAuthMode)
 
-			groups := protected.Group("/groups")
+		// User/Group management routes (unauthenticated for read operations)
+		logging.ProxyLogger.Info("Registering user/group routes")
+		users := v1.Group("/users")
+		{
+			logging.ProxyLogger.Info("Users group created: %v", users != nil)
+			// Read operations - no auth required
+			users.GET("", ginToHTTPHandler(userGroupHandler.ListUsers))
+			users.GET("/:id", ginToHTTPHandler(userGroupHandler.GetUser))
+
+			// Write operations - require authentication
+			protectedUsers := users.Group("")
+			protectedUsers.Use(auth.UserAuthMiddleware(userAuthService))
 			{
-				groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
-				groups.POST("", ginToHTTPHandler(userGroupHandler.HandleGroups))
-				groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
-				groups.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateGroup))
-				groups.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteGroup))
-				groups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
-				groups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
+				protectedUsers.POST("", ginToHTTPHandler(userGroupHandler.HandleUsers))
+				protectedUsers.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateUser))
+				protectedUsers.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteUser))
+			}
+		}
+
+		groups := v1.Group("/groups")
+		{
+			// Read operations - no auth required
+			groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+			groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
+
+			// Write operations - require authentication
+			protectedGroups := groups.Group("")
+			protectedGroups.Use(auth.UserAuthMiddleware(userAuthService))
+			{
+				protectedGroups.POST("", ginToHTTPHandler(userGroupHandler.HandleGroups))
+				protectedGroups.PUT("/:id", ginToHTTPHandler(userGroupHandler.UpdateGroup))
+				protectedGroups.DELETE("/:id", ginToHTTPHandler(userGroupHandler.DeleteGroup))
+				protectedGroups.POST("/:id/members", ginToHTTPHandler(userGroupHandler.AddUserToGroup))
+				protectedGroups.DELETE("/:id/members/:userId", ginToHTTPHandler(userGroupHandler.RemoveUserFromGroup))
 			}
 		}
 

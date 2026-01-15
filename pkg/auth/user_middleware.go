@@ -230,13 +230,15 @@ func UserAuthMiddleware(authService *UserAuthService) gin.HandlerFunc {
 				strings.Contains(origin, "127.0.0.1") ||
 				strings.Contains(origin, "192.168.") ||
 				strings.Contains(origin, "10.")) {
-				// Allow anonymous access from development origins
-				c.Set("user", &models.User{ID: "anonymous", Name: "Anonymous User", AuthProvider: "dev"})
+				// Allow anonymous access from development origins with admin permissions
+				c.Set("user", &models.User{ID: "dev-admin", Name: "Dev Admin", AuthProvider: "dev"})
+				c.Request.Header.Set("X-User-ID", "dev-admin")
 				c.Next()
 				return
 			}
-			// If no valid user, set anonymous
-			c.Set("user", &models.User{ID: "anonymous"})
+			// If no valid user, set anonymous with admin permissions for dev mode
+			c.Set("user", &models.User{ID: "dev-admin", Name: "Dev Admin", AuthProvider: "dev"})
+			c.Request.Header.Set("X-User-ID", "dev-admin")
 			c.Next()
 			return
 		}

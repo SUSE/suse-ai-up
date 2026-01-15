@@ -27,9 +27,10 @@ RUN useradd -r -s /bin/bash -u 1000 mcpuser
 
 WORKDIR /home/mcpuser/
 
-# Copy binary and config
+# Copy binary, config, and docs
 COPY --from=builder /app/suse-ai-up .
 COPY --from=builder /app/config ./config
+COPY --from=builder /app/docs ./docs
 
 # Clean up and set permissions
 RUN rm -f config/comprehensive_mcp_servers.yaml*

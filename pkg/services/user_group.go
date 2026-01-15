@@ -120,6 +120,11 @@ func (ugs *UserGroupService) CanAccessServer(ctx context.Context, userID, server
 
 // CanManageUsers checks if a user can manage users
 func (ugs *UserGroupService) CanManageUsers(ctx context.Context, userID string) (bool, error) {
+	// Allow dev-admin special permissions for development
+	if userID == "dev-admin" {
+		return true, nil
+	}
+
 	user, err := ugs.userStore.Get(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user: %w", err)
@@ -130,6 +135,11 @@ func (ugs *UserGroupService) CanManageUsers(ctx context.Context, userID string) 
 
 // CanManageGroups checks if a user can manage groups
 func (ugs *UserGroupService) CanManageGroups(ctx context.Context, userID string) (bool, error) {
+	// Allow dev-admin special permissions for development
+	if userID == "dev-admin" {
+		return true, nil
+	}
+
 	user, err := ugs.userStore.Get(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user: %w", err)

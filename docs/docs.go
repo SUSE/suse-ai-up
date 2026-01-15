@@ -1165,6 +1165,213 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Authenticate a user with username/password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "login",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "description": "Logout the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/oauth/callback": {
+            "post": {
+                "description": "Handle OAuth provider callback",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "OAuth callback",
+                "parameters": [
+                    {
+                        "description": "OAuth callback data",
+                        "name": "callback",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.OAuthCallbackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/oauth/login": {
+            "post": {
+                "description": "Start OAuth authentication flow",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Initiate OAuth login",
+                "parameters": [
+                    {
+                        "description": "OAuth provider",
+                        "name": "oauth",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.OAuthLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/password": {
+            "put": {
+                "description": "Change the current user's password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Change password",
+                "parameters": [
+                    {
+                        "description": "Password change data",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/discovery/register": {
             "post": {
                 "description": "Register a discovered MCP server as an adapter",
@@ -2599,6 +2806,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/mode": {
+            "get": {
+                "description": "Returns the current authentication configuration (unauthenticated endpoint)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get authentication mode",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AuthModeResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/plugins/register": {
             "post": {
                 "description": "Register a plugin service with the proxy",
@@ -2845,6 +3072,88 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.AuthModeResponse": {
+            "type": "object",
+            "properties": {
+                "dev_mode": {
+                    "type": "boolean"
+                },
+                "github": {
+                    "type": "object",
+                    "properties": {
+                        "admin_teams": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "allowed_orgs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "client_id": {
+                            "type": "string"
+                        },
+                        "redirect_uri": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "local": {
+                    "type": "object",
+                    "properties": {
+                        "default_admin_password": {
+                            "type": "string"
+                        },
+                        "force_password_change": {
+                            "type": "boolean"
+                        },
+                        "password_min_length": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "rancher": {
+                    "type": "object",
+                    "properties": {
+                        "admin_groups": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "client_id": {
+                            "type": "string"
+                        },
+                        "fallback_local": {
+                            "type": "boolean"
+                        },
+                        "issuer_url": {
+                            "type": "string"
+                        },
+                        "redirect_uri": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "handlers.ChangePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "current_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.CreateGroupRequest": {
             "type": "object",
             "properties": {
@@ -2912,6 +3221,48 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "$ref": "#/definitions/models.AuthToken"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.User"
+                }
+            }
+        },
+        "handlers.OAuthCallbackRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.OAuthLoginRequest": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "description": "\"github\" or \"rancher\"",
                     "type": "string"
                 }
             }
@@ -3477,6 +3828,27 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.AuthToken": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "description": "\"Bearer\"",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -4340,12 +4712,20 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
+                "auth_provider": {
+                    "type": "string",
+                    "example": "local"
+                },
                 "createdAt": {
                     "type": "string"
                 },
                 "email": {
                     "type": "string",
                     "example": "john@example.com"
+                },
+                "external_id": {
+                    "type": "string",
+                    "example": "github123"
                 },
                 "groups": {
                     "type": "array",
@@ -4361,9 +4741,24 @@ const docTemplate = `{
                     "type": "string",
                     "example": "user123"
                 },
+                "last_login_at": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "example": "John Doe"
+                },
+                "password_changed_at": {
+                    "type": "string"
+                },
+                "provider_groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"org/team\"]"
+                    ]
                 },
                 "updatedAt": {
                     "type": "string"

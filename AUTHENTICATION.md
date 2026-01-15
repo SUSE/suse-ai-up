@@ -292,6 +292,52 @@ kubectl describe secret suse-ai-up-auth
 
 ## API Usage Examples
 
+### Get Authentication Mode
+
+Before authenticating, clients can discover the current authentication configuration:
+
+```bash
+curl -X GET http://localhost:8911/auth/mode
+```
+
+Response (Local Mode):
+```json
+{
+  "mode": "local",
+  "dev_mode": false,
+  "local": {
+    "default_admin_password": "admin",
+    "force_password_change": true,
+    "password_min_length": 8
+  }
+}
+```
+
+Response (GitHub OAuth Mode):
+```json
+{
+  "mode": "github",
+  "dev_mode": false,
+  "github": {
+    "client_id": "your_github_app_id",
+    "redirect_uri": "https://your-app.com/auth/oauth/callback"
+  }
+}
+```
+
+Response (Rancher OIDC Mode):
+```json
+{
+  "mode": "rancher",
+  "dev_mode": false,
+  "rancher": {
+    "issuer_url": "https://rancher.example.com/oidc",
+    "client_id": "your_rancher_client_id",
+    "redirect_uri": "https://your-app.com/auth/oauth/callback"
+  }
+}
+```
+
 ### Local Authentication
 
 #### Login
@@ -632,6 +678,7 @@ JWT tokens expire after 24 hours. Use the refresh token flow or re-authenticate.
 
 ### Authentication Endpoints
 
+- `GET /auth/mode` - Get current authentication configuration (unauthenticated)
 - `POST /auth/login` - Local user login
 - `POST /auth/oauth/login` - Initiate OAuth/OIDC flow
 - `POST /auth/oauth/callback` - Handle OAuth/OIDC callback

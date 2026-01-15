@@ -29,6 +29,59 @@ definitions:
         example: user123
         type: string
     type: object
+  handlers.AuthModeResponse:
+    properties:
+      dev_mode:
+        type: boolean
+      github:
+        properties:
+          admin_teams:
+            items:
+              type: string
+            type: array
+          allowed_orgs:
+            items:
+              type: string
+            type: array
+          client_id:
+            type: string
+          redirect_uri:
+            type: string
+        type: object
+      local:
+        properties:
+          default_admin_password:
+            type: string
+          force_password_change:
+            type: boolean
+          password_min_length:
+            type: integer
+        type: object
+      mode:
+        type: string
+      rancher:
+        properties:
+          admin_groups:
+            items:
+              type: string
+            type: array
+          client_id:
+            type: string
+          fallback_local:
+            type: boolean
+          issuer_url:
+            type: string
+          redirect_uri:
+            type: string
+        type: object
+    type: object
+  handlers.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        type: string
+    type: object
   handlers.CreateGroupRequest:
     properties:
       description:
@@ -75,6 +128,33 @@ definitions:
   handlers.ErrorResponse:
     properties:
       error:
+        type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handlers.LoginResponse:
+    properties:
+      token:
+        $ref: '#/definitions/models.AuthToken'
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  handlers.OAuthCallbackRequest:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  handlers.OAuthLoginRequest:
+    properties:
+      provider:
+        description: '"github" or "rancher"'
         type: string
     type: object
   handlers.PluginErrorResponse:
@@ -452,6 +532,20 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  models.AuthToken:
+    properties:
+      expires_at:
+        type: string
+      provider:
+        type: string
+      token:
+        type: string
+      token_type:
+        description: '"Bearer"'
+        type: string
+      user_id:
+        type: string
     type: object
   models.AutoSpawnConfig:
     properties:
@@ -1036,10 +1130,16 @@ definitions:
     type: object
   models.User:
     properties:
+      auth_provider:
+        example: local
+        type: string
       createdAt:
         type: string
       email:
         example: john@example.com
+        type: string
+      external_id:
+        example: github123
         type: string
       groups:
         example:
@@ -1051,9 +1151,19 @@ definitions:
       id:
         example: user123
         type: string
+      last_login_at:
+        type: string
       name:
         example: John Doe
         type: string
+      password_changed_at:
+        type: string
+      provider_groups:
+        example:
+        - '["org/team"]'
+        items:
+          type: string
+        type: array
       updatedAt:
         type: string
     type: object
@@ -1970,6 +2080,141 @@ paths:
       tags:
       - adapters
       - authentication
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user with username/password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      description: Logout the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /api/v1/auth/oauth/callback:
+    post:
+      consumes:
+      - application/json
+      description: Handle OAuth provider callback
+      parameters:
+      - description: OAuth callback data
+        in: body
+        name: callback
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OAuthCallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: OAuth callback
+      tags:
+      - auth
+  /api/v1/auth/oauth/login:
+    post:
+      consumes:
+      - application/json
+      description: Start OAuth authentication flow
+      parameters:
+      - description: OAuth provider
+        in: body
+        name: oauth
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OAuthLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Initiate OAuth login
+      tags:
+      - auth
+  /api/v1/auth/password:
+    put:
+      consumes:
+      - application/json
+      description: Change the current user's password
+      parameters:
+      - description: Password change data
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Change password
+      tags:
+      - auth
   /api/v1/discovery/register:
     post:
       consumes:
@@ -2924,6 +3169,20 @@ paths:
       summary: Update a user
       tags:
       - users
+  /auth/mode:
+    get:
+      description: Returns the current authentication configuration (unauthenticated
+        endpoint)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AuthModeResponse'
+      summary: Get authentication mode
+      tags:
+      - auth
   /plugins/register:
     post:
       consumes:

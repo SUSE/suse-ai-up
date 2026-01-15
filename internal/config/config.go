@@ -163,7 +163,7 @@ func LoadConfig() *Config {
 		},
 
 		AuthMode:            getEnv("AUTH_MODE", "development"),
-		DevMode:             getEnvBool("DEV_MODE", false),
+		DevMode:             getEnvBool("DEV_MODE", true),
 		AdminPassword:       getEnv("ADMIN_PASSWORD", "admin"),
 		ForcePasswordChange: getEnvBool("FORCE_PASSWORD_CHANGE", true),
 		PasswordMinLength:   getEnvInt("PASSWORD_MIN_LENGTH", 8),

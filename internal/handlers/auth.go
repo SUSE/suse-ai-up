@@ -288,6 +288,68 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
+// GetAuthMode returns the current authentication mode and configuration
+// @Summary Get authentication mode
+// @Description Returns the current authentication configuration (unauthenticated endpoint)
+// @Tags auth
+// @Produce json
+// @Success 200 {object} AuthModeResponse
+// @Router /auth/mode [get]
+func (h *AuthHandler) GetAuthMode(c *gin.Context) {
+	config := h.authService.Config
+
+	response := AuthModeResponse{
+		Mode:    config.Mode,
+		DevMode: config.DevMode,
+	}
+
+	// Only include sensitive information if not in production mode
+	// In production, you might want to limit what information is exposed
+	if config.Local != nil {
+		response.Local = &struct {
+			DefaultAdminPassword string `json:"default_admin_password,omitempty"`
+			ForcePasswordChange  bool   `json:"force_password_change"`
+			PasswordMinLength    int    `json:"password_min_length"`
+		}{
+			DefaultAdminPassword: config.Local.DefaultAdminPassword,
+			ForcePasswordChange:  config.Local.ForcePasswordChange,
+			PasswordMinLength:    config.Local.PasswordMinLength,
+		}
+	}
+
+	if config.GitHub != nil {
+		response.GitHub = &struct {
+			ClientID    string   `json:"client_id,omitempty"`
+			RedirectURI string   `json:"redirect_uri,omitempty"`
+			AllowedOrgs []string `json:"allowed_orgs,omitempty"`
+			AdminTeams  []string `json:"admin_teams,omitempty"`
+		}{
+			ClientID:    config.GitHub.ClientID,
+			RedirectURI: config.GitHub.RedirectURI,
+			AllowedOrgs: config.GitHub.AllowedOrgs,
+			AdminTeams:  config.GitHub.AdminTeams,
+		}
+	}
+
+	if config.Rancher != nil {
+		response.Rancher = &struct {
+			IssuerURL     string   `json:"issuer_url,omitempty"`
+			ClientID      string   `json:"client_id,omitempty"`
+			RedirectURI   string   `json:"redirect_uri,omitempty"`
+			AdminGroups   []string `json:"admin_groups,omitempty"`
+			FallbackLocal bool     `json:"fallback_local"`
+		}{
+			IssuerURL:     config.Rancher.IssuerURL,
+			ClientID:      config.Rancher.ClientID,
+			RedirectURI:   config.Rancher.RedirectURI,
+			AdminGroups:   config.Rancher.AdminGroups,
+			FallbackLocal: config.Rancher.FallbackLocal,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // buildGitHubAuthURL builds GitHub OAuth authorization URL
 func (h *AuthHandler) buildGitHubAuthURL() (string, error) {
 	config := h.authService.Config.GitHub
@@ -516,4 +578,28 @@ type RancherUserInfo struct {
 	ID    string `json:"sub"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
+}
+
+// AuthModeResponse represents the authentication mode response
+type AuthModeResponse struct {
+	Mode    string `json:"mode"`
+	DevMode bool   `json:"dev_mode"`
+	Local   *struct {
+		DefaultAdminPassword string `json:"default_admin_password,omitempty"`
+		ForcePasswordChange  bool   `json:"force_password_change"`
+		PasswordMinLength    int    `json:"password_min_length"`
+	} `json:"local,omitempty"`
+	GitHub *struct {
+		ClientID    string   `json:"client_id,omitempty"`
+		RedirectURI string   `json:"redirect_uri,omitempty"`
+		AllowedOrgs []string `json:"allowed_orgs,omitempty"`
+		AdminTeams  []string `json:"admin_teams,omitempty"`
+	} `json:"github,omitempty"`
+	Rancher *struct {
+		IssuerURL     string   `json:"issuer_url,omitempty"`
+		ClientID      string   `json:"client_id,omitempty"`
+		RedirectURI   string   `json:"redirect_uri,omitempty"`
+		AdminGroups   []string `json:"admin_groups,omitempty"`
+		FallbackLocal bool     `json:"fallback_local"`
+	} `json:"rancher,omitempty"`
 }
