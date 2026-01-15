@@ -338,6 +338,54 @@ Response (Rancher OIDC Mode):
 }
 ```
 
+### Working with Groups and Members
+
+#### List Groups with Members
+
+```bash
+curl http://localhost:8911/api/v1/groups
+```
+
+Response:
+```json
+[
+  {
+    "id": "mcp-admins",
+    "name": "MCP Administrators",
+    "description": "Full administrative access",
+    "members": ["admin"],
+    "permissions": ["user:create", "group:create"],
+    "createdAt": "2026-01-15T17:49:53.928118Z",
+    "updatedAt": "2026-01-15T17:49:53.928118Z"
+  },
+  {
+    "id": "mcp-users",
+    "name": "MCP Users",
+    "description": "Basic access to MCP servers",
+    "members": ["user1", "user2"],
+    "permissions": ["server:read", "adapter:read"],
+    "createdAt": "2026-01-15T17:49:53.928122Z",
+    "updatedAt": "2026-01-15T17:49:53.928122Z"
+  }
+]
+```
+
+#### Add User to Group
+
+```bash
+curl -X POST http://localhost:8911/api/v1/groups/mcp-users/members \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "newuser"}'
+```
+
+#### Remove User from Group
+
+```bash
+curl -X DELETE http://localhost:8911/api/v1/groups/mcp-users/members/newuser \
+  -H "Authorization: Bearer <your_token>"
+```
+
 ### Local Authentication
 
 #### Login
@@ -685,9 +733,27 @@ JWT tokens expire after 24 hours. Use the refresh token flow or re-authenticate.
 - `PUT /auth/password` - Change password
 - `POST /auth/logout` - Logout
 
-### Protected Endpoints
+### User and Group Management Endpoints
 
-All `/api/v1/users` and `/api/v1/groups` endpoints require authentication.
+#### Users
+- `GET /api/v1/users` - List all users (unauthenticated)
+- `GET /api/v1/users/{id}` - Get user details (unauthenticated)
+- `POST /api/v1/users` - Create new user (authenticated)
+- `PUT /api/v1/users/{id}` - Update user (authenticated)
+- `DELETE /api/v1/users/{id}` - Delete user (authenticated)
+
+#### Groups
+- `GET /api/v1/groups` - List all groups with members (unauthenticated)
+- `GET /api/v1/groups/{id}` - Get group details with members (unauthenticated)
+- `POST /api/v1/groups` - Create new group (authenticated)
+- `PUT /api/v1/groups/{id}` - Update group (authenticated)
+- `DELETE /api/v1/groups/{id}` - Delete group (authenticated)
+
+#### Group Members
+- `POST /api/v1/groups/{id}/members` - Add user to group (authenticated)
+- `DELETE /api/v1/groups/{id}/members/{userId}` - Remove user from group (authenticated)
+
+**Note**: Group responses include a `members` array containing the user IDs of all users in that group.
 
 ### Error Codes
 

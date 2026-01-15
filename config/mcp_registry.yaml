@@ -74,8 +74,7 @@
     - suse
     sidecarConfig:
       commandType: python
-      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key-header {{bugzilla.apikey}}
-        {{bugzilla.apikey}} --host 0.0.0.0 --port 8000
+      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key-header {{bugzilla.apikey}} --host 0.0.0.0 --port 8000
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'
@@ -262,4 +261,40 @@
       name: atlassian.jira.personal_token
       templated: true
       type: secret
+- name: github-official
+  image: ghcr.io/github/github-mcp-server
+  type: server
+  meta:
+    category: devops
+    tags:
+    - github
+    - devops
+    sidecarConfig:
+      commandType: docker
+      command: docker run -i ghcr.io/github/github-mcp-server {{github.personal_access_token}} {{github.host}}
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
+  about:
+    description: Official GitHub MCP Server, by GitHub. Provides seamless integration
+      with GitHub APIs, enabling advanced automation and interaction capabilities
+      for developers and tools.
+    icon: https://avatars.githubusercontent.com/u/9919?s=200&v=4
+    title: GitHub Official
+  source:
+    commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
+    project: https://github.com/github/github-mcp-server
+  config:
+    description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
+    secrets:
+    - env: GITHUB_PERSONAL_ACCESS_TOKEN
+      example: "gh_1234..."
+      name: github.personal_access_token
+      templated: true
+      type: text
+    - env: GITHUB_HOST
+      example: "https://github.com"
+      name: github.host
+      templated: true
+      type: text
+
 
