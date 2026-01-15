@@ -166,19 +166,24 @@ initialGroups:
 
 ### Rancher UI Integration
 
-When deploying via Rancher UI, the questions.yml provides an intuitive interface organized into separate sections:
+When deploying via Rancher UI, the questions.yml provides an intuitive interface with the main sections:
+
+#### **SUSE AI Universal Proxy Section** (QuickStart)
+1. **Installation Type**: Choose Quick Start or Custom Configuration
+2. **Basic Configuration**: Image version, external access, TLS settings
+3. **External Registry**: Configure MCP server registry URL and timeout
+4. **RBAC Configuration**: Service account and permissions
 
 #### **Authentication Section**
 1. **Authentication Mode**: Select local, GitHub OAuth, Rancher OIDC, or dev mode
 2. **Provider Configuration**: Enter OAuth credentials and settings based on selected mode
 3. **Development Mode**: Enable/disable development authentication bypass
 
-#### **Initial Users Section**
+##### **Initial Users Subsection**
 1. **Create Initial Users**: Enable/disable automatic user creation
 2. **Admin User Configuration**: Set admin user details (ID, name, email, password, groups)
-3. **Additional Users**: Configure additional users if needed
 
-#### **Initial Groups Section**
+##### **Initial Groups Subsection**
 1. **Create Initial Groups**: Enable/disable automatic group creation
 2. **Admin Group**: Configure the administrators group with full permissions
 3. **User Group**: Configure the regular users group with limited permissions
