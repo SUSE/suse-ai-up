@@ -262,3 +262,4 @@
       name: atlassian.jira.personal_token
       templated: true
       type: secret
+

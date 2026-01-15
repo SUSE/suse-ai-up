@@ -113,6 +113,15 @@ questions:
     value: "dev"
   required: true
 
+- variable: auth.devMode
+  label: "Enable Dev Mode"
+  description: "Bypass authentication for development (allows X-User-ID headers)"
+  type: boolean
+  default: false
+  group: "Authentication"
+  show_if: "auth.mode=dev"
+
+# Local Authentication Configuration
 - variable: auth.local.defaultAdminPassword
   label: "Admin Password"
   description: "Initial password for the admin user (must be changed on first login)"
@@ -140,6 +149,7 @@ questions:
   group: "Authentication"
   show_if: "auth.mode=local"
 
+# GitHub OAuth Configuration
 - variable: auth.github.clientId
   label: "GitHub Client ID"
   description: "GitHub OAuth App Client ID"
@@ -158,6 +168,14 @@ questions:
   show_if: "auth.mode=github"
   required: true
 
+- variable: auth.github.redirectUri
+  label: "GitHub Redirect URI"
+  description: "OAuth callback URL (auto-generated if empty)"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=github"
+
 - variable: auth.github.allowedOrgs
   label: "Allowed Organizations"
   description: "Comma-separated list of allowed GitHub organizations (leave empty to allow all)"
@@ -174,6 +192,7 @@ questions:
   group: "Authentication"
   show_if: "auth.mode=github"
 
+# Rancher OIDC Configuration
 - variable: auth.rancher.issuerUrl
   label: "Rancher Issuer URL"
   description: "Rancher OIDC issuer URL (e.g., https://rancher.example.com/oidc)"
@@ -201,6 +220,14 @@ questions:
   show_if: "auth.mode=rancher"
   required: true
 
+- variable: auth.rancher.redirectUri
+  label: "Rancher Redirect URI"
+  description: "OIDC callback URL (auto-generated if empty)"
+  type: string
+  default: ""
+  group: "Authentication"
+  show_if: "auth.mode=rancher"
+
 - variable: auth.rancher.adminGroups
   label: "Admin Groups"
   description: "Comma-separated list of Rancher groups that get admin permissions"
@@ -217,15 +244,7 @@ questions:
   group: "Authentication"
   show_if: "auth.mode=rancher"
 
-- variable: auth.devMode
-  label: "Enable Dev Mode"
-  description: "Bypass authentication for development (allows X-User-ID headers)"
-  type: boolean
-  default: true
-  group: "Authentication"
-  show_if: "auth.mode=dev"
-
-# Initial Users Configuration
+# Initial Users and Groups Configuration
 - variable: initialUsers.enabled
   label: "Create Initial Users"
   description: "Create initial users and groups during installation"
@@ -233,14 +252,105 @@ questions:
   default: true
   group: "Authentication"
   show_if: "auth.mode!=dev"
-  show_subquestion_if: true
-  subquestions:
-  - variable: initialUsers.users[0].password
-    label: "Admin Password Override"
-    description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
-    type: password
-    default: ""
-    show_if: "auth.mode=local"
+
+- variable: initialUsers.users[0].id
+  label: "Admin User ID"
+  description: "User ID for the initial administrator"
+  type: string
+  default: "admin"
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].name
+  label: "Admin User Name"
+  description: "Display name for the administrator"
+  type: string
+  default: "System Administrator"
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].email
+  label: "Admin Email"
+  description: "Email address for the administrator"
+  type: string
+  default: "admin@suse.ai"
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].password
+  label: "Admin Password Override"
+  description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
+  type: password
+  default: ""
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode=local"
+
+- variable: initialUsers.users[0].groups
+  label: "Admin Groups"
+  description: "Groups to assign to the admin user (comma-separated)"
+  type: string
+  default: "mcp-admins"
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+
+- variable: initialGroups.enabled
+  label: "Create Initial Groups"
+  description: "Create default user groups during installation"
+  type: boolean
+  default: true
+  group: "Authentication"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[0].id
+  label: "Admin Group ID"
+  description: "ID for the administrators group"
+  type: string
+  default: "mcp-admins"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[0].name
+  label: "Admin Group Name"
+  description: "Display name for the administrators group"
+  type: string
+  default: "MCP Administrators"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[0].permissions
+  label: "Admin Permissions"
+  description: "Permissions for the admin group (comma-separated)"
+  type: string
+  default: "user:manage,group:manage,server:manage,adapter:manage"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[1].id
+  label: "User Group ID"
+  description: "ID for the regular users group"
+  type: string
+  default: "mcp-users"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[1].name
+  label: "User Group Name"
+  description: "Display name for the regular users group"
+  type: string
+  default: "MCP Users"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[1].permissions
+  label: "User Permissions"
+  description: "Permissions for the user group (comma-separated)"
+  type: string
+  default: "server:read,adapter:read"
+  group: "Authentication"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
 
 # Service Resource Configuration
 - variable: serviceResources

@@ -36,6 +36,175 @@ export RANCHER_CLIENT_SECRET=your_rancher_client_secret
 export RANCHER_REDIRECT_URI=http://localhost:8911/auth/rancher/callback
 ```
 
+## Kubernetes/Helm Deployment
+
+For production deployments on Kubernetes, use the provided Helm chart which handles authentication configuration securely.
+
+### Prerequisites
+
+- Kubernetes cluster with Helm 3.x
+- Rancher (optional, for Rancher OIDC authentication)
+- GitHub OAuth App (optional, for GitHub OAuth)
+
+### Quick Start with Helm
+
+#### Local Authentication (Default)
+
+```bash
+# Install with local authentication
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set auth.mode=local \
+  --set auth.local.defaultAdminPassword="your_secure_password"
+```
+
+#### GitHub OAuth
+
+```bash
+# Install with GitHub OAuth
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set auth.mode=github \
+  --set auth.github.clientId="your_github_app_id" \
+  --set auth.github.clientSecret="your_github_app_secret" \
+  --set auth.github.allowedOrgs="your-org" \
+  --set auth.github.adminTeams="platform-team"
+```
+
+#### Rancher OIDC
+
+```bash
+# Install with Rancher OIDC
+helm install suse-ai-up ./charts/suse-ai-up \
+  --set auth.mode=rancher \
+  --set auth.rancher.issuerUrl="https://rancher.example.com/oidc" \
+  --set auth.rancher.clientId="rancher_client_id" \
+  --set auth.rancher.clientSecret="rancher_client_secret" \
+  --set auth.rancher.adminGroups="system-admins"
+```
+
+### Helm Configuration Options
+
+#### Authentication Mode
+
+```yaml
+auth:
+  mode: "local"  # local, github, rancher, dev
+  devMode: false # Enable development mode (bypass auth)
+```
+
+#### Local Authentication
+
+```yaml
+auth:
+  local:
+    defaultAdminPassword: "secure_password"
+    forcePasswordChange: true
+    passwordMinLength: 8
+```
+
+#### GitHub OAuth
+
+```yaml
+auth:
+  github:
+    clientId: "gh_oauth_app_id"
+    clientSecret: "gh_oauth_app_secret"
+    redirectUri: ""  # Auto-generated if empty
+    allowedOrgs: []  # List of allowed organizations
+    adminTeams: []   # Teams that get admin permissions
+```
+
+#### Rancher OIDC
+
+```yaml
+auth:
+  rancher:
+    issuerUrl: "https://rancher.example.com/oidc"
+    clientId: "rancher_client_id"
+    clientSecret: "rancher_client_secret"
+    redirectUri: ""  # Auto-generated if empty
+    adminGroups: []  # Groups that get admin permissions
+    fallbackLocal: true  # Allow local auth fallback
+```
+
+### Initial Users and Groups
+
+The Helm chart automatically creates initial users and groups:
+
+```yaml
+initialUsers:
+  enabled: true
+  users:
+    - id: "admin"
+      name: "System Administrator"
+      email: "admin@suse.ai"
+      password: ""  # Uses auth.local.defaultAdminPassword
+      groups: ["mcp-admins"]
+      authProvider: "local"
+
+initialGroups:
+  enabled: true
+  groups:
+    - id: "mcp-admins"
+      name: "MCP Administrators"
+      description: "Full administrative access"
+      permissions: ["user:manage", "group:manage", "server:manage", "adapter:manage"]
+    - id: "mcp-users"
+      name: "MCP Users"
+      description: "Basic access to MCP servers"
+      permissions: ["server:read", "adapter:read"]
+```
+
+### Rancher UI Integration
+
+When deploying via Rancher UI, the questions.yml provides an intuitive interface for configuring authentication:
+
+1. **Installation Type**: Choose Quick Start or Custom Configuration
+2. **Authentication Mode**: Select local, GitHub OAuth, Rancher OIDC, or dev mode
+3. **Provider Configuration**: Enter OAuth credentials and settings
+4. **User Setup**: Configure initial admin user and groups
+
+### Security in Kubernetes
+
+- **OAuth Secrets**: Client secrets stored in Kubernetes secrets, not ConfigMaps
+- **RBAC**: ServiceAccount with minimal required permissions
+- **Network Policies**: Restrict pod-to-pod communication
+- **TLS**: Automatic TLS certificate generation
+- **Pod Security**: Non-root execution with restricted capabilities
+
+### Post-Installation
+
+After Helm installation:
+
+1. **Wait for Init Job**: The init job creates initial users and groups
+2. **Access Service**: Use the configured ingress or service endpoint
+3. **Login**: Use admin credentials to access the system
+4. **Configure Users**: Add additional users via the API or UI
+
+### Troubleshooting Kubernetes Deployments
+
+#### Check Pod Status
+```bash
+kubectl get pods -l app.kubernetes.io/name=suse-ai-up
+kubectl logs -l app.kubernetes.io/name=suse-ai-up
+```
+
+#### Check Init Job
+```bash
+kubectl get jobs -l app.kubernetes.io/name=suse-ai-up
+kubectl logs job/suse-ai-up-init-users
+```
+
+#### Check Secrets
+```bash
+kubectl get secrets -l app.kubernetes.io/name=suse-ai-up
+kubectl describe secret suse-ai-up-auth
+```
+
+#### Common Issues
+- **Init Job Failures**: Check network connectivity to the service
+- **OAuth Redirect Issues**: Ensure ingress/external URL is correctly configured
+- **Secret Not Found**: Verify OAuth credentials were provided during installation
+
 ## Authentication Methods
 
 ### 1. Local Authentication

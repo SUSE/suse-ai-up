@@ -30,59 +30,59 @@ spec:
               containerPort: {{ .Values.services.proxy.tlsPort }}
               protocol: TCP
             {{- end }}
-           env:
-             - name: CORS_ALLOWED_ORIGINS
-               value: "{{ .Values.cors.allowedOrigins }}"
+          env:
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
 {{- if .Values.registry.url }}
-             - name: MCP_REGISTRY_URL
-               value: "{{ .Values.registry.url }}"
-             - name: REGISTRY_TIMEOUT
-               value: "{{ .Values.registry.timeout }}"
+            - name: MCP_REGISTRY_URL
+              value: "{{ .Values.registry.url }}"
+            - name: REGISTRY_TIMEOUT
+              value: "{{ .Values.registry.timeout }}"
 {{- end }}
-             # Authentication Configuration
-             - name: AUTH_MODE
-               value: "{{ .Values.auth.mode }}"
-             - name: DEV_MODE
-               value: "{{ .Values.auth.devMode }}"
+            # Authentication Configuration
+            - name: AUTH_MODE
+              value: "{{ .Values.auth.mode }}"
+            - name: DEV_MODE
+              value: "{{ .Values.auth.devMode }}"
 {{- if eq .Values.auth.mode "local" }}
-             - name: ADMIN_PASSWORD
-               value: "{{ .Values.auth.local.defaultAdminPassword }}"
-             - name: FORCE_PASSWORD_CHANGE
-               value: "{{ .Values.auth.local.forcePasswordChange }}"
-             - name: PASSWORD_MIN_LENGTH
-               value: "{{ .Values.auth.local.passwordMinLength }}"
+            - name: ADMIN_PASSWORD
+              value: "{{ .Values.auth.local.defaultAdminPassword }}"
+            - name: FORCE_PASSWORD_CHANGE
+              value: "{{ .Values.auth.local.forcePasswordChange }}"
+            - name: PASSWORD_MIN_LENGTH
+              value: "{{ .Values.auth.local.passwordMinLength }}"
 {{- end }}
 {{- if eq .Values.auth.mode "github" }}
-             - name: GITHUB_CLIENT_ID
-               value: "{{ .Values.auth.github.clientId }}"
-             - name: GITHUB_CLIENT_SECRET
-               valueFrom:
-                 secretKeyRef:
-                   name: {{ include "suse-ai-up.fullname" . }}-auth
-                   key: github-client-secret
-             - name: GITHUB_REDIRECT_URI
-               value: "{{ .Values.auth.github.redirectUri }}"
-             - name: GITHUB_ALLOWED_ORGS
-               value: "{{ join \",\" .Values.auth.github.allowedOrgs }}"
-             - name: GITHUB_ADMIN_TEAMS
-               value: "{{ join \",\" .Values.auth.github.adminTeams }}"
+            - name: GITHUB_CLIENT_ID
+              value: "{{ .Values.auth.github.clientId }}"
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "suse-ai-up.fullname" . }}-auth
+                  key: github-client-secret
+            - name: GITHUB_REDIRECT_URI
+              value: "{{ .Values.auth.github.redirectUri }}"
+            - name: GITHUB_ALLOWED_ORGS
+              value: {{ .Values.auth.github.allowedOrgs | join "," | quote }}
+            - name: GITHUB_ADMIN_TEAMS
+              value: {{ .Values.auth.github.adminTeams | join "," | quote }}
 {{- end }}
 {{- if eq .Values.auth.mode "rancher" }}
-             - name: RANCHER_ISSUER_URL
-               value: "{{ .Values.auth.rancher.issuerUrl }}"
-             - name: RANCHER_CLIENT_ID
-               value: "{{ .Values.auth.rancher.clientId }}"
-             - name: RANCHER_CLIENT_SECRET
-               valueFrom:
-                 secretKeyRef:
-                   name: {{ include "suse-ai-up.fullname" . }}-auth
-                   key: rancher-client-secret
-             - name: RANCHER_REDIRECT_URI
-               value: "{{ .Values.auth.rancher.redirectUri }}"
-             - name: RANCHER_ADMIN_GROUPS
-               value: "{{ join \",\" .Values.auth.rancher.adminGroups }}"
-             - name: RANCHER_FALLBACK_LOCAL
-               value: "{{ .Values.auth.rancher.fallbackLocal }}"
+            - name: RANCHER_ISSUER_URL
+              value: "{{ .Values.auth.rancher.issuerUrl }}"
+            - name: RANCHER_CLIENT_ID
+              value: "{{ .Values.auth.rancher.clientId }}"
+            - name: RANCHER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "suse-ai-up.fullname" . }}-auth
+                  key: rancher-client-secret
+            - name: RANCHER_REDIRECT_URI
+              value: "{{ .Values.auth.rancher.redirectUri }}"
+            - name: RANCHER_ADMIN_GROUPS
+              value: {{ .Values.auth.rancher.adminGroups | join "," | quote }}
+            - name: RANCHER_FALLBACK_LOCAL
+              value: "{{ .Values.auth.rancher.fallbackLocal }}"
 {{- end }}
           volumeMounts:
             {{- if .Values.registry.enabled }}

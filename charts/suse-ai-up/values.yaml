@@ -7,6 +7,9 @@ installType: "quickstart"  # quickstart or custom
 # Service resource profile (used by questions.yaml for UI logic)
 serviceResources: "standard"  # light, standard, heavy, or custom
 
+# Override the fullname of the chart
+fullnameOverride: ""
+
 # Deployment configuration
 replicaCount: 1
 
