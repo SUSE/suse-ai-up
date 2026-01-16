@@ -20,8 +20,9 @@ import (
 	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/services"
 
-	"gopkg.in/yaml.v3"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Service represents the registry service
@@ -151,7 +152,7 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/registry/reload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleReloadRemoteServers)))
 
 	// Adapter management routes
-	adapterHandler := handlers.NewAdapterHandler(s.adapterService)
+	adapterHandler := handlers.NewAdapterHandler(s.adapterService, s.userGroupService)
 	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.HandleAdapters)))
 	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")

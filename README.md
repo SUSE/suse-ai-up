@@ -54,9 +54,14 @@ docker run -p 8911:8911 suse/suse-ai-up:latest
 
 ### Kubernetes + Helm
 ```bash
-helm repo add suse-ai-up https://charts.suse.com
-helm install suse-ai-up suse-ai-up/suse-ai-up
+helm install suse-ai-up charts/suse-ai-up
 ```
+If you use Rancher is even more simpler:
+1. Add https://github.com/SUSE/suse-ai-up to the respositories in your selected cluster (local or downstream)
+2. Use "main" as Git branch
+3. Create and wait for the repository to show the status "Active"
+4. Click on "Charts" in the cluster Apps
+5. Follow the wizard to install.
 
 ### Local Development
 ```bash
@@ -64,6 +69,7 @@ git clone https://github.com/suse/suse-ai-up.git
 cd suse-ai-up
 go run ./cmd/uniproxy
 ```
+Universal Proxy require Kubernets so the ideal development way is to deploy the helm chart in kubernetes
 
 ## 📋 Service Overview
 
@@ -89,144 +95,10 @@ go run ./cmd/uniproxy
 
 The registry includes **20+ curated remote MCP servers** from [mcpservers.org](https://mcpservers.org/remote-mcp-servers), providing instant access to popular services:
 
-### 📊 Available Servers
-
-| Service | Authentication | Category | Description |
-|---------|----------------|----------|-------------|
-| **GitHub** | OAuth | Development | Repository management, issues, PRs, code search |
-| **Notion** | OAuth | Productivity | Document collaboration and knowledge base |
-| **Sentry** | OAuth | Monitoring | Error tracking and performance monitoring |
-| **Linear** | OAuth | Project Management | Issue tracking and agile workflows |
-| **Figma** | OAuth | Design | Collaborative design and prototyping |
-| **CoinGecko** | Open | Cryptocurrency | Market data and trading information |
-| **Semgrep** | Open | Security | Code security and quality analysis |
-| **Atlassian** | OAuth | Enterprise | Jira, Confluence, enterprise tools |
 
 ### 🚀 Quick Examples
 
-#### GitHub MCP Server
-```bash
-# List repositories
-curl -H "X-API-Key: dev-service-key-123" \
-  "http://localhost:8911/api/v1/registry/browse?q=github"
-
-# Create adapter for GitHub
-curl -X POST http://localhost:8911/api/v1/adapters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "github-adapter",
-    "mcpServerId": "github",
-    "authentication": {
-      "type": "oauth",
-      "oauth": {
-        "clientId": "your-github-oauth-client-id",
-        "clientSecret": "your-github-oauth-client-secret"
-      }
-    }
-  }'
-```
-
-#### Atlassian MCP Server
-```bash
-# Browse Atlassian services
-curl -H "X-API-Key: dev-service-key-123" \
-  "http://localhost:8911/api/v1/registry/browse?q=atlassian"
-
-# Configure Jira integration
-curl -X POST http://localhost:8911/api/v1/adapters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "jira-adapter",
-    "mcpServerId": "atlassian",
-    "authentication": {
-      "type": "oauth",
-      "oauth": {
-        "clientId": "your-atlassian-oauth-client-id",
-        "clientSecret": "your-atlassian-oauth-client-secret"
-      }
-    }
-  }'
-```
-
-### 🔑 Authentication Setup
-
-**OAuth Services**: Configure OAuth 2.0 credentials in your adapter configuration
-**Open Services**: No authentication required - use directly
-
-**Note**: Authentication is configured per-adapter, not in the registry. The registry only indicates which servers require user authentication.
-
-### 🔄 Manual Registry Updates
-
-To update the remote server list:
-```bash
-curl -X POST -H "X-API-Key: dev-service-key-123" \
-  http://localhost:8911/api/v1/registry/reload
-```
-
-## 🔐 Authentication & Security
-
-Supports multiple authentication methods:
-- **OAuth 2.0** - Industry standard authorization
-- **Bearer Tokens** - JWT and custom token support
-- **API Keys** - Simple key-based authentication
-- **Basic Auth** - Username/password authentication
-
-**Documentation**: [Authentication Guide](docs/authentication.md)
-
-## 📖 Documentation
-
-- **[Getting Started](docs/getting-started.md)** - Complete setup guide
-- **[API Reference](docs/api-reference.md)** - Complete API documentation
-- **[Deployment Guide](docs/deployment/)** - Docker, Kubernetes, Helm
-- **[Security](docs/security.md)** - Security considerations and best practices
-
-## 🛠️ Deployment Options
-
-### Docker
-```bash
-# Basic proxy only
-docker run -p 8080:8080 suse/suse-ai-up:latest ./suse-ai-up proxy
-
-# Full stack
-docker run -p 8080:8080 -p 8911-8914:8911-8914 suse/suse-ai-up:latest
-```
-
-### Kubernetes
-```bash
-# Using Helm (recommended)
-helm install suse-ai-up ./charts/suse-ai-up
-
-# Using kubectl
-kubectl apply -f examples/kubernetes/
-```
-
-### Helm Configuration
-```yaml
-# values.yaml
-services:
-  proxy:
-    enabled: true
-  registry:
-    enabled: true
-  discovery:
-    enabled: true
-  plugins:
-    enabled: true
-
-tls:
-  enabled: true
-  autoGenerate: true  # Generates self-signed certs
-
-monitoring:
-  enabled: false  # Set to true to deploy Prometheus + Grafana
-```
-
-## 🔍 Health Checks & Monitoring
-
-- **Unified Health Endpoint**: `http://localhost:8911/health`
-- **API Documentation**: `http://localhost:8911/docs`
-- **Prometheus Metrics**: Available when monitoring enabled
-- **Grafana Dashboards**: Pre-configured dashboards included
+Check the file EXAMPLES.md
 
 ## 🤝 Contributing
 
