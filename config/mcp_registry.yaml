@@ -259,15 +259,15 @@
       type: secret
 - name: github-official
   image: ghcr.io/github/github-mcp-server
-  type: server
+  type: remote
   meta:
     category: devops
     tags:
     - github
     - devops
     sidecarConfig:
-      commandType: docker
-      command: docker run -i ghcr.io/github/github-mcp-server {{github.personal_access_token}} {{github.host}}
+      commandType: http
+      command: https://api.githubcopilot.com/mcp/
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
@@ -285,11 +285,6 @@
     - env: GITHUB_PERSONAL_ACCESS_TOKEN
       example: "gh_1234..."
       name: github.personal_access_token
-      templated: true
-      type: text
-    - env: GITHUB_HOST
-      example: "https://github.com"
-      name: github.host
       templated: true
       type: text
 
