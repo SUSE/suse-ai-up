@@ -13,15 +13,11 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"suse-ai-up/pkg/clients"
-	"suse-ai-up/pkg/middleware"
 	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/scanner"
 )

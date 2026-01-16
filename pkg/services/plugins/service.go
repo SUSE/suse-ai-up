@@ -1,28 +1,13 @@
 package plugins
 
 import (
-	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/json"
-	"fmt"
 	"log"
-	"math/big"
-	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 
+	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/clients"
-	"suse-ai-up/pkg/middleware"
-	"suse-ai-up/pkg/models"
 	"suse-ai-up/pkg/plugins"
 )
 
@@ -52,9 +37,7 @@ func NewService(config *Config) *Service {
 	}
 
 	// Create registry manager for MCP server integration
-	registryManager := &RegistryManager{
-		store: clients.NewInMemoryMCPServerStore(),
-	}
+	registryManager := handlers.NewDefaultRegistryManager(clients.NewInMemoryMCPServerStore())
 
 	service := &Service{
 		config:     config,
