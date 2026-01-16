@@ -139,7 +139,7 @@
     category: devops
     sidecarConfig:
       commandType: go
-       command: gitea-mcp -t http --host {{gitea.host}} -port 8000 --token {{gitea.pat}}
+      command: gitea-mcp -t http --host {{gitea.host}} -port 8000 --token {{gitea.pat}}
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
     tags:

@@ -528,9 +528,7 @@ if [ -n "$DOWNLOAD_URL" ]; then
             chmod +x ` + binaryName + `
             echo "Moving binary to /usr/bin..."
             mv ` + binaryName + ` /usr/bin/
-            echo "Binary extracted successfully, testing server startup..."
-            ` + binaryName + ` -t http --host http://gitea.com || echo "Server startup test completed"
-            echo "Test completed, starting actual server..."
+            echo "Binary extracted successfully, starting server..."
             ` + originalCommand + `
         else
             echo "Binary ` + binaryName + ` not found, falling back to build..."
