@@ -107,6 +107,11 @@ func (sm *SidecarManager) DeploySidecar(ctx context.Context, adapter models.Adap
 			fmt.Printf("SIDECAR_MANAGER: Deploying npx sidecar for adapter %s\n", adapter.ID)
 			return sm.deployNpxSidecar(ctx, adapter)
 		}
+	case "go":
+		if adapter.SidecarConfig.Command != "" {
+			fmt.Printf("SIDECAR_MANAGER: Deploying go sidecar for adapter %s\n", adapter.ID)
+			return sm.deployGoSidecar(ctx, adapter)
+		}
 	default:
 		fmt.Printf("SIDECAR_MANAGER: No deployment method available for adapter %s\n", adapter.ID)
 		return fmt.Errorf("unsupported sidecar configuration: commandType=%s", adapter.SidecarConfig.CommandType)
@@ -219,7 +224,7 @@ func (sm *SidecarManager) deployWithKubeClient(ctx context.Context, adapter mode
 	switch adapter.SidecarConfig.CommandType {
 	case "docker":
 		return sm.deployDockerWithKubeClient(ctx, adapter)
-	case "python", "npx":
+	case "python", "npx", "go":
 		return sm.deployGenericWithKubeClient(ctx, adapter, sm.getImageForCommandType(adapter.SidecarConfig.CommandType), adapter.SidecarConfig.Command)
 	default:
 		return fmt.Errorf("unsupported command type: %s", adapter.SidecarConfig.CommandType)
@@ -459,6 +464,12 @@ func (sm *SidecarManager) deployNpxSidecar(ctx context.Context, adapter models.A
 	return sm.deployGenericSidecar(ctx, adapter, nodejsImage, adapter.SidecarConfig.Command)
 }
 
+// deployGoSidecar deploys a go-based sidecar using the BCI golang image
+func (sm *SidecarManager) deployGoSidecar(ctx context.Context, adapter models.AdapterResource) error {
+	golangImage := "registry.suse.com/bci/golang:1.25"
+	return sm.deployGenericSidecar(ctx, adapter, golangImage, adapter.SidecarConfig.Command)
+}
+
 // deployGenericSidecar deploys a sidecar using a generic container image and command
 func (sm *SidecarManager) deployGenericSidecar(ctx context.Context, adapter models.AdapterResource, image, command string) error {
 	// If we have a Kubernetes client, use it directly for deployment
@@ -523,6 +534,48 @@ func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapt
 		} else {
 			// Fallback: just install uv
 			finalCommand = fmt.Sprintf("pip install uv && %s", command)
+		}
+	}
+
+	// Prepare the command for Go projects
+	if adapter.SidecarConfig.CommandType == "go" {
+		// For Go commands, we need to:
+		// 1. Install git
+		// 2. Clone the repository
+		// 3. Build the binary
+		// 4. Run the original command
+		projectURL := adapter.SidecarConfig.ProjectURL
+		if projectURL != "" {
+			// Extract repo name from URL
+			parts := strings.Split(projectURL, "/")
+			repoName := parts[len(parts)-1]
+			if strings.HasSuffix(repoName, ".git") {
+				repoName = repoName[:len(repoName)-4]
+			}
+
+			// Extract binary name from command (first word)
+			cmdParts := strings.Fields(command)
+			if len(cmdParts) == 0 {
+				return fmt.Errorf("invalid Go command: %s", command)
+			}
+			binaryName := cmdParts[0]
+
+			setupScript := fmt.Sprintf(
+				"bash -c 'zypper -n in git && git clone %s && cd %s && echo \"Building...\" && go build -o %s && echo \"Build complete, starting server...\" && ./%s'",
+				projectURL,
+				repoName,
+				binaryName,
+				command,
+			)
+			finalCommand = setupScript
+		} else {
+			// Fallback: assume current directory has go.mod
+			cmdParts := strings.Fields(command)
+			if len(cmdParts) == 0 {
+				return fmt.Errorf("invalid Go command: %s", command)
+			}
+			binaryName := cmdParts[0]
+			finalCommand = fmt.Sprintf("go build -o %s && ./%s", binaryName, command)
 		}
 	}
 
@@ -625,6 +678,8 @@ func (sm *SidecarManager) getImageForCommandType(commandType string) string {
 		return "registry.suse.com/bci/python:3.11"
 	case "npx":
 		return "registry.suse.com/bci/nodejs:22"
+	case "go":
+		return "registry.suse.com/bci/golang:1.25"
 	default:
 		return "python:3.11-slim" // fallback
 	}

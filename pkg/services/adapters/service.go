@@ -291,9 +291,9 @@ func (as *AdapterService) processCommandTemplates(sidecarConfig *models.SidecarC
 	case "docker":
 		fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing docker templates\n")
 		processedConfig.Command = as.processDockerTemplates(sidecarConfig.Command, server)
-	case "python", "npx":
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing python/npx templates\n")
-		// For python/npx, templates are processed but the command structure may remain similar
+	case "python", "npx", "go":
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing python/npx/go templates\n")
+		// For python/npx/go, templates are processed but the command structure may remain similar
 		processedConfig.Command = as.processGenericTemplates(sidecarConfig.Command, server)
 	default:
 		// For unknown types, leave as-is

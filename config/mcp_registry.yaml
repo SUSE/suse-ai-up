@@ -152,6 +152,7 @@
   source:
     commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
     project: https://gitea.com/gitea/gitea-mcp
+    release: [https://gitea.com/gitea/gitea-mcp/releases/tag/v0.7.0]
   config:
     description: ""
     secrets:
