@@ -137,14 +137,14 @@
   type: server
   meta:
     category: devops
+    sidecarConfig:
+      commandType: go
+      command: gitea-mcp -t http --host {{gitea.host}} --token {{gitea.pat}}
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
     tags:
     - git
     - devops
-    sidecarConfig:
-      commandType: go
-      command: gitea-mcp -t streamable-http --host {{gitea.host}}  
-      source: manual-config
-      lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
     description: Gitea MCP Server is an integration plugin designed to connect Gitea with Model Context Protocol (MCP) systems. This allows for seamless command execution and repository management through an MCP-compatible chat interface.
     icon: https://gitea.com/assets/img/logo.svg

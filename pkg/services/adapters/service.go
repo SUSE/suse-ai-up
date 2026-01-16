@@ -575,13 +575,17 @@ func (as *AdapterService) getSidecarConfig(server *models.MCPServer) *models.Sid
 		sidecarConfig.LastUpdated = lastUpdated
 	}
 
-	// Extract project URL from server source_info metadata
+	// Extract project URL and release URL from server source_info metadata
 	// The source information is stored in Meta["source_info"] during YAML parsing
 	if sourceInfo, ok := server.Meta["source_info"]; ok {
 		if sourceMap, ok := sourceInfo.(map[string]interface{}); ok {
 			if project, ok := sourceMap["project"].(string); ok && project != "" {
 				sidecarConfig.ProjectURL = project
 				fmt.Printf("ADAPTER_SERVICE_DEBUG: Found project URL: %s\n", project)
+			}
+			if release, ok := sourceMap["release"].(string); ok && release != "" {
+				sidecarConfig.ReleaseURL = release
+				fmt.Printf("ADAPTER_SERVICE_DEBUG: Found release URL: %s\n", release)
 			}
 		}
 	}

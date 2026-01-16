@@ -470,6 +470,88 @@ func (sm *SidecarManager) deployGoSidecar(ctx context.Context, adapter models.Ad
 	return sm.deployGenericSidecar(ctx, adapter, golangImage, adapter.SidecarConfig.Command)
 }
 
+// prepareGoReleaseCommand prepares a command to download and run a pre-built binary from GitHub/Gitea releases
+func (sm *SidecarManager) prepareGoReleaseCommand(adapter models.AdapterResource, originalCommand string) string {
+	projectURL := adapter.SidecarConfig.ProjectURL
+
+	// Extract owner/repo from project URL
+	var owner, repo, apiBase string
+	if strings.Contains(projectURL, "github.com") {
+		parts := strings.Split(strings.TrimSuffix(projectURL, ".git"), "/")
+		if len(parts) >= 2 {
+			owner = parts[len(parts)-2]
+			repo = parts[len(parts)-1]
+			apiBase = "https://api.github.com"
+		}
+	} else if strings.Contains(projectURL, "gitea.com") {
+		parts := strings.Split(strings.TrimSuffix(projectURL, ".git"), "/")
+		if len(parts) >= 2 {
+			owner = parts[len(parts)-2]
+			repo = parts[len(parts)-1]
+			apiBase = "https://gitea.com/api/v1"
+		}
+	}
+
+	if owner == "" || repo == "" {
+		// Fallback to git clone + build
+		return fmt.Sprintf("bash -c 'echo \"Failed to parse repo, falling back to build\" && zypper -n in git && git clone %s && cd %s && go build -o %s && ./%s'",
+			projectURL, repo, originalCommand, originalCommand)
+	}
+
+	// Extract binary name from command
+	cmdParts := strings.Fields(originalCommand)
+	binaryName := cmdParts[0]
+
+	// Create the download script - use simple string concatenation to avoid sprintf issues
+	script := `bash -c '
+echo "Downloading pre-built binary for ` + owner + `/` + repo + `..."
+echo "API Base: ` + apiBase + `"
+
+zypper -n in curl tar unzip
+
+RELEASE_INFO=$(curl -s "` + apiBase + `/repos/` + owner + `/` + repo + `/releases/latest")
+
+PLATFORM="Linux_arm64"
+ARCHIVE_NAME="` + binaryName + `_${PLATFORM}.tar.gz"
+
+echo "Looking for archive: $ARCHIVE_NAME"
+
+DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o "https://[^\"]*${ARCHIVE_NAME}" | head -1)
+
+if [ -n "$DOWNLOAD_URL" ]; then
+    echo "Found binary archive: $DOWNLOAD_URL"
+    curl -L -o binary.tar.gz "$DOWNLOAD_URL"
+    if [ $? -eq 0 ]; then
+        echo "Download successful, extracting..."
+        tar -xzf binary.tar.gz
+        if [ -f "` + binaryName + `" ]; then
+            chmod +x ` + binaryName + `
+            echo "Starting server..."
+            ./` + originalCommand + `
+        else
+            echo "Binary ` + binaryName + ` not found, falling back to build..."
+            zypper -n in git && git clone ` + projectURL + ` && cd ` + repo + ` && go build -o ` + binaryName + ` && ./` + originalCommand + `
+        fi
+    else
+        echo "Download failed, falling back to build..."
+        zypper -n in git && git clone ` + projectURL + ` && cd ` + repo + ` && go build -o ` + binaryName + ` && ./` + originalCommand + `
+    fi
+else
+    echo "No suitable binary found, falling back to build..."
+    zypper -n in git && git clone ` + projectURL + ` && cd ` + repo + ` && go build -o ` + binaryName + ` && ./` + originalCommand + `
+fi
+'`
+
+	return script
+}
+
+// detectPlatform returns a platform string for binary matching
+func (sm *SidecarManager) detectPlatform() string {
+	// For now, assume linux amd64/arm64
+	// In a real implementation, this would detect the actual platform
+	return "linux-amd64"
+}
+
 // deployGenericSidecar deploys a sidecar using a generic container image and command
 func (sm *SidecarManager) deployGenericSidecar(ctx context.Context, adapter models.AdapterResource, image, command string) error {
 	// If we have a Kubernetes client, use it directly for deployment
@@ -539,43 +621,45 @@ func (sm *SidecarManager) deployGenericWithKubeClient(ctx context.Context, adapt
 
 	// Prepare the command for Go projects
 	if adapter.SidecarConfig.CommandType == "go" {
-		// For Go commands, we need to:
-		// 1. Install git
-		// 2. Clone the repository
-		// 3. Build the binary
-		// 4. Run the original command
-		projectURL := adapter.SidecarConfig.ProjectURL
-		if projectURL != "" {
-			// Extract repo name from URL
-			parts := strings.Split(projectURL, "/")
-			repoName := parts[len(parts)-1]
-			if strings.HasSuffix(repoName, ".git") {
-				repoName = repoName[:len(repoName)-4]
-			}
-
-			// Extract binary name from command (first word)
-			cmdParts := strings.Fields(command)
-			if len(cmdParts) == 0 {
-				return fmt.Errorf("invalid Go command: %s", command)
-			}
-			binaryName := cmdParts[0]
-
-			setupScript := fmt.Sprintf(
-				"bash -c 'zypper -n in git && git clone %s && cd %s && echo \"Building...\" && go build -o %s && echo \"Build complete, starting server...\" && ./%s'",
-				projectURL,
-				repoName,
-				binaryName,
-				command,
-			)
-			finalCommand = setupScript
+		// Check if we should use pre-built binaries from releases
+		if adapter.SidecarConfig.ReleaseURL != "" {
+			// Use pre-built binary from GitHub releases
+			finalCommand = sm.prepareGoReleaseCommand(adapter, command)
 		} else {
-			// Fallback: assume current directory has go.mod
-			cmdParts := strings.Fields(command)
-			if len(cmdParts) == 0 {
-				return fmt.Errorf("invalid Go command: %s", command)
+			// Build from source: git clone + go build
+			projectURL := adapter.SidecarConfig.ProjectURL
+			if projectURL != "" {
+				// Extract repo name from URL
+				parts := strings.Split(projectURL, "/")
+				repoName := parts[len(parts)-1]
+				if strings.HasSuffix(repoName, ".git") {
+					repoName = repoName[:len(repoName)-4]
+				}
+
+				// Extract binary name from command (first word)
+				cmdParts := strings.Fields(command)
+				if len(cmdParts) == 0 {
+					return fmt.Errorf("invalid Go command: %s", command)
+				}
+				binaryName := cmdParts[0]
+
+				setupScript := fmt.Sprintf(
+					"bash -c 'zypper -n in git && git clone %s && cd %s && echo \"Building...\" && go build -o %s && echo \"Build complete, starting server...\" && ./%s'",
+					projectURL,
+					repoName,
+					binaryName,
+					command,
+				)
+				finalCommand = setupScript
+			} else {
+				// Fallback: assume current directory has go.mod
+				cmdParts := strings.Fields(command)
+				if len(cmdParts) == 0 {
+					return fmt.Errorf("invalid Go command: %s", command)
+				}
+				binaryName := cmdParts[0]
+				finalCommand = fmt.Sprintf("go build -o %s && ./%s", binaryName, command)
 			}
-			binaryName := cmdParts[0]
-			finalCommand = fmt.Sprintf("go build -o %s && ./%s", binaryName, command)
 		}
 	}
 
