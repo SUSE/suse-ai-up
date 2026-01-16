@@ -6,7 +6,7 @@ variable "REGISTRY" {
 }
 
 variable "REPO_NAME" {
-  default = "alessandro-festa/uniproxy"
+  default = "suse/uniproxy"
 }
 
 # Define the target platforms
@@ -57,6 +57,6 @@ target "release" {
     "org.opencontainers.image.title" = "SUSE AI Universal Proxy"
     "org.opencontainers.image.description" = "MCP server proxy and registry"
     "org.opencontainers.image.vendor" = "SUSE"
-    "org.opencontainers.image.source" = "https://github.com/${REPO_NAME}"
+    "org.opencontainers.image.source" = "https://github.com/SUSE/suse-ai-up"
   }
 }

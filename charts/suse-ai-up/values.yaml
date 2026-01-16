@@ -16,7 +16,7 @@ replicaCount: 1
 # Image configuration
 image:
   registry: ghcr.io
-  repository: alessandro-festa/uniproxy
+  repository: suse/uniproxy
   tag: "latest"
   pullPolicy: IfNotPresent
 

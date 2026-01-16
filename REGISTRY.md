@@ -4,11 +4,13 @@ This document explains how to create and manage entries in the MCP (Model Contex
 
 ## Overview
 
-The MCP registry (`config/mcp_registry.yaml`) contains metadata about available MCP servers that can be deployed as sidecars. Each entry defines how to run an MCP server with support for three deployment types:
+The MCP registry (`config/mcp_registry.yaml`) contains metadata about available MCP servers that can be deployed as sidecars. Each entry defines how to run an MCP server with support for five deployment types:
 
 - **docker**: Traditional Docker container deployments
 - **python**: Python-based MCP servers with automatic uv setup
 - **npx**: Node.js-based MCP servers using npm packages
+- **go**: Go-based MCP servers with automatic binary building
+- **http**: Remote MCP servers (no sidecar deployment needed)
 
 ## Registry Entry Structure
 
@@ -23,9 +25,9 @@ Each registry entry follows this YAML structure:
     tags:
       - <tag1>
       - <tag2>
-    sidecarConfig:
-      commandType: <docker|python|npx>
-      command: <command-string>
+     sidecarConfig:
+       commandType: <docker|python|npx|go|http>
+       command: <command-string>
       port: <port-number>
       source: <source-identifier>
       lastUpdated: <timestamp>
@@ -33,9 +35,10 @@ Each registry entry follows this YAML structure:
     icon: <icon-url>
     title: <display-title>
     description: <description-text>
-  source:
-    commit: <commit-hash>
-    project: <repository-url>  # Required for python type
+   source:
+     commit: <commit-hash>
+     project: <repository-url>  # Required for python and go types
+     release: <release-tag>     # Optional for go type (enables pre-built binary downloads)
   config:
     description: <config-description>
     secrets:
@@ -91,9 +94,13 @@ config:
 **For Docker commands:**
 - `{{myapp.api_key}}` → `-e API_KEY=$API_KEY`
 
-**For Python/NPX commands:**
+**For Python/NPX/Go commands:**
 - Environment variables are automatically available to the container
-- Template syntax may be preserved or resolved based on command type
+- Template syntax is resolved to environment variable references
+
+**For HTTP commands:**
+- Templates are resolved but used for client configuration
+- No sidecar deployment occurs
 
 ### Error Handling
 
@@ -249,6 +256,111 @@ For Node.js-based MCP servers using npm packages.
 - The `command` should start with `npx -y` for non-interactive installation
 - Environment variables are automatically passed to the container
 
+### Go Command Type
+
+For Go-based MCP servers that require repository cloning and binary building.
+
+```yaml
+- name: gitea-mcp
+  image: registry.suse.com/bci/golang:1.25  # Optional, for reference
+  type: server
+  meta:
+    category: devops
+    tags:
+      - gitea
+      - devops
+      - go
+    sidecarConfig:
+      commandType: go
+      command: "gitea-mcp -t http --host {{gitea.host}} -port 8000 --token {{gitea.pat}}"
+      port: 8000
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
+  about:
+    description: MCP server for Gitea repository management
+    icon: https://gitea.com/assets/img/logo.svg
+    title: Gitea MCP
+  source:
+    commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
+    project: https://gitea.com/gitea/gitea-mcp
+    release: https://gitea.com/gitea/gitea-mcp/releases/tag/v0.7.0  # Optional: enables pre-built binary downloads
+  config:
+    description: Configure Gitea server connection
+    secrets:
+      - env: GITEA_HOST
+        example: https://gitea.com
+        name: gitea.host
+        templated: true
+      - env: GITEA_ACCESS_TOKEN
+        example: ghp_1234567890abcdef
+        name: gitea.pat
+        templated: true
+```
+
+**Deployment Process:**
+1. Installs `git` via zypper
+2. Clones the repository from `source.project`
+3. Builds the binary with `go build -o <binary-name>`
+4. Moves the binary to `/usr/bin/` for system-wide access
+5. Executes the specified command
+
+**Pre-built Binary Support:**
+If the `source.release` field is provided, the system will attempt to download pre-built binaries from the GitHub/Gitea releases instead of building from source. This significantly speeds up deployment.
+
+**Notes:**
+- The `source.project` field is required for go deployments
+- Use `{{variable.name}}` syntax to reference templated secrets
+- The system automatically handles the complete build process
+- Repository URL should be publicly accessible or authentication should be configured
+- Add `source.release` field to enable pre-built binary downloads
+
+### HTTP Command Type
+
+For remote MCP servers that are hosted externally and don't require local sidecar deployment.
+
+```yaml
+- name: github-official
+  type: remote
+  meta:
+    category: devops
+    tags:
+      - github
+      - devops
+    sidecarConfig:
+      commandType: http
+      command: https://api.githubcopilot.com/mcp/
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
+  about:
+    description: Official GitHub MCP Server, by GitHub. Provides seamless integration with GitHub APIs, enabling advanced automation and interaction capabilities for developers and tools.
+    icon: https://avatars.githubusercontent.com/u/9919?s=200&v=4
+    title: GitHub Official
+  source:
+    commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
+    project: https://github.com/github/github-mcp-server
+  config:
+    description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
+    secrets:
+      - env: GITHUB_PERSONAL_ACCESS_TOKEN
+        example: "ghp_1234..."
+        name: github.personal_access_token
+        templated: true
+        type: text
+```
+
+**Deployment Process:**
+1. No sidecar deployment is created
+2. Adapter routes MCP requests directly to the remote server URL
+3. Authentication headers are automatically forwarded
+4. Acts as a transparent proxy to the remote MCP service
+
+**Notes:**
+- The `command` field contains the remote MCP server URL
+- No `port` field is needed (remote server handles its own port)
+- Authentication is handled via environment variables in the adapter
+- Ideal for official hosted MCP services
+- Zero infrastructure overhead - no pods or containers needed
+
 ## ConfigMap Management
 
 ### Creating a ConfigMap from Local Registry
@@ -363,7 +475,7 @@ env:
 - **Use `docker`** for:
   - Complex multi-stage builds
   - Pre-built containers
-  - Non-Python/Node.js applications
+  - Non-Python/Node.js/Go applications
 
 - **Use `python`** for:
   - Python-based MCP servers
@@ -374,6 +486,16 @@ env:
   - NPM-published MCP servers
   - Simple Node.js applications
   - Quick prototyping
+
+- **Use `go`** for:
+  - Go-based MCP servers
+  - Projects that build with `go build`
+  - Repositories with standard Go project structure
+
+- **Use `http`** for:
+  - Remote MCP servers hosted elsewhere
+  - Official cloud-hosted MCP services
+  - No local deployment needed
 
 ### Security Considerations
 
@@ -402,6 +524,17 @@ env:
 - **Symptom**: Package installation fails
 - **Solution**: Verify package name and network connectivity
 - **Debug**: Check for `npx -y` prefix in command
+
+#### Go Build Failures
+- **Symptom**: Pod crashes during go build
+- **Solution**: Check repository URL accessibility and Go version compatibility
+- **Debug**: Check pod logs for git clone or go build errors
+- **Note**: If `source.release` is specified, falls back to pre-built binary download
+
+#### HTTP Connection Issues
+- **Symptom**: MCP requests fail with connection errors
+- **Solution**: Verify the remote server URL in the `command` field is accessible
+- **Debug**: Check adapter logs for proxy errors and remote server availability
 
 #### Docker Command Issues
 - **Symptom**: Container fails to start
