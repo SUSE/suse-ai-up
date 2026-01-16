@@ -195,9 +195,33 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 
 	// Generate MCP client configurations for different client types
 	var mcpClientConfig map[string]interface{}
-	if adapter.ConnectionType != models.ConnectionTypeStreamableHttp {
-		mcpClientConfig = map[string]interface{}{"stdio": "format"}
-	} else {
+	if adapter.ConnectionType == models.ConnectionTypeRemoteHttp {
+		// For remote HTTP servers, provide direct connection config
+		mcpClientConfig = map[string]interface{}{
+			"gemini": map[string]interface{}{
+				"mcpServers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"url": adapter.RemoteUrl,
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+					},
+				},
+			},
+			"vscode": map[string]interface{}{
+				"inputs": []interface{}{},
+				"servers": map[string]interface{}{
+					adapter.ID: map[string]interface{}{
+						"type": "http",
+						"url":  adapter.RemoteUrl,
+						"headers": map[string]string{
+							"Authorization": "Bearer adapter-session-token",
+						},
+					},
+				},
+			},
+		}
+	} else if adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
 		mcpClientConfig = map[string]interface{}{
 			"gemini": map[string]interface{}{
 				"mcpServers": map[string]interface{}{
@@ -222,6 +246,9 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 				"inputs": []interface{}{},
 			},
 		}
+	} else {
+		// For other connection types (stdio, etc.), use stdio format
+		mcpClientConfig = map[string]interface{}{"stdio": "format"}
 	}
 
 	response := CreateAdapterResponse{
@@ -599,10 +626,111 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// For RemoteHttp adapters, proxy to the remote MCP server
+	if adapter.ConnectionType == models.ConnectionTypeRemoteHttp {
+		if adapter.RemoteUrl == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Remote URL not configured for adapter"})
+			return
+		}
+		h.proxyToRemoteMCP(w, r, adapter.RemoteUrl)
+		return
+	}
+
 	// For other connection types, return not implemented
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)
 	json.NewEncoder(w).Encode(ErrorResponse{Error: "MCP protocol not supported for this adapter type"})
+}
+
+// proxyToRemoteMCP proxies requests to a remote MCP server
+func (h *AdapterHandler) proxyToRemoteMCP(w http.ResponseWriter, r *http.Request, remoteURL string) {
+	fmt.Printf("DEBUG: Proxying MCP request to remote server: %s\n", remoteURL)
+
+	// Extract adapter ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 1 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid adapter path"})
+		return
+	}
+	adapterID := parts[0]
+
+	// Get user ID from header
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user" // For development
+	}
+
+	// Get adapter information to access environment variables
+	adapter, err := h.adapterService.GetAdapter(r.Context(), userID, adapterID, h.userGroupService)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Adapter not found"})
+		return
+	}
+
+	// Create a new request to the remote MCP server
+	remoteReq, err := http.NewRequestWithContext(r.Context(), r.Method, remoteURL, r.Body)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to create remote request"})
+		return
+	}
+
+	// Copy headers from the original request, but replace authorization
+	for key, values := range r.Header {
+		if strings.ToLower(key) == "authorization" {
+			// For GitHub, use the personal access token from environment variables
+			if token := adapter.EnvironmentVariables["GITHUB_PERSONAL_ACCESS_TOKEN"]; token != "" {
+				remoteReq.Header.Set("Authorization", "Bearer "+token)
+			} else if token := adapter.EnvironmentVariables["GITHUB_ACCESS_TOKEN"]; token != "" {
+				remoteReq.Header.Set("Authorization", "Bearer "+token)
+			}
+			// Skip the original authorization header
+		} else {
+			for _, value := range values {
+				remoteReq.Header.Add(key, value)
+			}
+		}
+	}
+
+	// Ensure we have the proper content type for MCP
+	if remoteReq.Header.Get("Content-Type") == "" {
+		remoteReq.Header.Set("Content-Type", "application/json")
+	}
+
+	// Make the request to the remote MCP server
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(remoteReq)
+	if err != nil {
+		fmt.Printf("DEBUG: Failed to connect to remote MCP server %s: %v\n", remoteURL, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to connect to remote MCP server"})
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("DEBUG: Remote MCP server responded with status: %d\n", resp.StatusCode)
+
+	// Copy the response headers
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
+	// Set the status code
+	w.WriteHeader(resp.StatusCode)
+
+	// Copy the response body
+	io.Copy(w, resp.Body)
 }
 
 // proxyToSidecar proxies requests to the sidecar container

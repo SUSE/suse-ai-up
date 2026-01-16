@@ -112,6 +112,10 @@ func (sm *SidecarManager) DeploySidecar(ctx context.Context, adapter models.Adap
 			fmt.Printf("SIDECAR_MANAGER: Deploying go sidecar for adapter %s\n", adapter.ID)
 			return sm.deployGoSidecar(ctx, adapter)
 		}
+	case "http":
+		// For HTTP commandType, no sidecar deployment needed - routing is handled by adapter
+		fmt.Printf("SIDECAR_MANAGER: HTTP remote MCP server for adapter %s, no sidecar needed\n", adapter.ID)
+		return nil
 	default:
 		fmt.Printf("SIDECAR_MANAGER: No deployment method available for adapter %s\n", adapter.ID)
 		return fmt.Errorf("unsupported sidecar configuration: commandType=%s", adapter.SidecarConfig.CommandType)

@@ -89,8 +89,15 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 			// Process template variables in the command
 			processedConfig := as.processCommandTemplates(sidecarConfig, server)
 			sidecarConfig = processedConfig
-			connectionType = models.ConnectionTypeStreamableHttp
-			logging.AdapterLogger.Success("Created sidecar config with commandType: %s", sidecarConfig.CommandType)
+
+			// Check if this is an HTTP remote server (no sidecar needed)
+			if sidecarConfig.CommandType == "http" {
+				connectionType = models.ConnectionTypeRemoteHttp
+				logging.AdapterLogger.Success("Created HTTP remote config for server %s", server.Name)
+			} else {
+				connectionType = models.ConnectionTypeStreamableHttp
+				logging.AdapterLogger.Success("Created sidecar config with commandType: %s", sidecarConfig.CommandType)
+			}
 		} else {
 			// Fallback: try to create a generic sidecar configuration
 			sidecarConfig = &models.SidecarConfig{
@@ -103,25 +110,67 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 			logging.AdapterLogger.Info("Created fallback sidecar config")
 		}
 	} else {
-		fmt.Printf("ADAPTER_SERVICE_DEBUG: Will NOT create sidecar for server %s\n", server.Name)
+		// For remote servers, check for HTTP sidecar config first
+		extractedConfig := as.getSidecarConfig(server)
+		if extractedConfig != nil && extractedConfig.CommandType == "http" {
+			// Process template variables in the command (URL)
+			processedConfig := as.processCommandTemplates(extractedConfig, server)
+			sidecarConfig = processedConfig
+			connectionType = models.ConnectionTypeRemoteHttp
+			logging.AdapterLogger.Success("Created HTTP remote config for server %s", server.Name)
+		} else {
+			// For other remote servers, use RemoteHttp if they have a URL
+			if server.URL != "" {
+				connectionType = models.ConnectionTypeRemoteHttp
+				logging.AdapterLogger.Success("Created remote HTTP config for server %s", server.Name)
+			} else {
+				fmt.Printf("ADAPTER_SERVICE_DEBUG: Will NOT create adapter for server %s (no URL)\n", server.Name)
+				return nil, fmt.Errorf("server %s has no URL for remote connection", server.Name)
+			}
+		}
 	}
 
 	// Generate a secure token for the adapter
 	token := as.generateSecureToken()
 
+	// Determine remote URL based on connection type
+	remoteUrl := server.URL // Default to server URL
+	if connectionType == models.ConnectionTypeRemoteHttp && sidecarConfig != nil {
+		// For HTTP remote connections, use the command as the remote URL
+		remoteUrl = sidecarConfig.Command
+	}
+
+	// Determine initial status
+	initialStatus := models.AdapterLifecycleStatusNotReady
+	if connectionType == models.ConnectionTypeRemoteHttp {
+		initialStatus = models.AdapterLifecycleStatusReady // HTTP remotes are ready immediately
+	}
+
 	// Create adapter data
 	adapterData := &models.AdapterData{
 		Name:                 name,
 		ConnectionType:       connectionType,
-		Status:               models.AdapterLifecycleStatusNotReady, // Start as not ready
-		EnvironmentVariables: envVars,                               // Use the provided environment variables
-		RemoteUrl:            server.URL,                            // Use the OAuth URL as remote URL
+		Status:               initialStatus,
+		EnvironmentVariables: envVars,   // Use the provided environment variables
+		RemoteUrl:            remoteUrl, // Use appropriate remote URL
 		URL:                  fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
 		SidecarConfig:        sidecarConfig,
 	}
 
 	// Create MCP client configuration based on connection type
-	if connectionType == models.ConnectionTypeStreamableHttp {
+	if connectionType == models.ConnectionTypeRemoteHttp {
+		// For RemoteHttp adapters, set direct URL-based configuration
+		adapterData.MCPClientConfig = models.MCPClientConfig{
+			MCPServers: map[string]models.MCPServerConfig{
+				name: {
+					URL: remoteUrl, // Direct connection to remote MCP server
+					Headers: map[string]string{
+						"Authorization": fmt.Sprintf("Bearer %s", token),
+					},
+				},
+			},
+		}
+	} else if connectionType == models.ConnectionTypeStreamableHttp {
 		// For StreamableHttp adapters (proxy-based), set URL-based configuration
 		// We store the standard MCP client config, but the handlers will provide multiple formats
 		adapterData.MCPClientConfig = models.MCPClientConfig{
