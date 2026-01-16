@@ -28,120 +28,6 @@ func NewSessionManagementService(sessionStore session.SessionStore, store client
 
 // ListSessions handles GET /adapters/{name}/sessions
 // @Summary List all sessions for an adapter
-// @Description Retrieve all active sessions for a specific MCP server adapter
-// @Tags sessions
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Success 200 {object} SessionListResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [get]
-func (sms *SessionManagementService) ListSessions(c *gin.Context) {
-	name := c.Param("name")
-
-	// Verify adapter exists
-	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	sessions, err := sms.sessionStore.ListByAdapter(name)
-	if err != nil {
-		log.Printf("SessionManagementService: Failed to list sessions for adapter %s: %v", name, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve sessions"})
-		return
-	}
-
-	response := SessionListResponse{
-		AdapterName: name,
-		Sessions:    sessions,
-	}
-	c.JSON(http.StatusOK, response)
-}
-
-// GetSession handles GET /adapters/{name}/sessions/{sessionId}
-// @Summary Get session details
-// @Description Retrieve detailed information about a specific session
-// @Tags sessions
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Param sessionId path string true "Session ID"
-// @Success 200 {object} session.SessionDetails
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions/{sessionId} [get]
-func (sms *SessionManagementService) GetSession(c *gin.Context) {
-	name := c.Param("name")
-	sessionID := c.Param("sessionId")
-
-	// Verify adapter exists
-	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	details, err := sms.sessionStore.GetDetails(sessionID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
-		return
-	}
-
-	// Verify session belongs to the adapter
-	if details.AdapterName != name {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found for this adapter"})
-		return
-	}
-
-	c.JSON(http.StatusOK, details)
-}
-
-// DeleteSession handles DELETE /adapters/{name}/sessions/{sessionId}
-// @Summary Delete a session
-// @Description Invalidate and remove a specific session
-// @Tags sessions
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Param sessionId path string true "Session ID"
-// @Success 200 {object} SessionDeleteResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions/{sessionId} [delete]
-func (sms *SessionManagementService) DeleteSession(c *gin.Context) {
-	name := c.Param("name")
-	sessionID := c.Param("sessionId")
-
-	// Verify adapter exists
-	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	// Verify session exists and belongs to adapter
-	details, err := sms.sessionStore.GetDetails(sessionID)
-	if err != nil || details.AdapterName != name {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
-		return
-	}
-
-	err = sms.sessionStore.Delete(sessionID)
-	if err != nil {
-		log.Printf("SessionManagementService: Failed to delete session %s: %v", sessionID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete session"})
-		return
-	}
-
-	response := SessionDeleteResponse{
-		Message:   "Session deleted successfully",
-		SessionID: sessionID,
-	}
-	c.JSON(http.StatusOK, response)
-}
 
 // ReinitializeSession handles POST /adapters/{name}/sessions
 // @Summary Reinitialize a session
@@ -155,7 +41,7 @@ func (sms *SessionManagementService) DeleteSession(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [post]
+// @Router /api/v1/adapters/{name}/sessions [post]
 func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 	name := c.Param("name")
 
@@ -167,8 +53,8 @@ func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 
 	// Verify adapter exists
 	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	adapter, err := sms.store.Get(ctx, name)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}
@@ -193,51 +79,8 @@ func (sms *SessionManagementService) ReinitializeSession(c *gin.Context) {
 }
 
 // DeleteAllSessions handles DELETE /adapters/{name}/sessions
-// @Summary Delete all sessions for an adapter
-// @Description Remove all active sessions for a specific adapter
-// @Tags sessions
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Success 200 {object} BulkSessionDeleteResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/sessions [delete]
-func (sms *SessionManagementService) DeleteAllSessions(c *gin.Context) {
-	name := c.Param("name")
-
-	// Verify adapter exists
-	ctx := context.Background()
-	adapter, err := sms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	err = sms.sessionStore.DeleteByAdapter(name)
-	if err != nil {
-		log.Printf("SessionManagementService: Failed to delete sessions for adapter %s: %v", name, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete sessions"})
-		return
-	}
-
-	response := BulkSessionDeleteResponse{
-		Message:     "All sessions deleted successfully",
-		AdapterName: name,
-	}
-	c.JSON(http.StatusOK, response)
-}
 
 // Response types
-type SessionListResponse struct {
-	AdapterName string                   `json:"adapterName"`
-	Sessions    []session.SessionDetails `json:"sessions"`
-}
-
-type SessionDeleteResponse struct {
-	Message   string `json:"message"`
-	SessionID string `json:"sessionId"`
-}
-
 type SessionReinitializeRequest struct {
 	ForceReinitialize bool                   `json:"forceReinitialize,omitempty"`
 	ClientInfo        map[string]interface{} `json:"clientInfo,omitempty"`
@@ -245,11 +88,6 @@ type SessionReinitializeRequest struct {
 
 type SessionReinitializeResponse struct {
 	SessionID   string `json:"sessionId"`
-	Message     string `json:"message"`
-	AdapterName string `json:"adapterName"`
-}
-
-type BulkSessionDeleteResponse struct {
 	Message     string `json:"message"`
 	AdapterName string `json:"adapterName"`
 }

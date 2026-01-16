@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-docs
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+data:
+  swagger.json: |
+{{ .Files.Get "docs/swagger.json" | indent 4 }}
+  swagger.yaml: |
+{{ .Files.Get "docs/swagger.yaml" | indent 4 }}
+---
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-registry
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+data:
+  mcp_registry.yaml: |
+{{ .Values.registry.servers | indent 4 }}
+{{- end }}

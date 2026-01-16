@@ -1,0 +1,470 @@
+# SUSE AI Universal Proxy - Rancher Questions
+# Comprehensive configuration questions for Helm chart installation in Rancher
+
+categories:
+- name: "SUSE AI Universal Proxy"
+  class: "default"
+- name: "MCP Registry"
+  class: "default"
+- name: "Users"
+  class: "default"
+- name: "Groups"
+  class: "default"
+
+questions:
+# Installation Type Selection
+- variable: installType
+  label: "Installation Type"
+  description: "Choose installation type - Quick Start uses recommended defaults, Advanced allows detailed configuration"
+  type: enum
+  default: "quickstart"
+  group: "Installation"
+  options:
+  - label: "Quick Start (recommended)"
+    value: "quickstart"
+  - label: "Advanced Configuration"
+    value: "custom"
+  required: true
+
+# Basic Configuration
+- variable: image.tag
+  label: "SUSE AI Universal Proxy Version"
+  description: "Container image version to deploy"
+  type: string
+  default: "latest"
+  group: "Basic Configuration"
+
+- variable: ingress.enabled
+  label: "Enable External Access"
+  description: "Enable external access via ingress (required for production use)"
+  type: boolean
+  default: false
+  group: "Basic Configuration"
+  show_subquestion_if: true
+  subquestions:
+  - variable: ingress.hosts[0].host
+    label: "Domain Name"
+    description: "Domain name for accessing the proxy (e.g., proxy.company.com)"
+    type: string
+    default: "suse-ai-up.local"
+    required: true
+
+- variable: tls.enabled
+  label: "Enable TLS Security"
+  description: "Enable TLS encryption for secure communication (recommended for production)"
+  type: boolean
+  default: true
+  group: "Basic Configuration"
+
+- variable: image.pullPolicy
+  label: "Image Pull Policy"
+  description: "When to pull the container image - Always ensures latest version but may be slower"
+  type: enum
+  default: "IfNotPresent"
+  group: "Basic Configuration"
+  options:
+  - label: "If Not Present (recommended - faster startup)"
+    value: "IfNotPresent"
+  - label: "Always (ensures latest version - slower startup)"
+    value: "Always"
+  - label: "Never (use local images only)"
+    value: "Never"
+
+- variable: service.type
+  label: "Service Type"
+  description: "How to expose the services externally"
+  type: enum
+  default: "ClusterIP"
+  group: "Basic Configuration"
+  options:
+  - label: "ClusterIP (internal access only)"
+    value: "ClusterIP"
+  - label: "LoadBalancer (cloud provider load balancer)"
+    value: "LoadBalancer"
+  - label: "NodePort (expose on node IPs)"
+    value: "NodePort"
+
+# RBAC Configuration
+- variable: rbac.create
+  label: "Enable RBAC for Sidecar Deployments"
+  description: "Create RBAC resources (ServiceAccount, Role, RoleBinding) to allow the proxy to deploy MCP server sidecars. Note: The suse-ai-up-mcp namespace must exist before installation."
+  type: boolean
+  default: true
+  group: "RBAC Configuration"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: serviceAccount.name
+    label: "Service Account Name"
+    description: "Name of the service account to create for the proxy (used for sidecar deployments)"
+    type: string
+    default: "suse-ai-up-proxy-sa"
+    required: true
+
+# User Authentication Configuration
+- variable: auth.mode
+  label: "Authentication Mode"
+  description: "Choose how users will authenticate with the proxy"
+  type: enum
+  default: "local"
+  group: "Users"
+  options:
+  - label: "Local Authentication (username/password)"
+    value: "local"
+  - label: "GitHub OAuth"
+    value: "github"
+  - label: "Rancher OIDC"
+    value: "rancher"
+  - label: "Development Mode (no auth)"
+    value: "dev"
+  required: true
+
+- variable: auth.devMode
+  label: "Enable Dev Mode"
+  description: "Bypass authentication for development (allows X-User-ID headers)"
+  type: boolean
+  default: false
+  group: "Users"
+  show_if: "auth.mode=dev"
+
+# Local Authentication Configuration
+- variable: auth.local.defaultAdminPassword
+  label: "Admin Password"
+  description: "Initial password for the admin user (must be changed on first login)"
+  type: password
+  default: "admin"
+  group: "Users"
+  show_if: "auth.mode=local"
+  required: true
+
+- variable: auth.local.forcePasswordChange
+  label: "Force Password Change"
+  description: "Require admin to change password on first login"
+  type: boolean
+  default: true
+  group: "Users"
+  show_if: "auth.mode=local"
+
+- variable: auth.local.passwordMinLength
+  label: "Minimum Password Length"
+  description: "Minimum length for user passwords"
+  type: int
+  default: 8
+  min: 6
+  max: 32
+  group: "Users"
+  show_if: "auth.mode=local"
+
+# GitHub OAuth Configuration
+- variable: auth.github.clientId
+  label: "GitHub Client ID"
+  description: "GitHub OAuth App Client ID"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=github"
+  required: true
+
+- variable: auth.github.clientSecret
+  label: "GitHub Client Secret"
+  description: "GitHub OAuth App Client Secret"
+  type: password
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=github"
+  required: true
+
+- variable: auth.github.redirectUri
+  label: "GitHub Redirect URI"
+  description: "OAuth callback URL (auto-generated if empty)"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=github"
+
+- variable: auth.github.allowedOrgs
+  label: "Allowed Organizations"
+  description: "Comma-separated list of allowed GitHub organizations (leave empty to allow all)"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=github"
+
+- variable: auth.github.adminTeams
+  label: "Admin Teams"
+  description: "Comma-separated list of GitHub teams that get admin permissions"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=github"
+
+# Rancher OIDC Configuration
+- variable: auth.rancher.issuerUrl
+  label: "Rancher Issuer URL"
+  description: "Rancher OIDC issuer URL (e.g., https://rancher.example.com/oidc)"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.clientId
+  label: "Rancher Client ID"
+  description: "Rancher OIDC Client ID"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.clientSecret
+  label: "Rancher Client Secret"
+  description: "Rancher OIDC Client Secret"
+  type: password
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=rancher"
+  required: true
+
+- variable: auth.rancher.redirectUri
+  label: "Rancher Redirect URI"
+  description: "OIDC callback URL (auto-generated if empty)"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=rancher"
+
+- variable: auth.rancher.adminGroups
+  label: "Admin Groups"
+  description: "Comma-separated list of Rancher groups that get admin permissions"
+  type: string
+  default: ""
+  group: "Users"
+  show_if: "auth.mode=rancher"
+
+- variable: auth.rancher.fallbackLocal
+  label: "Allow Local Fallback"
+  description: "Allow local authentication as fallback when Rancher is unavailable"
+  type: boolean
+  default: true
+  group: "Users"
+  show_if: "auth.mode=rancher"
+
+# Initial Users Configuration
+- variable: initialUsers.enabled
+  label: "Create Initial Users"
+  description: "Create initial users during installation"
+  type: boolean
+  default: true
+  group: "Users"
+  show_if: "auth.mode!=dev"
+
+- variable: initialUsers.users[0].id
+  label: "Admin User ID"
+  description: "User ID for the initial administrator"
+  type: string
+  default: "admin"
+  group: "Users"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].name
+  label: "Admin User Name"
+  description: "Display name for the administrator"
+  type: string
+  default: "System Administrator"
+  group: "Users"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].email
+  label: "Admin Email"
+  description: "Email address for the administrator"
+  type: string
+  default: "admin@suse.ai"
+  group: "Users"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+  required: true
+
+- variable: initialUsers.users[0].password
+  label: "Admin Password Override"
+  description: "Override the default admin password (leave empty to use auth.local.defaultAdminPassword)"
+  type: password
+  default: ""
+  group: "Users"
+  show_if: "initialUsers.enabled && auth.mode=local"
+
+- variable: initialUsers.users[0].groups
+  label: "Admin Groups"
+  description: "Groups to assign to the admin user (comma-separated)"
+  type: string
+  default: "mcp-admins"
+  group: "Users"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+
+- variable: initialGroups.enabled
+  label: "Create Initial Groups"
+  description: "Create default user groups during installation"
+  type: boolean
+  default: true
+  group: "Groups"
+  show_if: "initialUsers.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[0].id
+  label: "Admin Group ID"
+  description: "ID for the administrators group"
+  type: string
+  default: "mcp-admins"
+  group: "Groups"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[0].name
+  label: "Admin Group Name"
+  description: "Display name for the administrators group"
+  type: string
+  default: "MCP Administrators"
+  group: "Groups"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+
+
+- variable: initialGroups.groups[1].id
+  label: "User Group ID"
+  description: "ID for the regular users group"
+  type: string
+  default: "mcp-users"
+  group: "Groups"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+- variable: initialGroups.groups[1].name
+  label: "User Group Name"
+  description: "Display name for the regular users group"
+  type: string
+  default: "MCP Users"
+  group: "Groups"
+  show_if: "initialGroups.enabled && auth.mode!=dev"
+
+
+
+# Service Resource Configuration
+- variable: serviceResources
+  label: "Resource Profile"
+  description: "Choose resource allocation profile for all services"
+  type: enum
+  default: "standard"
+  group: "Service Configuration"
+  show_if: "installType=custom"
+  options:
+  - label: "Light (512MB RAM, 0.5 CPU per service)"
+    value: "light"
+  - label: "Standard (1GB RAM, 1 CPU per service)"
+    value: "standard"
+  - label: "Heavy (2GB RAM, 2 CPU per service)"
+    value: "heavy"
+  - label: "Custom Resources"
+    value: "custom"
+  show_subquestion_if: "custom"
+  subquestions:
+   - variable: services.proxy.resources.requests.memory
+     label: "Memory"
+     description: "Memory allocation for the unified proxy service"
+     type: string
+     default: "1Gi"
+   - variable: services.proxy.resources.requests.cpu
+     label: "CPU"
+     description: "CPU allocation for the unified proxy service"
+     type: string
+     default: "500m"
+
+# Monitoring Configuration
+- variable: monitoring.enabled
+  label: "Enable Monitoring"
+  description: "Enable metrics collection and integration with existing monitoring stack (Prometheus/Grafana must be installed separately)"
+  type: boolean
+  default: false
+  group: "Monitoring"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: monitoring.prometheus.enabled
+    label: "Connect to Prometheus"
+    description: "Enable Prometheus metrics endpoint and ServiceMonitor (requires existing Prometheus Operator)"
+    type: boolean
+    default: true
+  - variable: monitoring.grafana.enabled
+    label: "Create Grafana Dashboard"
+    description: "Create dashboard configuration for existing Grafana (requires existing Grafana)"
+    type: boolean
+    default: false
+
+# Advanced Options
+- variable: autoscaling.enabled
+  label: "Enable Autoscaling"
+  description: "Automatically scale services based on CPU/memory usage"
+  type: boolean
+  default: false
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: autoscaling.minReplicas
+    label: "Minimum Replicas"
+    description: "Minimum number of replicas per service"
+    type: int
+    default: 1
+    min: 1
+    max: 10
+  - variable: autoscaling.maxReplicas
+    label: "Maximum Replicas"
+    description: "Maximum number of replicas per service"
+    type: int
+    default: 5
+    min: 1
+    max: 50
+
+- variable: persistence.enabled
+  label: "Enable Persistence"
+  description: "Enable persistent storage for service data"
+  type: boolean
+  default: false
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  show_subquestion_if: true
+  subquestions:
+  - variable: persistence.size
+    label: "Storage Size"
+    description: "Storage size for persistent volumes"
+    type: string
+    default: "10Gi"
+
+- variable: registry.url
+  label: "External Registry URL"
+  description: "URL to fetch MCP server registry from (leave empty to use ConfigMap)"
+  type: string
+  default: ""
+  group: "MCP Registry"
+
+- variable: registry.timeout
+  label: "Registry Fetch Timeout"
+  description: "Timeout for fetching registry from external URL"
+  type: string
+  default: "30s"
+  group: "MCP Registry"
+  show_if: "registry.url"
+
+- variable: logging.level
+  label: "Log Level"
+  description: "Set the logging level for all services"
+  type: enum
+  default: "info"
+  group: "Advanced Options"
+  show_if: "installType=custom"
+  options:
+   - label: "Error (minimal logging)"
+     value: "error"
+   - label: "Warning"
+     value: "warn"
+   - label: "Info (recommended)"
+     value: "info"
+   - label: "Debug (verbose)"
+     value: "debug"

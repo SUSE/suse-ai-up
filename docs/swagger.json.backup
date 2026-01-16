@@ -1,0 +1,3241 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A comprehensive, modular MCP (Model Context Protocol) proxy system",
+        "title": "SUSE AI Uniproxy API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "SUSE",
+            "url": "https://github.com/suse/suse-ai-up",
+            "email": "info@suse.ai"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8911",
+    "basePath": "/",
+    "paths": {
+        "/api/v1/adapters": {
+            "get": {
+                "description": "Returns a list of all MCP server adapters that the user can access.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "List all MCP server adapters",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AdapterResource"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new MCP adapter and deploys it to Kubernetes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Create a new MCP server adapter",
+                "parameters": [
+                    {
+                        "description": "Adapter configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterResource"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}": {
+            "get": {
+                "description": "Retrieve details of a specific MCP server adapter including discovered capabilities.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Get an adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterResource"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the configuration and deployment of an existing MCP server adapter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Update an adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated adapter configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterResource"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterResource"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove an MCP server adapter and its deployment.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Delete an adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/client-token": {
+            "get": {
+                "description": "Retrieves a client token for authenticating with the MCP server adapter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Get client token for adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.ClientTokenResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/logs": {
+            "get": {
+                "responses": {
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/mcp": {
+            "post": {
+                "description": "Proxy MCP protocol requests (tools, resources, prompts) to the adapter",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "mcp"
+                ],
+                "summary": "Proxy MCP protocol requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/sessions": {
+            "post": {
+                "description": "Create a new session by reinitializing the MCP connection",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Reinitialize a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reinitialization parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.SessionReinitializeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.SessionReinitializeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes all sessions for a specific adapter",
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Delete all sessions for adapter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/adapters/{name}/sessions/{sessionId}": {
+            "delete": {
+                "description": "Deletes a specific session for an adapter",
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Delete specific session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID to delete",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/adapters/{name}/status": {
+            "get": {
+                "description": "Check the current deployment status of an MCP server adapter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Get adapter deployment status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterStatus"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/sync": {
+            "post": {
+                "description": "Synchronize and refresh the capabilities of an adapter",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Sync adapter capabilities",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Adapter ID",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync result",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Adapter not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/test-auth": {
+            "post": {
+                "description": "Tests the authentication configuration by attempting to connect to the MCP server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Test adapter authentication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/token": {
+            "get": {
+                "description": "Retrieves the current token for an adapter or generates a new one if none exists",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get adapter token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Generate new token if none exists",
+                        "name": "generate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 24,
+                        "description": "Token expiration time in hours",
+                        "name": "expiresIn",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/token/refresh": {
+            "post": {
+                "description": "Generates a new token for an adapter, invalidating the old one",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Refresh adapter token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 24,
+                        "description": "Token expiration time in hours",
+                        "name": "expiresIn",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/token/validate": {
+            "post": {
+                "description": "Validates a token and returns its claims and validity",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Validate token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to validate",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/validate-auth": {
+            "post": {
+                "description": "Validates the authentication configuration for an adapter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters",
+                    "authentication"
+                ],
+                "summary": "Validate adapter authentication configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Authentication configuration to validate",
+                        "name": "authConfig",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/register": {
+            "post": {
+                "description": "Register a discovered MCP server as an adapter",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Register discovered server",
+                "parameters": [
+                    {
+                        "description": "Registration request with discoveredServerId",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdapterResource"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan": {
+            "get": {
+                "description": "Retrieve all scan jobs (active and completed)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scan"
+                ],
+                "summary": "List all scan jobs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ScanJob"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Initiates a network scan to discover MCP servers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Start network scan for MCP servers",
+                "parameters": [
+                    {
+                        "description": "Scan configuration",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ScanConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan/{jobId}": {
+            "get": {
+                "description": "Retrieve the status and results of a network scan",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get scan job status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scanner.ScanJob"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Cancels a running scan job",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Cancel scan job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan Job ID",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/scan/{scanId}": {
+            "get": {
+                "description": "Retrieve the status and results of a network scan",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get scan status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan ID",
+                        "name": "scanId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ScanJob"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/service.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/servers": {
+            "get": {
+                "description": "Retrieve all discovered MCP servers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "List discovered servers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DiscoveredServer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discovery/servers/{id}": {
+            "get": {
+                "description": "Returns a specific discovered MCP server by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "Get discovered server",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.DiscoveredServer"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/register": {
+            "post": {
+                "description": "Register a new plugin service with the proxy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Register a plugin service",
+                "parameters": [
+                    {
+                        "description": "Service registration request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterServiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterServiceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/register/{serviceId}": {
+            "delete": {
+                "description": "Remove a plugin service registration",
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Unregister a plugin service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services": {
+            "get": {
+                "description": "Get a list of all registered plugin services",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List all registered plugin services",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/type/{serviceType}": {
+            "get": {
+                "description": "Get all services of a specific type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List services by type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service type (smartagents or registry)",
+                        "name": "serviceType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/{serviceId}": {
+            "get": {
+                "description": "Get details of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/services/{serviceId}/health": {
+            "get": {
+                "description": "Get the health status of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service health",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceHealth"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/browse": {
+            "get": {
+                "description": "Search and filter MCP servers from local YAML configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Browse registry servers with search and filters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by transport type (stdio, sse, websocket)",
+                        "name": "transport",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by registry type (oci, npm)",
+                        "name": "registryType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by validation status",
+                        "name": "validationStatus",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by source (yaml)",
+                        "name": "source",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MCPServer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload": {
+            "post": {
+                "description": "Upload a single MCP server registry entry",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload a single registry entry",
+                "parameters": [
+                    {
+                        "description": "MCP server data",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload/bulk": {
+            "post": {
+                "description": "Upload multiple MCP server registry entries in bulk",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload multiple registry entries",
+                "parameters": [
+                    {
+                        "description": "Array of MCP server data",
+                        "name": "servers",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MCPServer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/upload/local-mcp": {
+            "post": {
+                "description": "Upload Python scripts and configuration for a local STDIO MCP server",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Upload a local MCP server implementation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP server name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP server description",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "MCP client configuration JSON",
+                        "name": "config",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "file"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Python script files and requirements.txt",
+                        "name": "files",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/registry/{id}": {
+            "get": {
+                "description": "Retrieve a specific MCP server configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Get an MCP server by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing MCP server configuration or validation status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Update an MCP server",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated MCP server data",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MCPServer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove an MCP server entry",
+                "tags": [
+                    "registry"
+                ],
+                "summary": "Delete an MCP server",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "MCP Server ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/register": {
+            "post": {
+                "description": "Register a plugin service with the proxy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Register a plugin service",
+                "parameters": [
+                    {
+                        "description": "Service registration data",
+                        "name": "registration",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/register/{serviceId}": {
+            "delete": {
+                "description": "Remove a plugin service registration",
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Unregister a plugin service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/services": {
+            "get": {
+                "description": "Get a list of all registered plugin services",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List registered plugin services",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/services/type/{serviceType}": {
+            "get": {
+                "description": "Get all services of a specific type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "List services by type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service type (smartagents, registry)",
+                        "name": "serviceType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/services/{serviceId}": {
+            "get": {
+                "description": "Get details of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/services/{serviceId}/health": {
+            "get": {
+                "description": "Get health status of a specific plugin service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Get service health",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugins.ServiceHealth"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "auth.TokenInfo": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "audience": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "issuedAt": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tokenId": {
+                    "type": "string"
+                },
+                "tokenType": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.PluginErrorResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "discoveredServerId"
+            ],
+            "properties": {
+                "discoveredServerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "adapter": {
+                    "$ref": "#/definitions/models.AdapterResource"
+                },
+                "mcp_endpoint": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "security_note": {
+                    "type": "string"
+                },
+                "token_info": {
+                    "$ref": "#/definitions/auth.TokenInfo"
+                }
+            }
+        },
+        "handlers.RegisterServiceRequest": {
+            "type": "object",
+            "required": [
+                "service_id",
+                "service_type",
+                "service_url"
+            ],
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/plugins.ServiceCapability"
+                    }
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "service_url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RegisterServiceResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.APIKeyConfig": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "location": {
+                    "description": "\"header\", \"query\", \"cookie\"",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Header name, query param, or cookie name",
+                    "type": "string"
+                }
+            }
+        },
+        "models.AdapterAuthConfig": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "$ref": "#/definitions/models.APIKeyConfig"
+                },
+                "basic": {
+                    "$ref": "#/definitions/models.BasicAuthConfig"
+                },
+                "bearerToken": {
+                    "$ref": "#/definitions/models.BearerTokenConfig"
+                },
+                "oauth": {
+                    "$ref": "#/definitions/models.OAuthConfig"
+                },
+                "required": {
+                    "description": "true = require auth, false = optional",
+                    "type": "boolean"
+                },
+                "type": {
+                    "description": "\"bearer\", \"oauth\", \"basic\", \"apikey\", \"none\"",
+                    "type": "string"
+                }
+            }
+        },
+        "models.AdapterData": {
+            "type": "object",
+            "properties": {
+                "apiBaseUrl": {
+                    "description": "For VirtualMCP API configuration",
+                    "type": "string",
+                    "example": "http://localhost:8000"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "my_server.py"
+                    ]
+                },
+                "authentication": {
+                    "description": "Authentication configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
+                    ]
+                },
+                "command": {
+                    "description": "For local stdio",
+                    "type": "string",
+                    "example": "python"
+                },
+                "connectionType": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ConnectionType"
+                        }
+                    ],
+                    "example": "StreamableHttp"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "My MCP adapter"
+                },
+                "environmentVariables": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "imageName": {
+                    "type": "string",
+                    "example": "nginx"
+                },
+                "imageVersion": {
+                    "type": "string",
+                    "example": "latest"
+                },
+                "mcpClientConfig": {
+                    "description": "For MCP client configuration (alternative to Command/Args)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPClientConfig"
+                        }
+                    ]
+                },
+                "mcpFunctionality": {
+                    "description": "MCP Functionality (discovered from server)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPFunctionality"
+                        }
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-adapter"
+                },
+                "protocol": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ServerProtocol"
+                        }
+                    ],
+                    "example": "MCP"
+                },
+                "remoteUrl": {
+                    "description": "For remote HTTP",
+                    "type": "string",
+                    "example": "https://remote-mcp.example.com"
+                },
+                "replicaCount": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "sidecarConfig": {
+                    "description": "For sidecar stdio deployment",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SidecarConfig"
+                        }
+                    ]
+                },
+                "tools": {
+                    "description": "For VirtualMCP tools configuration",
+                    "type": "array",
+                    "items": {}
+                },
+                "useWorkloadIdentity": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "models.AdapterResource": {
+            "type": "object",
+            "properties": {
+                "apiBaseUrl": {
+                    "description": "For VirtualMCP API configuration",
+                    "type": "string",
+                    "example": "http://localhost:8000"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "my_server.py"
+                    ]
+                },
+                "authentication": {
+                    "description": "Authentication configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                        }
+                    ]
+                },
+                "command": {
+                    "description": "For local stdio",
+                    "type": "string",
+                    "example": "python"
+                },
+                "connectionType": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ConnectionType"
+                        }
+                    ],
+                    "example": "StreamableHttp"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "My MCP adapter"
+                },
+                "environmentVariables": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "my-adapter"
+                },
+                "imageName": {
+                    "type": "string",
+                    "example": "nginx"
+                },
+                "imageVersion": {
+                    "type": "string",
+                    "example": "latest"
+                },
+                "lastUpdatedAt": {
+                    "type": "string"
+                },
+                "mcpClientConfig": {
+                    "description": "For MCP client configuration (alternative to Command/Args)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPClientConfig"
+                        }
+                    ]
+                },
+                "mcpFunctionality": {
+                    "description": "MCP Functionality (discovered from server)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MCPFunctionality"
+                        }
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-adapter"
+                },
+                "protocol": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ServerProtocol"
+                        }
+                    ],
+                    "example": "MCP"
+                },
+                "remoteUrl": {
+                    "description": "For remote HTTP",
+                    "type": "string",
+                    "example": "https://remote-mcp.example.com"
+                },
+                "replicaCount": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "sidecarConfig": {
+                    "description": "For sidecar stdio deployment",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SidecarConfig"
+                        }
+                    ]
+                },
+                "tools": {
+                    "description": "For VirtualMCP tools configuration",
+                    "type": "array",
+                    "items": {}
+                },
+                "useWorkloadIdentity": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "models.AdapterStatus": {
+            "type": "object",
+            "properties": {
+                "availableReplicas": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "image": {
+                    "type": "string",
+                    "example": "nginx:latest"
+                },
+                "readyReplicas": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "replicaStatus": {
+                    "type": "string",
+                    "example": "Healthy"
+                },
+                "updatedReplicas": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "models.AuthAnalysis": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "description": "\"high\", \"medium\", \"low\"",
+                    "type": "string"
+                },
+                "detected_mechanisms": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "description": "\"none\", \"basic\", \"bearer\", \"apikey\", \"oauth\", \"missing\"",
+                    "type": "string"
+                },
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.AutoSpawnConfig": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "description": "for stdio",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "command": {
+                    "description": "for stdio",
+                    "type": "string"
+                },
+                "connectionType": {
+                    "description": "\"LocalStdio\" or \"StreamableHttp\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ConnectionType"
+                        }
+                    ]
+                },
+                "defaultEnv": {
+                    "description": "default env vars",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "deploymentMethod": {
+                    "description": "\"docker\", \"local\"",
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "imageName": {
+                    "description": "for containers",
+                    "type": "string"
+                },
+                "imageVersion": {
+                    "description": "for containers",
+                    "type": "string"
+                }
+            }
+        },
+        "models.BasicAuthConfig": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BearerTokenConfig": {
+            "type": "object",
+            "properties": {
+                "dynamic": {
+                    "description": "Use token manager",
+                    "type": "boolean"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "token": {
+                    "description": "Static token",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ConnectionType": {
+            "type": "string",
+            "enum": [
+                "SSE",
+                "StreamableHttp",
+                "RemoteHttp",
+                "LocalStdio",
+                "SidecarStdio"
+            ],
+            "x-enum-varnames": [
+                "ConnectionTypeSSE",
+                "ConnectionTypeStreamableHttp",
+                "ConnectionTypeRemoteHttp",
+                "ConnectionTypeLocalStdio",
+                "ConnectionTypeSidecarStdio"
+            ]
+        },
+        "models.DiscoveredServer": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "http://192.168.1.100:8000"
+                },
+                "auth_info": {
+                    "$ref": "#/definitions/models.AuthAnalysis"
+                },
+                "capabilities": {
+                    "description": "Enhanced fields for deep interrogation",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.McpCapabilities"
+                        }
+                    ]
+                },
+                "connection": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ConnectionType"
+                        }
+                    ],
+                    "example": "StreamableHttp"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "server-123"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "last_deep_scan": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "MCP Example Server"
+                },
+                "prompts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.McpPrompt"
+                    }
+                },
+                "protocol": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ServerProtocol"
+                        }
+                    ],
+                    "example": "MCP"
+                },
+                "protocol_version": {
+                    "type": "string"
+                },
+                "resource_templates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.McpResourceTemplate"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.McpResource"
+                    }
+                },
+                "server_version": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.McpTool"
+                    }
+                },
+                "vulnerability_score": {
+                    "type": "string",
+                    "example": "high"
+                }
+            }
+        },
+        "models.EnvironmentVariable": {
+            "type": "object",
+            "properties": {
+                "default": {
+                    "description": "default value if any",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "format": {
+                    "description": "string, number, boolean",
+                    "type": "string"
+                },
+                "isSecret": {
+                    "description": "true for sensitive values",
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GitHubConfig": {
+            "type": "object",
+            "properties": {
+                "api_endpoint": {
+                    "description": "GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)",
+                    "type": "string"
+                },
+                "owner": {
+                    "description": "Repository owner (for repo-specific servers)",
+                    "type": "string"
+                },
+                "repo": {
+                    "description": "Repository name (for repo-specific servers)",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "GitHub Personal Access Token",
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPArgument": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.MCPClientConfig": {
+            "type": "object",
+            "properties": {
+                "mcpServers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.MCPServerConfig"
+                    }
+                }
+            }
+        },
+        "models.MCPFunctionality": {
+            "type": "object",
+            "properties": {
+                "lastRefreshed": {
+                    "type": "string"
+                },
+                "prompts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPPrompt"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPResource"
+                    }
+                },
+                "serverInfo": {
+                    "$ref": "#/definitions/models.MCPServerInfo"
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPTool"
+                    }
+                }
+            }
+        },
+        "models.MCPPrompt": {
+            "type": "object",
+            "properties": {
+                "arguments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPArgument"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPResource": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "mimeType": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPServer": {
+            "type": "object",
+            "properties": {
+                "_meta": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "autoSpawn": {
+                    "description": "Auto-spawning configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AutoSpawnConfig"
+                        }
+                    ]
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discovered_at": {
+                    "type": "string"
+                },
+                "github_config": {
+                    "$ref": "#/definitions/models.GitHubConfig"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "description": "Docker image for containerized servers",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Package"
+                    }
+                },
+                "repository": {
+                    "$ref": "#/definitions/models.Repository"
+                },
+                "routeAssignments": {
+                    "description": "User/group access control",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RouteAssignment"
+                    }
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MCPTool"
+                    }
+                },
+                "url": {
+                    "description": "Legacy URL field for remote servers",
+                    "type": "string"
+                },
+                "validation_status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPServerConfig": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "command": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.MCPServerInfo": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "name": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MCPTool": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "description": "Tool-specific configuration",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "description": {
+                    "type": "string"
+                },
+                "input_schema": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "name": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "description": "VirtualMCP specific fields",
+                    "type": "string"
+                }
+            }
+        },
+        "models.McpArgument": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.McpCapabilities": {
+            "type": "object",
+            "properties": {
+                "completions": {
+                    "type": "boolean"
+                },
+                "experimental": {
+                    "type": "boolean"
+                },
+                "logging": {
+                    "type": "boolean"
+                },
+                "prompts": {
+                    "type": "boolean"
+                },
+                "resources": {
+                    "type": "boolean"
+                },
+                "tools": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.McpPrompt": {
+            "type": "object",
+            "properties": {
+                "arguments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.McpArgument"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.McpResource": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.McpResourceTemplate": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uri_template": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.McpTool": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "input_schema": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.OAuthConfig": {
+            "type": "object",
+            "properties": {
+                "authUrl": {
+                    "type": "string"
+                },
+                "clientId": {
+                    "type": "string"
+                },
+                "clientSecret": {
+                    "type": "string"
+                },
+                "redirectUri": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tokenUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Package": {
+            "type": "object",
+            "properties": {
+                "environmentVariables": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnvironmentVariable"
+                    }
+                },
+                "identifier": {
+                    "description": "docker.io/user/image:tag",
+                    "type": "string"
+                },
+                "registryType": {
+                    "description": "oci, npm, etc.",
+                    "type": "string"
+                },
+                "transport": {
+                    "$ref": "#/definitions/models.Transport"
+                }
+            }
+        },
+        "models.Repository": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "description": "github, gitlab, etc.",
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RouteAssignment": {
+            "type": "object",
+            "properties": {
+                "autoSpawn": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "groupIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"mcp-users\"]"
+                    ]
+                },
+                "id": {
+                    "type": "string",
+                    "example": "assignment-123"
+                },
+                "permissions": {
+                    "description": "\"read\", \"write\", \"admin\"",
+                    "type": "string",
+                    "example": "read"
+                },
+                "serverId": {
+                    "type": "string",
+                    "example": "mcp-bugzilla"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"user123\"]"
+                    ]
+                }
+            }
+        },
+        "models.ScanConfig": {
+            "type": "object",
+            "properties": {
+                "excludeAddresses": {
+                    "description": "Additional addresses to skip",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludeProxy": {
+                    "description": "Default: true",
+                    "type": "boolean",
+                    "example": true
+                },
+                "maxConcurrent": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "8000",
+                        "8001",
+                        "9000-9100"
+                    ]
+                },
+                "scanRanges": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "192.168.1.0/24",
+                        "10.0.0.1-10.0.0.10"
+                    ]
+                },
+                "timeout": {
+                    "type": "string",
+                    "example": "30s"
+                }
+            }
+        },
+        "models.ScanJob": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/models.ScanConfig"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "scan-12345"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DiscoveredServer"
+                    }
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "running"
+                }
+            }
+        },
+        "models.ServerProtocol": {
+            "type": "string",
+            "enum": [
+                "MCP"
+            ],
+            "x-enum-varnames": [
+                "ServerProtocolMCP"
+            ]
+        },
+        "models.SidecarConfig": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "run",
+                        "-i",
+                        "--rm",
+                        "-e",
+                        "VAR=value",
+                        "image:tag",
+                        "cmd"
+                    ]
+                },
+                "command": {
+                    "description": "Command and arguments",
+                    "type": "string",
+                    "example": "docker"
+                },
+                "commandType": {
+                    "description": "Command execution type",
+                    "type": "string",
+                    "example": "docker"
+                },
+                "env": {
+                    "description": "Environment variables",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "lastUpdated": {
+                    "type": "string",
+                    "example": "2025-12-12T10:00:00Z"
+                },
+                "port": {
+                    "description": "Port assignment",
+                    "type": "integer",
+                    "example": 8000
+                },
+                "source": {
+                    "description": "Metadata",
+                    "type": "string",
+                    "example": "manual-config"
+                }
+            }
+        },
+        "models.Transport": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "description": "stdio, sse, websocket, http",
+                    "type": "string"
+                }
+            }
+        },
+        "plugins.ServiceCapability": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "methods": {
+                    "description": "HTTP methods (GET, POST, etc.)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "path": {
+                    "description": "API path (e.g., \"/v1/*\", \"/agents/*\")",
+                    "type": "string"
+                }
+            }
+        },
+        "plugins.ServiceHealth": {
+            "type": "object",
+            "properties": {
+                "last_checked": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "response_time": {
+                    "description": "Response time in nanoseconds",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "\"healthy\", \"unhealthy\", \"unknown\"",
+                    "type": "string"
+                }
+            }
+        },
+        "plugins.ServiceRegistration": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/plugins.ServiceCapability"
+                    }
+                },
+                "last_heartbeat": {
+                    "type": "string"
+                },
+                "registered_at": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "service_type": {
+                    "$ref": "#/definitions/plugins.ServiceType"
+                },
+                "service_url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugins.ServiceType": {
+            "type": "string",
+            "enum": [
+                "smartagents",
+                "registry",
+                "virtualmcp"
+            ],
+            "x-enum-varnames": [
+                "ServiceTypeSmartAgents",
+                "ServiceTypeRegistry",
+                "ServiceTypeVirtualMCP"
+            ]
+        },
+        "scanner.ScanJob": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/models.ScanConfig"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "progress": {
+                    "description": "0.0 to 1.0",
+                    "type": "number"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DiscoveredServer"
+                    }
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/scanner.ScanStatus"
+                }
+            }
+        },
+        "scanner.ScanStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "ScanStatusPending",
+                "ScanStatusRunning",
+                "ScanStatusCompleted",
+                "ScanStatusFailed",
+                "ScanStatusCancelled"
+            ]
+        },
+        "service.ClientTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.SessionReinitializeRequest": {
+            "type": "object",
+            "properties": {
+                "clientInfo": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "forceReinitialize": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "service.SessionReinitializeResponse": {
+            "type": "object",
+            "properties": {
+                "adapterName": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-Key",
+            "in": "header"
+        }
+    }
+}

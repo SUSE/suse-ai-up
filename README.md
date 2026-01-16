@@ -1,149 +1,247 @@
-# SUSE AI Universal Proxy
+# SUSE AI Uniproxy
 
-A comprehensive platform for managing and proxying Model Context Protocol (MCP) servers, providing scalable AI service orchestration across multiple microservices.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
+[![Docker](https://img.shields.io/badge/Docker-multi--arch-blue.svg)](https://hub.docker.com)
 
-## ✨ Key Features
+A comprehensive, modular MCP (Model Context Protocol) proxy system that enables secure, scalable, and extensible AI model integrations.
 
-- **Scalable Routing**: Session-aware load balancing and routing to MCP server instances
-- **Lifecycle Management**: Automated deployment, scaling, and teardown of AI services
-- **Registry Management**: Comprehensive MCP server registry with discovery, upload, and search capabilities
-- **Enterprise Integration**: Built-in authentication, observability, and security features
-- **Multi-Provider Support**: Seamless integration with various AI providers and local models
-- **Kubernetes-Native**: Designed for cloud-native deployments with Helm charts and StatefulSets
-- **Plugin Architecture**: Extensible microservices framework for pluggable AI capabilities
+## 🚀 Key Capabilities
 
-## 🎯 What This Solves
+**🔄 MCP Proxy Service** - Full-featured HTTP proxy for MCP servers with advanced session management, authentication, and protocol translation.
 
-The SUSE AI Universal Proxy addresses the growing complexity of deploying and managing AI services in enterprise environments. By providing a unified reverse proxy and management layer for MCP servers, it enables:
+**🔍 Network Discovery** - Automated network scanning to discover MCP servers, detect authentication types, and assess security vulnerabilities.
 
-- **Unified API Gateway**: Single entry point for all AI services
-- **Service Orchestration**: Automated service discovery and registration
-- **Load Balancing**: Intelligent routing with session affinity
-- **Security**: Enterprise-grade authentication and authorization
-- **Observability**: Comprehensive monitoring and logging
-- **Scalability**: Kubernetes-native deployment with auto-scaling
+**📚 Server Registry** - Curated registry of remote MCP servers from mcpservers.org, including GitHub, Notion, Sentry, Linear, and 20+ other popular services.
 
-This solution bridges the gap between AI development and production deployment, making it easier to build and maintain AI-powered applications.
+**🔌 Plugin Management** - Dynamic plugin system for extending functionality with service registration, health monitoring, and capability routing.
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture
 
-```mermaid
-graph TD
-    A[SUSE AI Universal Proxy]
-    subgraph B [Plugin Service Framework]
-        C[SmartAgents Service]
-        D[Registry Service]
-        E[VirtualMCP Service]
-    end
-    F[Dynamic Router & Load Balancer]
-    G[Service Discovery & Health Monitor]
-    subgraph H [External Clients]
-        I[VS Code MCP Clients]
-        J[Web Apps REST APIs]
-        K[CLI Tools curl/wget]
-    end
+The system uses a **main container + sidecar architecture** where services run as coordinated containers within a single Kubernetes pod:
 
-    H --> A
-    A --> B
-    B --> F
-    A --> G
-
-    classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef serviceClass fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef clientClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-
-    class A proxyClass
-    class C,D,E serviceClass
-    class I,J,K clientClass
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SUSE AI Universal Proxy                  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                   UNIFIED SERVICE                       │ │
+│  │                                                         │ │
+│  │  • MCP Proxy with session management                   │ │
+│  │  • Server registry and discovery                       │ │
+│  │  • Plugin management and orchestration                 │ │
+│  │  • Authentication and authorization                    │ │
+│  │                                                         │ │
+│  │              HTTP: 8911 | HTTPS: 3911                  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─────────────┐                                            │
+│  │   PLUGINS   │                                            │
+│  │  (External) │                                            │
+│  │             │                                            │
+│  │  Variable   │                                            │
+│  │   Ports     │                                            │
+│  └─────────────┘                                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## 🏗️ User Flow Architecture
+## 🏃‍♂️ Quick Start
 
-```mermaid
-graph LR
-    A[User Device<br/>VS Code, Web App, CLI Tool] --> B[Proxy Service<br/>Router & Load Balancer<br/>• Service Discovery<br/>• Health Monitoring<br/>• Load Balancing<br/>• Session Affinity]
-    B --> C[SmartAgents Service<br/>AI Orchestrator<br/>• Local Model acts on behalf<br/>of Remote LLM for security]
-    B --> D[MCP Registry Service<br/>Server Management<br/>• Discovery<br/>• Upload<br/>• Search<br/>• Bulk Operations]
-    D --> E[Network Scan<br/>Auto-Discovery<br/>• CIDR Scanning<br/>• Port Scanning<br/>• Health Checks<br/>• Auto-Registration]
-    D --> F[VirtualMCP Service<br/>Legacy Integration<br/>• OpenAPI Schema<br/>• Database Integration<br/>• Code-free Generation<br/>• Legacy API Consumption]
-    C --> G[Local Model<br/>Worker<br/>• Private Data Control]
-    G --> H[Remote LLM<br/>Supervisor<br/>• Cloud AI Power]
-    F --> I[MCP Servers<br/>Generated from APIs<br/>• Standardized Endpoints]
-
-    classDef userClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef proxyClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef serviceClass fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef aiClass fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-    classDef outputClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-
-    class A userClass
-    class B proxyClass
-    class C,D,E,F serviceClass
-    class G,H aiClass
-    class I outputClass
-```
-
-## 📦 Services
-
-### 🔀 Proxy Service
-The core reverse proxy and management layer for MCP servers. Handles routing, discovery, and lifecycle operations.
-
-- **[Overview](docs/proxy/overview.md)** - Architecture and key concepts
-- **[Getting Started](docs/proxy/getting-started.md)** - Installation and setup
-- **[API Reference](docs/proxy/api-reference.md)** - Complete API documentation
-- **[Examples](docs/proxy/examples.md)** - Usage examples and tutorials
-- **[Security](docs/proxy/security.md)** - Security features and best practices
-
-### 🤖 Smart Agents Service
-AI orchestrator to enable a local model to act on behalf of a remote LLM to provide more security while maintaining full control over the data.
-
-*Note: SmartAgents has been moved to a separate repository for independent development.*
-
-### 🔧 Virtual MCP Service
-Virtual MCP allow the creation of an MCP Server starting from openapi schemas and databases without having to write code. Virtual MCP standardize the way endpoints are presented and allow legacy applications to be consumed by the LLM.
-
-*Note: VirtualMCP has been moved to a separate repository for independent development.*
-
-### 📚 MCP Registry
-Comprehensive MCP server registry with discovery, deployment, and management capabilities.
-
-- **[Registry Documentation](docs/registry.md)** - Complete registry guide
-
-## 📚 Documentation
-
-- **[Documentation Index](docs/README.md)** - Navigate the complete documentation
-- **[Contributing](CONTRIBUTING.md)** - Development guidelines and contribution process
-- **[License](LICENSE.md)** - Apache 2.0 license information
-
-### Local Development Setup
+### Docker (Single Command)
 ```bash
-# 1. Start the proxy service
-cd suse-ai-up-proxy && go run cmd/service/main.go
-
-# 2. Start SmartAgents with proxy registration (now in separate repository)
-
-# 3. Test the setup
-curl http://localhost:8911/plugins/services
-curl http://localhost:8911/v1/models
+docker run -p 8911:8911 suse/suse-ai-up:latest
 ```
+
+### Kubernetes + Helm
+```bash
+helm repo add suse-ai-up https://charts.suse.com
+helm install suse-ai-up suse-ai-up/suse-ai-up
+```
+
+### Local Development
+```bash
+git clone https://github.com/suse/suse-ai-up.git
+cd suse-ai-up
+go run ./cmd/uniproxy
+```
+
+## 📋 Service Overview
+
+### 🔄 SUSE AI Universal Proxy
+- **Purpose**: Unified MCP proxy service with integrated registry, discovery, and plugin management
+- **Features**:
+  - MCP protocol proxy with session management
+  - Integrated server registry and catalog
+  - Network discovery and automatic server detection
+  - Plugin orchestration and lifecycle management
+  - Authentication and authorization
+  - TLS encryption support
+- **Ports**: HTTP 8911, HTTPS 3911
+- **Architecture**: Single unified service replacing separate microservices
+
+### 🔌 External Plugins
+- **Purpose**: Extensible plugin system for additional MCP server integrations
+- **Features**: External plugin registration, health monitoring, custom MCP server types
+- **Ports**: Variable (configured per plugin)
+- **Integration**: Register with main proxy service via API
+
+## 🌐 Remote MCP Servers
+
+The registry includes **20+ curated remote MCP servers** from [mcpservers.org](https://mcpservers.org/remote-mcp-servers), providing instant access to popular services:
+
+### 📊 Available Servers
+
+| Service | Authentication | Category | Description |
+|---------|----------------|----------|-------------|
+| **GitHub** | OAuth | Development | Repository management, issues, PRs, code search |
+| **Notion** | OAuth | Productivity | Document collaboration and knowledge base |
+| **Sentry** | OAuth | Monitoring | Error tracking and performance monitoring |
+| **Linear** | OAuth | Project Management | Issue tracking and agile workflows |
+| **Figma** | OAuth | Design | Collaborative design and prototyping |
+| **CoinGecko** | Open | Cryptocurrency | Market data and trading information |
+| **Semgrep** | Open | Security | Code security and quality analysis |
+| **Atlassian** | OAuth | Enterprise | Jira, Confluence, enterprise tools |
+
+### 🚀 Quick Examples
+
+#### GitHub MCP Server
+```bash
+# List repositories
+curl -H "X-API-Key: dev-service-key-123" \
+  "http://localhost:8911/api/v1/registry/browse?q=github"
+
+# Create adapter for GitHub
+curl -X POST http://localhost:8911/api/v1/adapters \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "github-adapter",
+    "mcpServerId": "github",
+    "authentication": {
+      "type": "oauth",
+      "oauth": {
+        "clientId": "your-github-oauth-client-id",
+        "clientSecret": "your-github-oauth-client-secret"
+      }
+    }
+  }'
+```
+
+#### Atlassian MCP Server
+```bash
+# Browse Atlassian services
+curl -H "X-API-Key: dev-service-key-123" \
+  "http://localhost:8911/api/v1/registry/browse?q=atlassian"
+
+# Configure Jira integration
+curl -X POST http://localhost:8911/api/v1/adapters \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "jira-adapter",
+    "mcpServerId": "atlassian",
+    "authentication": {
+      "type": "oauth",
+      "oauth": {
+        "clientId": "your-atlassian-oauth-client-id",
+        "clientSecret": "your-atlassian-oauth-client-secret"
+      }
+    }
+  }'
+```
+
+### 🔑 Authentication Setup
+
+**OAuth Services**: Configure OAuth 2.0 credentials in your adapter configuration
+**Open Services**: No authentication required - use directly
+
+**Note**: Authentication is configured per-adapter, not in the registry. The registry only indicates which servers require user authentication.
+
+### 🔄 Manual Registry Updates
+
+To update the remote server list:
+```bash
+curl -X POST -H "X-API-Key: dev-service-key-123" \
+  http://localhost:8911/api/v1/registry/reload
+```
+
+## 🔐 Authentication & Security
+
+Supports multiple authentication methods:
+- **OAuth 2.0** - Industry standard authorization
+- **Bearer Tokens** - JWT and custom token support
+- **API Keys** - Simple key-based authentication
+- **Basic Auth** - Username/password authentication
+
+**Documentation**: [Authentication Guide](docs/authentication.md)
+
+## 📖 Documentation
+
+- **[Getting Started](docs/getting-started.md)** - Complete setup guide
+- **[API Reference](docs/api-reference.md)** - Complete API documentation
+- **[Deployment Guide](docs/deployment/)** - Docker, Kubernetes, Helm
+- **[Security](docs/security.md)** - Security considerations and best practices
+
+## 🛠️ Deployment Options
+
+### Docker
+```bash
+# Basic proxy only
+docker run -p 8080:8080 suse/suse-ai-up:latest ./suse-ai-up proxy
+
+# Full stack
+docker run -p 8080:8080 -p 8911-8914:8911-8914 suse/suse-ai-up:latest
+```
+
+### Kubernetes
+```bash
+# Using Helm (recommended)
+helm install suse-ai-up ./charts/suse-ai-up
+
+# Using kubectl
+kubectl apply -f examples/kubernetes/
+```
+
+### Helm Configuration
+```yaml
+# values.yaml
+services:
+  proxy:
+    enabled: true
+  registry:
+    enabled: true
+  discovery:
+    enabled: true
+  plugins:
+    enabled: true
+
+tls:
+  enabled: true
+  autoGenerate: true  # Generates self-signed certs
+
+monitoring:
+  enabled: false  # Set to true to deploy Prometheus + Grafana
+```
+
+## 🔍 Health Checks & Monitoring
+
+- **Unified Health Endpoint**: `http://localhost:8911/health`
+- **API Documentation**: `http://localhost:8911/docs`
+- **Prometheus Metrics**: Available when monitoring enabled
+- **Grafana Dashboards**: Pre-configured dashboards included
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- How to get started with development
-- Testing guidelines
-- Submitting pull requests
-- Coding conventions
-
-For questions or discussions, join our [GitHub Discussions](https://github.com/suse/suse-ai-up/discussions).
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE.md) file for details.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE.md) for details.
+
+## 🆘 Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/suse/suse-ai-up/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/suse/suse-ai-up/discussions)
 
 ---
 
-**Ideator and Author**: [@alessandro-festa](https://github.com/alessandro-festa)
-
-Built with ❤️ by SUSE AI Team
+**SUSE AI Universal Proxy** - Making AI model integration secure, scalable, and simple.

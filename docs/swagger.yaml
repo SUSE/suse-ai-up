@@ -1,13 +1,339 @@
 basePath: /
 definitions:
+  auth.TokenInfo:
+    properties:
+      accessToken:
+        type: string
+      audience:
+        type: string
+      expiresAt:
+        type: string
+      issuedAt:
+        type: string
+      issuer:
+        type: string
+      refreshToken:
+        type: string
+      scope:
+        type: string
+      subject:
+        type: string
+      tokenId:
+        type: string
+      tokenType:
+        type: string
+    type: object
+  handlers.AddUserToGroupRequest:
+    properties:
+      userId:
+        example: user123
+        type: string
+    type: object
+  handlers.AuthModeResponse:
+    properties:
+      dev_mode:
+        type: boolean
+      github:
+        properties:
+          admin_teams:
+            items:
+              type: string
+            type: array
+          allowed_orgs:
+            items:
+              type: string
+            type: array
+          client_id:
+            type: string
+          redirect_uri:
+            type: string
+        type: object
+      local:
+        properties:
+          default_admin_password:
+            type: string
+          force_password_change:
+            type: boolean
+          password_min_length:
+            type: integer
+        type: object
+      mode:
+        type: string
+      rancher:
+        properties:
+          admin_groups:
+            items:
+              type: string
+            type: array
+          client_id:
+            type: string
+          fallback_local:
+            type: boolean
+          issuer_url:
+            type: string
+          redirect_uri:
+            type: string
+        type: object
+    type: object
+  handlers.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        type: string
+    type: object
+  handlers.CreateGroupRequest:
+    properties:
+      description:
+        example: Team with access to weather APIs
+        type: string
+      id:
+        example: weather-team
+        type: string
+      name:
+        example: Weather Team
+        type: string
+      permissions:
+        example:
+        - '["server:weather-*"]'
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      groups:
+        example:
+        - '["mcp-users"]'
+        items:
+          type: string
+        type: array
+      id:
+        example: user123
+        type: string
+      name:
+        example: John Doe
+        type: string
+    type: object
+  handlers.CreateUserResponse:
+    properties:
+      createdAt:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handlers.LoginResponse:
+    properties:
+      token:
+        $ref: '#/definitions/models.AuthToken'
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  handlers.OAuthCallbackRequest:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  handlers.OAuthLoginRequest:
+    properties:
+      provider:
+        description: '"github" or "rancher"'
+        type: string
+    type: object
+  handlers.PluginErrorResponse:
+    properties:
+      details:
+        type: string
+      error:
+        type: string
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      discoveredServerId:
+        type: string
+    required:
+    - discoveredServerId
+    type: object
+  handlers.RegisterResponse:
+    properties:
+      adapter:
+        $ref: '#/definitions/models.AdapterResource'
+      mcp_endpoint:
+        type: string
+      message:
+        type: string
+      security_note:
+        type: string
+      token_info:
+        $ref: '#/definitions/auth.TokenInfo'
+    type: object
+  handlers.RegisterServiceRequest:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/plugins.ServiceCapability'
+        type: array
+      service_id:
+        type: string
+      service_type:
+        type: string
+      service_url:
+        type: string
+      version:
+        type: string
+    required:
+    - service_id
+    - service_type
+    - service_url
+    type: object
+  handlers.RegisterServiceResponse:
+    properties:
+      message:
+        type: string
+      service_id:
+        type: string
+    type: object
+  handlers.UpdateGroupRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      groups:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+    type: object
+  mcp.ErrorType:
+    enum:
+    - protocol
+    - transport
+    - auth
+    - validation
+    - timeout
+    - network
+    - parsing
+    - capability
+    - session
+    type: string
+    x-enum-varnames:
+    - ErrorTypeProtocol
+    - ErrorTypeTransport
+    - ErrorTypeAuth
+    - ErrorTypeValidation
+    - ErrorTypeTimeout
+    - ErrorTypeNetwork
+    - ErrorTypeParsing
+    - ErrorTypeCapability
+    - ErrorTypeSession
+  mcp.MCPError:
+    properties:
+      adapterName:
+        type: string
+      code:
+        type: integer
+      details:
+        additionalProperties: true
+        type: object
+      message:
+        type: string
+      retryable:
+        type: boolean
+      sessionId:
+        type: string
+      suggestions:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: string
+      type:
+        $ref: '#/definitions/mcp.ErrorType'
+    type: object
+  mcp.MCPMessage:
+    properties:
+      error:
+        $ref: '#/definitions/mcp.MCPError'
+      id: {}
+      jsonrpc:
+        type: string
+      method:
+        type: string
+      params: {}
+      result: {}
+    type: object
+  models.APIKeyConfig:
+    properties:
+      key:
+        type: string
+      location:
+        description: '"header", "query", "cookie"'
+        type: string
+      name:
+        description: Header name, query param, or cookie name
+        type: string
+    type: object
+  models.AdapterAuthConfig:
+    properties:
+      apiKey:
+        $ref: '#/definitions/models.APIKeyConfig'
+      basic:
+        $ref: '#/definitions/models.BasicAuthConfig'
+      bearerToken:
+        $ref: '#/definitions/models.BearerTokenConfig'
+      oauth:
+        $ref: '#/definitions/models.OAuthConfig'
+      required:
+        description: true = require auth, false = optional
+        type: boolean
+      type:
+        description: '"bearer", "oauth", "basic", "apikey", "none"'
+        type: string
+    type: object
   models.AdapterData:
     properties:
+      apiBaseUrl:
+        description: For VirtualMCP API configuration
+        example: http://localhost:8000
+        type: string
       args:
         example:
         - my_server.py
         items:
           type: string
         type: array
+      authentication:
+        allOf:
+        - $ref: '#/definitions/models.AdapterAuthConfig'
+        description: Authentication configuration
       command:
         description: For local stdio
         example: python
@@ -29,6 +355,14 @@ definitions:
       imageVersion:
         example: latest
         type: string
+      mcpClientConfig:
+        allOf:
+        - $ref: '#/definitions/models.MCPClientConfig'
+        description: For MCP client configuration (alternative to Command/Args)
+      mcpFunctionality:
+        allOf:
+        - $ref: '#/definitions/models.MCPFunctionality'
+        description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
@@ -43,20 +377,52 @@ definitions:
       replicaCount:
         example: 1
         type: integer
+      sidecarConfig:
+        allOf:
+        - $ref: '#/definitions/models.SidecarConfig'
+        description: For sidecar stdio deployment
+      status:
+        allOf:
+        - $ref: '#/definitions/models.AdapterLifecycleStatus'
+        example: ready
+      tools:
+        description: For VirtualMCP tools configuration
+        items: {}
+        type: array
+      url:
+        description: Adapter MCP endpoint URL
+        example: http://localhost:8911/api/v1/adapters/my-adapter/mcp
+        type: string
       useWorkloadIdentity:
         example: false
         type: boolean
-    required:
-    - name
     type: object
+  models.AdapterLifecycleStatus:
+    enum:
+    - not ready
+    - ready
+    - error
+    type: string
+    x-enum-varnames:
+    - AdapterLifecycleStatusNotReady
+    - AdapterLifecycleStatusReady
+    - AdapterLifecycleStatusError
   models.AdapterResource:
     properties:
+      apiBaseUrl:
+        description: For VirtualMCP API configuration
+        example: http://localhost:8000
+        type: string
       args:
         example:
         - my_server.py
         items:
           type: string
         type: array
+      authentication:
+        allOf:
+        - $ref: '#/definitions/models.AdapterAuthConfig'
+        description: Authentication configuration
       command:
         description: For local stdio
         example: python
@@ -88,6 +454,14 @@ definitions:
         type: string
       lastUpdatedAt:
         type: string
+      mcpClientConfig:
+        allOf:
+        - $ref: '#/definitions/models.MCPClientConfig'
+        description: For MCP client configuration (alternative to Command/Args)
+      mcpFunctionality:
+        allOf:
+        - $ref: '#/definitions/models.MCPFunctionality'
+        description: MCP Functionality (discovered from server)
       name:
         example: my-adapter
         type: string
@@ -102,11 +476,25 @@ definitions:
       replicaCount:
         example: 1
         type: integer
+      sidecarConfig:
+        allOf:
+        - $ref: '#/definitions/models.SidecarConfig'
+        description: For sidecar stdio deployment
+      status:
+        allOf:
+        - $ref: '#/definitions/models.AdapterLifecycleStatus'
+        example: ready
+      tools:
+        description: For VirtualMCP tools configuration
+        items: {}
+        type: array
+      url:
+        description: Adapter MCP endpoint URL
+        example: http://localhost:8911/api/v1/adapters/my-adapter/mcp
+        type: string
       useWorkloadIdentity:
         example: false
         type: boolean
-    required:
-    - name
     type: object
   models.AdapterStatus:
     properties:
@@ -126,23 +514,113 @@ definitions:
         example: 1
         type: integer
     type: object
+  models.AuthAnalysis:
+    properties:
+      confidence:
+        description: '"high", "medium", "low"'
+        type: string
+      detected_mechanisms:
+        items:
+          type: string
+        type: array
+      required:
+        type: boolean
+      type:
+        description: '"none", "basic", "bearer", "apikey", "oauth", "missing"'
+        type: string
+      vulnerabilities:
+        items:
+          type: string
+        type: array
+    type: object
+  models.AuthToken:
+    properties:
+      expires_at:
+        type: string
+      provider:
+        type: string
+      token:
+        type: string
+      token_type:
+        description: '"Bearer"'
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.AutoSpawnConfig:
+    properties:
+      args:
+        description: for stdio
+        items:
+          type: string
+        type: array
+      command:
+        description: for stdio
+        type: string
+      connectionType:
+        allOf:
+        - $ref: '#/definitions/models.ConnectionType'
+        description: '"LocalStdio" or "StreamableHttp"'
+      defaultEnv:
+        additionalProperties:
+          type: string
+        description: default env vars
+        type: object
+      deploymentMethod:
+        description: '"docker", "local"'
+        type: string
+      enabled:
+        type: boolean
+      imageName:
+        description: for containers
+        type: string
+      imageVersion:
+        description: for containers
+        type: string
+    type: object
+  models.BasicAuthConfig:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  models.BearerTokenConfig:
+    properties:
+      dynamic:
+        description: Use token manager
+        type: boolean
+      expiresAt:
+        type: string
+      token:
+        description: Static token
+        type: string
+    type: object
   models.ConnectionType:
     enum:
     - SSE
     - StreamableHttp
     - RemoteHttp
     - LocalStdio
+    - SidecarStdio
     type: string
     x-enum-varnames:
     - ConnectionTypeSSE
     - ConnectionTypeStreamableHttp
     - ConnectionTypeRemoteHttp
     - ConnectionTypeLocalStdio
+    - ConnectionTypeSidecarStdio
   models.DiscoveredServer:
     properties:
       address:
         example: http://192.168.1.100:8000
         type: string
+      auth_info:
+        $ref: '#/definitions/models.AuthAnalysis'
+      capabilities:
+        allOf:
+        - $ref: '#/definitions/models.McpCapabilities'
+        description: Enhanced fields for deep interrogation
       connection:
         allOf:
         - $ref: '#/definitions/models.ConnectionType'
@@ -150,18 +628,46 @@ definitions:
       id:
         example: server-123
         type: string
+      last_deep_scan:
+        type: string
       lastSeen:
         type: string
       metadata:
         additionalProperties:
           type: string
         type: object
+      name:
+        example: MCP Example Server
+        type: string
+      prompts:
+        items:
+          $ref: '#/definitions/models.McpPrompt'
+        type: array
       protocol:
         allOf:
         - $ref: '#/definitions/models.ServerProtocol'
         example: MCP
+      protocol_version:
+        type: string
+      resource_templates:
+        items:
+          $ref: '#/definitions/models.McpResourceTemplate'
+        type: array
+      resources:
+        items:
+          $ref: '#/definitions/models.McpResource'
+        type: array
+      server_version:
+        type: string
       status:
         example: healthy
+        type: string
+      tools:
+        items:
+          $ref: '#/definitions/models.McpTool'
+        type: array
+      vulnerability_score:
+        example: high
         type: string
     type: object
   models.EnvironmentVariable:
@@ -180,17 +686,127 @@ definitions:
       name:
         type: string
     type: object
+  models.GitHubConfig:
+    properties:
+      api_endpoint:
+        description: GitHub API endpoint (defaults to https://api.githubcopilot.com/mcp/)
+        type: string
+      owner:
+        description: Repository owner (for repo-specific servers)
+        type: string
+      repo:
+        description: Repository name (for repo-specific servers)
+        type: string
+      token:
+        description: GitHub Personal Access Token
+        type: string
+    type: object
+  models.Group:
+    properties:
+      createdAt:
+        type: string
+      description:
+        example: Users with access to MCP servers
+        type: string
+      id:
+        example: mcp-users
+        type: string
+      members:
+        example:
+        - '["user123"'
+        - '"user456"]'
+        items:
+          type: string
+        type: array
+      name:
+        example: MCP Users
+        type: string
+      permissions:
+        example:
+        - '["server:read"'
+        - '"adapter:create"]'
+        items:
+          type: string
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  models.MCPArgument:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      required:
+        type: boolean
+    type: object
+  models.MCPClientConfig:
+    properties:
+      mcpServers:
+        additionalProperties:
+          $ref: '#/definitions/models.MCPServerConfig'
+        type: object
+    type: object
+  models.MCPFunctionality:
+    properties:
+      lastRefreshed:
+        type: string
+      prompts:
+        items:
+          $ref: '#/definitions/models.MCPPrompt'
+        type: array
+      resources:
+        items:
+          $ref: '#/definitions/models.MCPResource'
+        type: array
+      serverInfo:
+        $ref: '#/definitions/models.MCPServerInfo'
+      tools:
+        items:
+          $ref: '#/definitions/models.MCPTool'
+        type: array
+    type: object
+  models.MCPPrompt:
+    properties:
+      arguments:
+        items:
+          $ref: '#/definitions/models.MCPArgument'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.MCPResource:
+    properties:
+      description:
+        type: string
+      mimeType:
+        type: string
+      name:
+        type: string
+      uri:
+        type: string
+    type: object
   models.MCPServer:
     properties:
       _meta:
         additionalProperties: true
-        description: Registry metadata
         type: object
+      autoSpawn:
+        allOf:
+        - $ref: '#/definitions/models.AutoSpawnConfig'
+        description: Auto-spawning configuration
       description:
         type: string
       discovered_at:
         type: string
+      github_config:
+        $ref: '#/definitions/models.GitHubConfig'
       id:
+        type: string
+      image:
+        description: Docker image for containerized servers
         type: string
       name:
         type: string
@@ -198,24 +814,131 @@ definitions:
         items:
           $ref: '#/definitions/models.Package'
         type: array
-      protocol:
-        type: string
       repository:
         $ref: '#/definitions/models.Repository'
+      routeAssignments:
+        description: User/group access control
+        items:
+          $ref: '#/definitions/models.RouteAssignment'
+        type: array
       tools:
         items:
           $ref: '#/definitions/models.MCPTool'
         type: array
       url:
-        description: Legacy fields for backward compatibility
+        description: Legacy URL field for remote servers
         type: string
       validation_status:
-        description: new, approved, certified
+        type: string
+      version:
+        type: string
+    type: object
+  models.MCPServerConfig:
+    properties:
+      args:
+        items:
+          type: string
+        type: array
+      command:
+        type: string
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      url:
+        type: string
+    type: object
+  models.MCPServerInfo:
+    properties:
+      capabilities:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      protocol:
         type: string
       version:
         type: string
     type: object
   models.MCPTool:
+    properties:
+      config:
+        additionalProperties: true
+        description: Tool-specific configuration
+        type: object
+      description:
+        type: string
+      input_schema:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      source_type:
+        description: VirtualMCP specific fields
+        type: string
+    type: object
+  models.McpArgument:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      required:
+        type: boolean
+    type: object
+  models.McpCapabilities:
+    properties:
+      completions:
+        type: boolean
+      experimental:
+        type: boolean
+      logging:
+        type: boolean
+      prompts:
+        type: boolean
+      resources:
+        type: boolean
+      tools:
+        type: boolean
+    type: object
+  models.McpPrompt:
+    properties:
+      arguments:
+        items:
+          $ref: '#/definitions/models.McpArgument'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.McpResource:
+    properties:
+      description:
+        type: string
+      mime_type:
+        type: string
+      name:
+        type: string
+      uri:
+        type: string
+    type: object
+  models.McpResourceTemplate:
+    properties:
+      description:
+        type: string
+      mime_type:
+        type: string
+      name:
+        type: string
+      uri_template:
+        type: string
+    type: object
+  models.McpTool:
     properties:
       description:
         type: string
@@ -223,6 +946,23 @@ definitions:
         additionalProperties: true
         type: object
       name:
+        type: string
+    type: object
+  models.OAuthConfig:
+    properties:
+      authUrl:
+        type: string
+      clientId:
+        type: string
+      clientSecret:
+        type: string
+      redirectUri:
+        type: string
+      scopes:
+        items:
+          type: string
+        type: array
+      tokenUrl:
         type: string
     type: object
   models.Package:
@@ -248,21 +988,64 @@ definitions:
       url:
         type: string
     type: object
+  models.RouteAssignment:
+    properties:
+      autoSpawn:
+        example: true
+        type: boolean
+      createdAt:
+        type: string
+      groupIds:
+        example:
+        - '["mcp-users"]'
+        items:
+          type: string
+        type: array
+      id:
+        example: assignment-123
+        type: string
+      permissions:
+        description: '"read", "write", "admin"'
+        example: read
+        type: string
+      serverId:
+        example: mcp-bugzilla
+        type: string
+      updatedAt:
+        type: string
+      userIds:
+        example:
+        - '["user123"]'
+        items:
+          type: string
+        type: array
+    type: object
   models.ScanConfig:
     properties:
+      excludeAddresses:
+        description: Additional addresses to skip
+        items:
+          type: string
+        type: array
+      excludeProxy:
+        description: 'Default: true'
+        example: true
+        type: boolean
       maxConcurrent:
         example: 10
         type: integer
       ports:
         example:
-        - 8000
-        - 3000
+        - "8000"
+        - "8001"
+        - 9000-9100
         items:
-          type: integer
+          type: string
         type: array
       scanRanges:
         example:
         - 192.168.1.0/24
+        - 10.0.0.1-10.0.0.10
         items:
           type: string
         type: array
@@ -295,10 +1078,93 @@ definitions:
     type: string
     x-enum-varnames:
     - ServerProtocolMCP
+  models.SidecarConfig:
+    properties:
+      args:
+        example:
+        - run
+        - -i
+        - --rm
+        - -e
+        - VAR=value
+        - image:tag
+        - cmd
+        items:
+          type: string
+        type: array
+      command:
+        description: Command and arguments
+        example: docker
+        type: string
+      commandType:
+        description: Command execution type
+        example: docker
+        type: string
+      env:
+        description: Environment variables
+        items:
+          additionalProperties:
+            type: string
+          type: object
+        type: array
+      lastUpdated:
+        example: "2025-12-12T10:00:00Z"
+        type: string
+      port:
+        description: Port assignment
+        example: 8000
+        type: integer
+      projectURL:
+        example: https://github.com/user/repo
+        type: string
+      source:
+        description: Metadata
+        example: manual-config
+        type: string
+    type: object
   models.Transport:
     properties:
       type:
         description: stdio, sse, websocket, http
+        type: string
+    type: object
+  models.User:
+    properties:
+      auth_provider:
+        example: local
+        type: string
+      createdAt:
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      external_id:
+        example: github123
+        type: string
+      groups:
+        example:
+        - '["mcp-users"'
+        - '"weather-team"]'
+        items:
+          type: string
+        type: array
+      id:
+        example: user123
+        type: string
+      last_login_at:
+        type: string
+      name:
+        example: John Doe
+        type: string
+      password_changed_at:
+        type: string
+      provider_groups:
+        example:
+        - '["org/team"]'
+        items:
+          type: string
+        type: array
+      updatedAt:
         type: string
     type: object
   plugins.ServiceCapability:
@@ -356,38 +1222,60 @@ definitions:
     - ServiceTypeSmartAgents
     - ServiceTypeRegistry
     - ServiceTypeVirtualMCP
-  service.BulkSessionDeleteResponse:
+  scanner.ScanJob:
     properties:
-      adapterName:
+      config:
+        $ref: '#/definitions/models.ScanConfig'
+      endTime:
+        type: string
+      errors:
+        items: {}
+        type: array
+      id:
         type: string
       message:
+        type: string
+      progress:
+        description: 0.0 to 1.0
+        type: number
+      results:
+        items:
+          $ref: '#/definitions/models.DiscoveredServer'
+        type: array
+      startTime:
+        type: string
+      status:
+        $ref: '#/definitions/scanner.ScanStatus'
+    type: object
+  scanner.ScanStatus:
+    enum:
+    - pending
+    - running
+    - completed
+    - failed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - ScanStatusPending
+    - ScanStatusRunning
+    - ScanStatusCompleted
+    - ScanStatusFailed
+    - ScanStatusCancelled
+  service.ClientTokenResponse:
+    properties:
+      expiresAt:
+        type: string
+      message:
+        type: string
+      token:
+        type: string
+      type:
         type: string
     type: object
   service.ErrorResponse:
     properties:
       error:
         type: string
-    type: object
-  service.LogsResponse:
-    properties:
-      logs:
-        type: string
-    type: object
-  service.SessionDeleteResponse:
-    properties:
-      message:
-        type: string
-      sessionId:
-        type: string
-    type: object
-  service.SessionListResponse:
-    properties:
-      adapterName:
-        type: string
-      sessions:
-        items:
-          $ref: '#/definitions/session.SessionDetails'
-        type: array
     type: object
   service.SessionReinitializeRequest:
     properties:
@@ -406,78 +1294,21 @@ definitions:
       sessionId:
         type: string
     type: object
-  session.AuthorizationInfo:
-    properties:
-      authorizationServer:
-        type: string
-      authorizationUrl:
-        type: string
-      authorizedAt:
-        type: string
-      clientId:
-        type: string
-      errorMessage:
-        type: string
-      lastTokenRefresh:
-        type: string
-      resourceServer:
-        type: string
-      status:
-        description: '"unauthorized", "authorizing", "authorized", "expired", "failed"'
-        type: string
-    type: object
-  session.SessionDetails:
-    properties:
-      adapterName:
-        type: string
-      authorizationInfo:
-        $ref: '#/definitions/session.AuthorizationInfo'
-      connectionType:
-        type: string
-      createdAt:
-        type: string
-      lastActivity:
-        type: string
-      sessionId:
-        type: string
-      status:
-        description: '"active", "expired", "invalidated"'
-        type: string
-      targetAddress:
-        type: string
-      tokenInfo:
-        $ref: '#/definitions/session.TokenInfo'
-    type: object
-  session.TokenInfo:
-    properties:
-      accessToken:
-        type: string
-      expiresAt:
-        type: string
-      issuedAt:
-        type: string
-      refreshToken:
-        type: string
-      scope:
-        type: string
-      tokenType:
-        type: string
-    type: object
 host: localhost:8911
 info:
   contact:
-    name: SUSE AI Universal Proxy Team
-    url: https://github.com/SUSE/suse-ai-up
-  description: SUSE AI Universal Proxy provides RESTful APIs for managing MCP (Model
-    Context Protocol) server deployments and proxying requests to MCP servers running
-    in Kubernetes.
+    email: info@suse.ai
+    name: SUSE
+    url: https://github.com/suse/suse-ai-up
+  description: A comprehensive, modular MCP (Model Context Protocol) proxy system
   license:
-    name: MIT
-    url: https://github.com/SUSE/suse-ai-up/blob/main/LICENSE
-  title: SUSE AI Universal Proxy - Control Plane
-  version: 1.0.0
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: SUSE AI Uniproxy API
+  version: "1.0"
 paths:
-  /adapters:
+  /api/v1/adapters:
     get:
       description: Returns a list of all MCP server adapters that the user can access.
       produces:
@@ -525,7 +1356,7 @@ paths:
       summary: Create a new MCP server adapter
       tags:
       - adapters
-  /adapters/{name}:
+  /api/v1/adapters/{name}:
     delete:
       description: Remove an MCP server adapter and its deployment.
       parameters:
@@ -551,7 +1382,8 @@ paths:
       tags:
       - adapters
     get:
-      description: Retrieve metadata for a specific MCP server adapter.
+      description: Retrieve details of a specific MCP server adapter including discovered
+        capabilities.
       parameters:
       - description: Adapter name
         in: path
@@ -569,7 +1401,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/service.ErrorResponse'
-      summary: Get adapter details
+      summary: Get an adapter
       tags:
       - adapters
     put:
@@ -607,9 +1439,10 @@ paths:
       summary: Update an adapter
       tags:
       - adapters
-  /adapters/{name}/logs:
+  /api/v1/adapters/{name}/client-token:
     get:
-      description: Access the running logs of an MCP server adapter.
+      description: Retrieves a client token for authenticating with the MCP server
+        adapter.
       parameters:
       - description: Adapter name
         in: path
@@ -622,22 +1455,30 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.LogsResponse'
+            $ref: '#/definitions/service.ClientTokenResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Get adapter logs
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get client token for adapter
       tags:
       - adapters
-  /adapters/{name}/sessions:
-    delete:
-      description: Remove all active sessions for a specific adapter
+      - authentication
+  /api/v1/adapters/{name}/health:
+    post:
+      consumes:
+      - application/json
+      description: Check the health of an adapter's sidecar and update its status
       parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
       - description: Adapter name
         in: path
         name: name
@@ -649,22 +1490,69 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.BulkSessionDeleteResponse'
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Delete all sessions for an adapter
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Check adapter health
       tags:
-      - sessions
+      - adapters
+  /api/v1/adapters/{name}/mcp:
+    post:
+      consumes:
+      - application/json
+      description: Proxy MCP protocol requests (tools, resources, prompts) to the
+        adapter
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Proxy MCP protocol requests
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/prompts:
     get:
-      description: Retrieve all active sessions for a specific MCP server adapter
+      consumes:
+      - application/json
+      description: Get the list of prompts available from the MCP server
       parameters:
-      - description: Adapter name
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
         in: path
         name: name
         required: true
@@ -673,20 +1561,157 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: MCP response with prompts list
           schema:
-            $ref: '#/definitions/service.SessionListResponse'
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: Not Found
+          description: Adapter not found
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: List all sessions for an adapter
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP prompts
       tags:
-      - sessions
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/prompts/{promptName}:
+    get:
+      consumes:
+      - application/json
+      description: Get the content of a specific MCP prompt by name
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Prompt name
+        in: path
+        name: promptName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with prompt content
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or prompt not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get MCP prompt
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/resources:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of resources available from the MCP server
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with resources list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP resources
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/resources/{uri}:
+    get:
+      consumes:
+      - application/json
+      description: Read the content of a specific MCP resource by URI
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Resource URI
+        in: path
+        name: uri
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with resource content
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or resource not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Read MCP resource
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/sessions:
     post:
       consumes:
       - application/json
@@ -725,70 +1750,7 @@ paths:
       summary: Reinitialize a session
       tags:
       - sessions
-  /adapters/{name}/sessions/{sessionId}:
-    delete:
-      description: Invalidate and remove a specific session
-      parameters:
-      - description: Adapter name
-        in: path
-        name: name
-        required: true
-        type: string
-      - description: Session ID
-        in: path
-        name: sessionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.SessionDeleteResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Delete a session
-      tags:
-      - sessions
-    get:
-      description: Retrieve detailed information about a specific session
-      parameters:
-      - description: Adapter name
-        in: path
-        name: name
-        required: true
-        type: string
-      - description: Session ID
-        in: path
-        name: sessionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/session.SessionDetails'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Get session details
-      tags:
-      - sessions
-  /adapters/{name}/status:
+  /api/v1/adapters/{name}/status:
     get:
       description: Check the current deployment status of an MCP server adapter.
       parameters:
@@ -815,6 +1777,1412 @@ paths:
       summary: Get adapter deployment status
       tags:
       - adapters
+  /api/v1/adapters/{name}/sync:
+    post:
+      description: Synchronize and refresh the capabilities of an adapter
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sync result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Sync adapter capabilities
+      tags:
+      - adapters
+  /api/v1/adapters/{name}/test-auth:
+    post:
+      consumes:
+      - application/json
+      description: Tests the authentication configuration by attempting to connect
+        to the MCP server.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Test adapter authentication
+      tags:
+      - adapters
+      - authentication
+  /api/v1/adapters/{name}/token:
+    get:
+      description: Retrieves the current token for an adapter or generates a new one
+        if none exists
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: true
+        description: Generate new token if none exists
+        in: query
+        name: generate
+        type: boolean
+      - default: 24
+        description: Token expiration time in hours
+        in: query
+        name: expiresIn
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get adapter token
+      tags:
+      - tokens
+  /api/v1/adapters/{name}/token/refresh:
+    post:
+      description: Generates a new token for an adapter, invalidating the old one
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: 24
+        description: Token expiration time in hours
+        in: query
+        name: expiresIn
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh adapter token
+      tags:
+      - tokens
+  /api/v1/adapters/{name}/token/validate:
+    post:
+      description: Validates a token and returns its claims and validity
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Token to validate
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Validate token
+      tags:
+      - tokens
+  /api/v1/adapters/{name}/tools:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of tools available from the MCP server
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with tools list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List MCP tools
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/tools/{toolName}/call:
+    post:
+      consumes:
+      - application/json
+      description: Execute a specific MCP tool with given arguments
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Adapter ID
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Tool name
+        in: path
+        name: toolName
+        required: true
+        type: string
+      - description: Tool call request with arguments
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/mcp.MCPMessage'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MCP response with tool result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Adapter or tool not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Call MCP tool
+      tags:
+      - adapters
+      - mcp
+  /api/v1/adapters/{name}/validate-auth:
+    post:
+      consumes:
+      - application/json
+      description: Validates the authentication configuration for an adapter.
+      parameters:
+      - description: Adapter name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Authentication configuration to validate
+        in: body
+        name: authConfig
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdapterAuthConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Validate adapter authentication configuration
+      tags:
+      - adapters
+      - authentication
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user with username/password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      description: Logout the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /api/v1/auth/oauth/callback:
+    post:
+      consumes:
+      - application/json
+      description: Handle OAuth provider callback
+      parameters:
+      - description: OAuth callback data
+        in: body
+        name: callback
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OAuthCallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: OAuth callback
+      tags:
+      - auth
+  /api/v1/auth/oauth/login:
+    post:
+      consumes:
+      - application/json
+      description: Start OAuth authentication flow
+      parameters:
+      - description: OAuth provider
+        in: body
+        name: oauth
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OAuthLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Initiate OAuth login
+      tags:
+      - auth
+  /api/v1/auth/password:
+    put:
+      consumes:
+      - application/json
+      description: Change the current user's password
+      parameters:
+      - description: Password change data
+        in: body
+        name: password
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Change password
+      tags:
+      - auth
+  /api/v1/discovery/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a discovered MCP server as an adapter
+      parameters:
+      - description: Registration request with discoveredServerId
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AdapterResource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Register discovered server
+      tags:
+      - discovery
+  /api/v1/discovery/results:
+    get:
+      description: Returns aggregated results from all completed scans
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all scan results
+      tags:
+      - discovery
+  /api/v1/discovery/results/{id}:
+    get:
+      description: |-
+        Returns a specific discovered MCP server by ID from aggregated scan results
+        Returns a specific discovered MCP server by ID from aggregated scan results
+      parameters:
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get server by ID from aggregated scan results
+      tags:
+      - discovery
+      - discovery
+  /api/v1/discovery/scan:
+    get:
+      description: Retrieve all scan jobs (active and completed)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ScanJob'
+            type: array
+      summary: List all scan jobs
+      tags:
+      - scan
+    post:
+      consumes:
+      - application/json
+      description: Initiates a network scan to discover MCP servers
+      parameters:
+      - description: Scan configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/models.ScanConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Start network scan for MCP servers
+      tags:
+      - discovery
+  /api/v1/discovery/scan/{jobId}:
+    delete:
+      description: Cancels a running scan job
+      parameters:
+      - description: Scan Job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cancel scan job
+      tags:
+      - discovery
+    get:
+      description: Retrieve the status and results of a network scan
+      parameters:
+      - description: Scan Job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scanner.ScanJob'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get scan job status
+      tags:
+      - discovery
+  /api/v1/discovery/scan/{scanId}:
+    get:
+      description: Retrieve the status and results of a network scan
+      parameters:
+      - description: Scan ID
+        in: path
+        name: scanId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ScanJob'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/service.ErrorResponse'
+      summary: Get scan status
+      tags:
+      - discovery
+  /api/v1/discovery/servers:
+    get:
+      description: Retrieve all discovered MCP servers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.DiscoveredServer'
+            type: array
+      summary: List discovered servers
+      tags:
+      - discovery
+  /api/v1/discovery/servers/{id}:
+    get:
+      deprecated: true
+      description: This endpoint is deprecated due to data access issues. Use GET
+        /api/v1/discovery/results/{id} instead.
+      parameters:
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DiscoveredServer'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get discovered server by ID (DEPRECATED)
+      tags:
+      - discovery
+  /api/v1/groups:
+    get:
+      description: Retrieve a list of all groups in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Group'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List all groups
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: Create a new group in the system
+      parameters:
+      - description: Group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new group
+      tags:
+      - groups
+  /api/v1/groups/{id}:
+    delete:
+      description: Delete a group from the system
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete a group
+      tags:
+      - groups
+    get:
+      description: Retrieve details of a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Group'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get group details
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: Update an existing group's information
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update a group
+      tags:
+      - groups
+  /api/v1/groups/{id}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a user to a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddUserToGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Add user to group
+      tags:
+      - groups
+  /api/v1/groups/{id}/members/{userId}:
+    delete:
+      description: Remove a user from a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Remove user from group
+      tags:
+      - groups
+  /api/v1/plugins/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new plugin service with the proxy
+      parameters:
+      - description: Service registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.RegisterServiceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Register a plugin service
+      tags:
+      - plugins
+  /api/v1/plugins/register/{serviceId}:
+    delete:
+      description: Remove a plugin service registration
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Unregister a plugin service
+      tags:
+      - plugins
+  /api/v1/plugins/services:
+    get:
+      description: Get a list of all registered plugin services
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+      summary: List all registered plugin services
+      tags:
+      - plugins
+  /api/v1/plugins/services/{serviceId}:
+    get:
+      description: Get details of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceRegistration'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get service details
+      tags:
+      - plugins
+  /api/v1/plugins/services/{serviceId}/health:
+    get:
+      description: Get the health status of a specific plugin service
+      parameters:
+      - description: Service ID
+        in: path
+        name: serviceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugins.ServiceHealth'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: Get service health
+      tags:
+      - plugins
+  /api/v1/plugins/services/type/{serviceType}:
+    get:
+      description: Get all services of a specific type
+      parameters:
+      - description: Service type (smartagents or registry)
+        in: path
+        name: serviceType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugins.ServiceRegistration'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.PluginErrorResponse'
+      summary: List services by type
+      tags:
+      - plugins
+  /api/v1/registry/{id}:
+    delete:
+      description: Remove an MCP server entry
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Delete an MCP server
+      tags:
+      - registry
+    get:
+      description: Retrieve a specific MCP server configuration
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get an MCP server by ID
+      tags:
+      - registry
+    put:
+      consumes:
+      - application/json
+      description: Update an existing MCP server configuration or validation status
+      parameters:
+      - description: MCP Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Update an MCP server
+      tags:
+      - registry
+  /api/v1/registry/browse:
+    get:
+      description: Search and filter MCP servers from local YAML configuration
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Filter by transport type (stdio, sse, websocket)
+        in: query
+        name: transport
+        type: string
+      - description: Filter by registry type (oci, npm)
+        in: query
+        name: registryType
+        type: string
+      - description: Filter by validation status
+        in: query
+        name: validationStatus
+        type: string
+      - description: Filter by source (yaml)
+        in: query
+        name: source
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MCPServer'
+            type: array
+      summary: Browse registry servers with search and filters
+      tags:
+      - registry
+  /api/v1/registry/reload:
+    post:
+      description: Reload MCP server registry from URL or local file based on configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Reload registry from configured source
+      tags:
+      - registry
+  /api/v1/registry/upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload a single MCP server registry entry
+      parameters:
+      - description: MCP server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/models.MCPServer'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a single registry entry
+      tags:
+      - registry
+  /api/v1/registry/upload/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Upload multiple MCP server registry entries in bulk
+      parameters:
+      - description: Array of MCP server data
+        in: body
+        name: servers
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.MCPServer'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload multiple registry entries
+      tags:
+      - registry
+  /api/v1/registry/upload/local-mcp:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload Python scripts and configuration for a local STDIO MCP server
+      parameters:
+      - description: MCP server name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: MCP server description
+        in: formData
+        name: description
+        type: string
+      - description: MCP client configuration JSON
+        in: formData
+        name: config
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Python script files and requirements.txt
+        in: formData
+        items:
+          type: file
+        name: files
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MCPServer'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Upload a local MCP server implementation
+      tags:
+      - registry
+  /api/v1/users:
+    get:
+      description: Retrieve a list of all users in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user in the system
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new user
+      tags:
+      - users
+  /api/v1/users/{id}:
+    delete:
+      description: Delete a user from the system
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      description: Retrieve details of a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get user details
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user's information
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated user data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update a user
+      tags:
+      - users
+  /auth/mode:
+    get:
+      description: Returns the current authentication configuration (unauthenticated
+        endpoint)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AuthModeResponse'
+      summary: Get authentication mode
+      tags:
+      - auth
   /plugins/register:
     post:
       consumes:
@@ -929,7 +3297,7 @@ paths:
     get:
       description: Get all services of a specific type
       parameters:
-      - description: Service type (smartagents, registry, virtualmcp)
+      - description: Service type (smartagents, registry)
         in: path
         name: serviceType
         required: true
@@ -946,302 +3314,9 @@ paths:
       summary: List services by type
       tags:
       - plugins
-  /public/registry:
-    get:
-      description: Retrieve filtered JSON data from the official Model Context Protocol
-        registry (only active latest versions)
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Get public registry data
-      tags:
-      - registry
-  /register:
-    post:
-      consumes:
-      - application/json
-      description: Register a discovered MCP server as an adapter
-      parameters:
-      - description: Registration request with discoveredServerId
-        in: body
-        name: request
-        required: true
-        schema:
-          additionalProperties:
-            type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.AdapterResource'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Register discovered server
-      tags:
-      - discovery
-  /registry/{id}:
-    delete:
-      description: Remove an MCP server entry
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Delete an MCP server
-      tags:
-      - registry
-    get:
-      description: Retrieve a specific MCP server configuration
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Get an MCP server by ID
-      tags:
-      - registry
-    put:
-      consumes:
-      - application/json
-      description: Update an existing MCP server configuration or validation status
-      parameters:
-      - description: MCP Server ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated MCP server data
-        in: body
-        name: server
-        required: true
-        schema:
-          $ref: '#/definitions/models.MCPServer'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "404":
-          description: Not Found
-          schema:
-            type: string
-      summary: Update an MCP server
-      tags:
-      - registry
-  /registry/browse:
-    get:
-      description: Search and filter MCP servers from all configured sources
-      parameters:
-      - description: Search query
-        in: query
-        name: q
-        type: string
-      - description: Filter by transport type (stdio, sse, websocket)
-        in: query
-        name: transport
-        type: string
-      - description: Filter by registry type (oci, npm)
-        in: query
-        name: registryType
-        type: string
-      - description: Filter by validation status
-        in: query
-        name: validationStatus
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.MCPServer'
-            type: array
-      summary: Browse registry servers with search and filters
-      tags:
-      - registry
-  /registry/sync/official:
-    post:
-      description: Manually trigger synchronization with the official MCP registry
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Sync from official MCP registry
-      tags:
-      - registry
-  /registry/upload:
-    post:
-      consumes:
-      - application/json
-      description: Upload a single MCP server registry entry
-      parameters:
-      - description: MCP server data
-        in: body
-        name: server
-        required: true
-        schema:
-          $ref: '#/definitions/models.MCPServer'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.MCPServer'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Upload a single registry entry
-      tags:
-      - registry
-  /registry/upload/bulk:
-    post:
-      consumes:
-      - application/json
-      description: Upload multiple MCP server registry entries in bulk
-      parameters:
-      - description: Array of MCP server data
-        in: body
-        name: servers
-        required: true
-        schema:
-          items:
-            $ref: '#/definitions/models.MCPServer'
-          type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Upload multiple registry entries
-      tags:
-      - registry
-  /scan:
-    post:
-      consumes:
-      - application/json
-      description: Initiates a network scan to discover MCP servers
-      parameters:
-      - description: Scan configuration
-        in: body
-        name: config
-        required: true
-        schema:
-          $ref: '#/definitions/models.ScanConfig'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Start network scan for MCP servers
-      tags:
-      - discovery
-  /scan/{scanId}:
-    get:
-      description: Retrieve the status and results of a network scan
-      parameters:
-      - description: Scan ID
-        in: path
-        name: scanId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.ScanJob'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/service.ErrorResponse'
-      summary: Get scan status
-      tags:
-      - discovery
-  /servers:
-    get:
-      description: Retrieve all discovered MCP servers
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.DiscoveredServer'
-            type: array
-      summary: List discovered servers
-      tags:
-      - discovery
 securityDefinitions:
-  BearerAuth:
-    description: Bearer token for authentication
+  ApiKeyAuth:
     in: header
-    name: Authorization
+    name: X-API-Key
     type: apiKey
 swagger: "2.0"

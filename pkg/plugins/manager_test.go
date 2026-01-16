@@ -3,6 +3,7 @@ package plugins
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"suse-ai-up/internal/config"
 )
 
@@ -10,16 +11,18 @@ func TestServiceManager(t *testing.T) {
 	// Create a test config
 	cfg := &config.Config{
 		Services: config.PluginServicesConfig{
-			SmartAgents: config.ServiceConfig{
-				Enabled: true,
-				URL:     "http://localhost:8910",
-				Timeout: "30s",
+			Services: map[string]config.ServiceConfig{
+				"smartagents": {
+					Enabled: true,
+					URL:     "http://localhost:8910",
+					Timeout: "30s",
+				},
 			},
 		},
 	}
 
 	// Create service manager
-	sm := NewServiceManager(cfg)
+	sm := NewServiceManager(cfg, nil)
 
 	// Test service registration
 	registration := &ServiceRegistration{
@@ -83,30 +86,78 @@ func TestServiceManagerDisabledService(t *testing.T) {
 	// Create a config with smartagents disabled
 	cfg := &config.Config{
 		Services: config.PluginServicesConfig{
-			SmartAgents: config.ServiceConfig{
-				Enabled: false, // Disabled
-				URL:     "http://localhost:8910",
-				Timeout: "30s",
+			Services: map[string]config.ServiceConfig{
+				"smartagents": {
+					Enabled: false, // Disabled
+					URL:     "http://localhost:8910",
+					Timeout: "30s",
+				},
 			},
 		},
 	}
 
-	sm := NewServiceManager(cfg)
+	sm := NewServiceManager(cfg, nil)
 
 	registration := &ServiceRegistration{
-		ServiceID:   "test-smartagents",
-		ServiceType: ServiceTypeSmartAgents,
-		ServiceURL:  "http://localhost:8910",
+		ServiceID:    "test-smartagents",
+		ServiceType:  ServiceTypeSmartAgents,
+		ServiceURL:   "http://localhost:8910",
+		Version:      "1.0.0",
+		Capabilities: []ServiceCapability{},
+	}
+
+	// With the new flexible system, disabled services in config should still be rejected
+	err := sm.RegisterService(registration)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not enabled")
+
+	// But custom service types should be allowed
+	customRegistration := &ServiceRegistration{
+		ServiceID:    "test-custom",
+		ServiceType:  ServiceType("custom-service"),
+		ServiceURL:   "http://localhost:9000",
+		Version:      "1.0.0",
+		Capabilities: []ServiceCapability{},
+	}
+
+	err = sm.RegisterService(customRegistration)
+	assert.NoError(t, err)
+}
+
+func TestServiceManagerCustomServiceType(t *testing.T) {
+	// Test that custom service types can register themselves
+	cfg := &config.Config{
+		Services: config.PluginServicesConfig{
+			Services: map[string]config.ServiceConfig{}, // Empty map
+		},
+	}
+
+	sm := NewServiceManager(cfg, nil)
+
+	// Test custom service type
+	customServiceType := ServiceType("my-custom-service")
+	registration := &ServiceRegistration{
+		ServiceID:   "test-custom-service",
+		ServiceType: customServiceType,
+		ServiceURL:  "http://localhost:9000",
 		Version:     "1.0.0",
+		Capabilities: []ServiceCapability{
+			{
+				Path:        "/api/v1/custom",
+				Methods:     []string{"GET", "POST"},
+				Description: "Custom service endpoints",
+			},
+		},
 	}
 
 	err := sm.RegisterService(registration)
-	if err == nil {
-		t.Fatal("Expected error when registering disabled service type")
-	}
+	assert.NoError(t, err)
 
-	expectedError := "service type smartagents is not enabled in configuration"
-	if err.Error() != expectedError {
-		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
-	}
+	// Verify service was registered
+	service, exists := sm.GetService("test-custom-service")
+	assert.True(t, exists)
+	assert.Equal(t, customServiceType, service.ServiceType)
+
+	// Verify the service is enabled (should be true for custom types)
+	assert.True(t, sm.IsServiceEnabled(customServiceType))
 }

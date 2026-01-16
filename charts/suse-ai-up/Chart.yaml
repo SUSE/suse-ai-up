@@ -1,0 +1,32 @@
+apiVersion: v2
+name: suse-ai-up
+description: SUSE AI Universal Proxy - A comprehensive MCP proxy system with discovery, registry, and plugin management
+type: application
+version: 1.1.0
+appVersion: "latest"
+icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+maintainers:
+  - name: SUSE LLC
+    url: https://www.suse.com/
+  - name: SUSE AI Team
+    email: ai@suse.com
+
+keywords:
+  - mcp
+  - ai
+  - proxy
+  - model-context-protocol
+  - kubernetes
+
+home: https://github.com/suse/suse-ai-up
+sources:
+  - https://github.com/suse/suse-ai-up
+
+annotations:
+  artifacthub.io/category: "ai-ml"
+  artifacthub.io/license: "Apache-2.0"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/suse/suse-ai-up/tree/main/docs
+    - name: Source Code
+      url: https://github.com/suse/suse-ai-up

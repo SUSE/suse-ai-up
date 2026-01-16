@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -65,21 +66,20 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 	defer p.mutex.Unlock()
 
 	if proc, exists := p.processes[adapter.Name]; exists {
-		fmt.Printf("DEBUG: Reusing existing process for adapter %s\n", adapter.Name)
 		return proc, nil
 	}
-
-	fmt.Printf("DEBUG: Starting new process for adapter %s\n", adapter.Name)
 
 	// Determine command and args
 	var command string
 	var args []string
 	var tempDir string
+	var mcpEnvVars map[string]string
 
 	if len(adapter.MCPClientConfig.MCPServers) > 0 {
 		for _, serverConfig := range adapter.MCPClientConfig.MCPServers {
 			command = serverConfig.Command
 			args = serverConfig.Args
+			mcpEnvVars = serverConfig.Env
 			break
 		}
 		tempDir = ""
@@ -136,6 +136,10 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 			cmd.Env = append(cmd.Env, k+"="+v)
 		}
 	}
+	// Add environment variables from MCPClientConfig
+	for k, v := range mcpEnvVars {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -176,13 +180,28 @@ func (p *LocalStdioProxyPlugin) getOrStartProcess(adapter models.AdapterResource
 
 	p.processes[adapter.Name] = proc
 
-	// Start a goroutine to monitor the process
+	// Start a goroutine to monitor the process and filter security warnings
 	go func() {
+		// Start a goroutine to filter stderr output
+		go func() {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				line := scanner.Text()
+				// Filter out FastMCP security warnings that are expected in development
+				if !strings.Contains(line, "Request filter disabled") &&
+					!strings.Contains(line, "vulnerable to XSRF attacks") &&
+					!strings.Contains(line, "CSRF") &&
+					!strings.Contains(line, "XSRF") {
+					log.Printf("[MCP_PROTOCOL] Adapter: %s | Message: %s", adapter.Name, line)
+				}
+			}
+		}()
+
 		err := cmd.Wait()
 		if err != nil {
-			fmt.Printf("Subprocess for adapter %s exited with error: %v\n", adapter.Name, err)
+			log.Printf("[MCP_PROTOCOL] Adapter: %s | ERROR: Subprocess exited with error: %v", adapter.Name, err)
 		} else {
-			fmt.Printf("Subprocess for adapter %s exited normally\n", adapter.Name)
+			log.Printf("[MCP_PROTOCOL] Adapter: %s | INFO: Subprocess exited normally", adapter.Name)
 		}
 		// Remove from map when process exits
 		p.mutex.Lock()
@@ -198,8 +217,6 @@ func (p *LocalStdioProxyPlugin) sendMessage(proc *runningProcess, message string
 	proc.mutex.Lock()
 	defer proc.mutex.Unlock()
 
-	fmt.Printf("DEBUG: Sending message to subprocess: %s\n", message)
-
 	// Send the message
 	if _, err := fmt.Fprintln(proc.stdin, message); err != nil {
 		return "", fmt.Errorf("failed to send message to subprocess: %w", err)
@@ -209,16 +226,15 @@ func (p *LocalStdioProxyPlugin) sendMessage(proc *runningProcess, message string
 	scanner := bufio.NewScanner(proc.stdout)
 	if scanner.Scan() {
 		response := scanner.Text()
-		fmt.Printf("DEBUG: Received response from subprocess: %s\n", response)
 		return response, nil
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Printf("ERROR: Scanner error: %v\n", err)
+		log.Printf("[MCP_PROTOCOL] ERROR: Scanner error: %v", err)
 		return "", fmt.Errorf("error reading from subprocess: %w", err)
 	}
 
-	fmt.Printf("ERROR: No response from subprocess\n")
+	log.Printf("[MCP_PROTOCOL] ERROR: No response from subprocess")
 	return "", fmt.Errorf("no response from subprocess")
 }
 
@@ -283,7 +299,7 @@ func (p *LocalStdioProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		c.Header("mcp-session-id", sessionID)
 		// Register session in session store
 		if err := sessionStore.SetWithDetails(sessionID, adapter.Name, "local", string(adapter.ConnectionType)); err != nil {
-			fmt.Printf("Warning: failed to register session %s: %v\n", sessionID, err)
+			log.Printf("[MCP_PROTOCOL] WARNING: Failed to register session %s: %v", sessionID, err)
 		}
 	} else {
 		// For non-initialize calls, validate session ID
@@ -295,38 +311,33 @@ func (p *LocalStdioProxyPlugin) ProxyRequest(c *gin.Context, adapter models.Adap
 		if requestSessionID != "" {
 			// Validate session exists and belongs to this adapter
 			if details, err := sessionStore.GetDetails(requestSessionID); err != nil {
-				fmt.Printf("Warning: invalid session ID %s: %v\n", requestSessionID, err)
+				log.Printf("[MCP_PROTOCOL] WARNING: Invalid session ID %s: %v", requestSessionID, err)
 			} else if details.AdapterName != adapter.Name {
-				fmt.Printf("Warning: session ID %s belongs to different adapter %s, not %s\n",
+				log.Printf("[MCP_PROTOCOL] WARNING: Session ID %s belongs to different adapter %s, not %s",
 					requestSessionID, details.AdapterName, adapter.Name)
 			} else {
 				// Update session activity
 				if err := sessionStore.UpdateActivity(requestSessionID); err != nil {
-					fmt.Printf("Warning: failed to update session activity for %s: %v\n", requestSessionID, err)
+					log.Printf("[MCP_PROTOCOL] WARNING: Failed to update session activity for %s: %v", requestSessionID, err)
 				}
 			}
 		}
 		// Note: We allow calls without session IDs for backward compatibility
 	}
 
-	fmt.Printf("DEBUG: ProxyRequest for adapter %s, body: %s\n", adapter.Name, string(body))
-
 	// Get or start the persistent process
 	proc, err := p.getOrStartProcess(adapter)
 	if err != nil {
-		fmt.Printf("ERROR: failed to get/start process: %v\n", err)
+		log.Printf("[MCP_PROTOCOL] ERROR: Failed to get/start process: %v", err)
 		return fmt.Errorf("failed to get/start process: %w", err)
 	}
 
 	// Send the message and get response
 	response, err := p.sendMessage(proc, string(body))
 	if err != nil {
-		fmt.Printf("ERROR: failed to send message: %v\n", err)
+		log.Printf("[MCP_PROTOCOL] ERROR: Failed to send message: %v", err)
 		return err
 	}
-
-	// Debug logging
-	fmt.Printf("DEBUG: response: %q\n", response)
 
 	// Return the response
 	c.Header("Content-Type", "application/json")

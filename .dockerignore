@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+
+# Documentation (but keep specific files needed for build)
+*.md
+docs/
+!docs/
+examples/*
+!examples/local-mcp/requirements.txt
+charts/
+
+# Development files
+AGENTS.md
+CONTRIBUTING.md
+SECURITY.md
+README_DISCOVERY_REFACTOR.md
+
+# Build artifacts
+main
+server
+publish_servers
+test
+test_build
+test-server
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Docker
+Dockerfile*
+docker-bake.hcl
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Test results and coverage
+*.out
+coverage.html
+*.test
+
+# Session files
+session_*.json
+found_servers.json
+result*.json
+scripts/found_docker_servers.json
+
+# SSE output
+sse_output.txt

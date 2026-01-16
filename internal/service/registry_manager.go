@@ -153,7 +153,7 @@ func (rm *RegistryManager) parseOfficialServer(data map[string]interface{}) (*mo
 
 	// Extract repository
 	if repoData, ok := serverData["repository"].(map[string]interface{}); ok {
-		repo := &models.Repository{}
+		repo := models.Repository{}
 		if url, ok := repoData["url"].(string); ok {
 			repo.URL = url
 		}

@@ -37,11 +37,6 @@ type AdapterStatusResponse struct {
 	models.AdapterStatus
 }
 
-// LogsResponse represents adapter logs
-type LogsResponse struct {
-	Logs string `json:"logs"`
-}
-
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -52,11 +47,17 @@ type ManagementService struct {
 	kubeClient   *clients.KubeClientWrapper
 	store        clients.AdapterResourceStore
 	sessionStore session.SessionStore
+	mcpDiscovery *MCPDiscoveryService
 }
 
 // NewManagementService creates a new ManagementService
 func NewManagementService(kubeClient *clients.KubeClientWrapper, store clients.AdapterResourceStore, sessionStore session.SessionStore) *ManagementService {
-	return &ManagementService{kubeClient: kubeClient, store: store, sessionStore: sessionStore}
+	return &ManagementService{
+		kubeClient:   kubeClient,
+		store:        store,
+		sessionStore: sessionStore,
+		mcpDiscovery: NewMCPDiscoveryService(),
+	}
 }
 
 // CreateAdapter handles POST /adapters
@@ -69,7 +70,7 @@ func NewManagementService(kubeClient *clients.KubeClientWrapper, store clients.A
 // @Success 201 {object} models.AdapterResource
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters [post]
+// @Router /api/v1/adapters [post]
 func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -106,6 +107,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		return
 	}
 	log.Printf("CreateAdapter: JSON bound successfully")
+	log.Printf("DEBUG: req.ConnectionType: %s", req.ConnectionType)
 
 	var data models.AdapterData
 	data.Name = req.Name
@@ -137,6 +139,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		data.ConnectionType = models.ConnectionTypeStreamableHttp
 	}
 	log.Printf("CreateAdapter: After defaults: %+v", data)
+	log.Printf("DEBUG: data.ConnectionType after defaults: %s", data.ConnectionType)
 
 	// Validate name
 	log.Printf("CreateAdapter: Validating name: %s", data.Name)
@@ -174,7 +177,7 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 	log.Printf("CreateAdapter: User: %s", user)
 
 	// Check if exists
-	existing, _ := ms.store.TryGetAsync(data.Name, ctx)
+	existing, _ := ms.store.Get(ctx, data.Name)
 	if existing != nil {
 		log.Printf("CreateAdapter: Adapter already exists: %s", data.Name)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter with the same name already exists."})
@@ -200,13 +203,33 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 		log.Printf("Skipping deployment for non-K8s adapter %s (type: %s)", data.Name, data.ConnectionType)
 	}
 
+	// Discover MCP capabilities for supported connection types
+	if data.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		data.ConnectionType == models.ConnectionTypeStreamableHttp {
+		log.Printf("CreateAdapter: Discovering MCP capabilities for adapter %s", data.Name)
+
+		// Wait a moment for the adapter to be ready (especially for deployed adapters)
+		if data.ConnectionType == models.ConnectionTypeStreamableHttp {
+			time.Sleep(2 * time.Second)
+		}
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(resource)
+		if err != nil {
+			log.Printf("CreateAdapter: Failed to discover MCP capabilities for %s: %v", data.Name, err)
+			// Don't fail the creation, just log the error
+		} else {
+			resource.MCPFunctionality = functionality
+			log.Printf("CreateAdapter: Successfully discovered capabilities for %s", data.Name)
+		}
+	}
+
 	// Store in memory/Cosmos
 	if err := ms.store.UpsertAsync(resource, ctx); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to store adapter: %v", err)})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": resource.ID, "name": resource.Name})
+	c.JSON(http.StatusCreated, resource)
 }
 
 // ListAdapters handles GET /adapters
@@ -216,10 +239,14 @@ func (ms *ManagementService) CreateAdapter(c *gin.Context) {
 // @Produce json
 // @Success 200 {array} models.AdapterResource
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters [get]
+// @Router /api/v1/adapters [get]
 func (ms *ManagementService) ListAdapters(c *gin.Context) {
 	ctx := context.Background()
-	adapters, err := ms.store.ListAsync(ctx)
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	adapters, err := ms.store.List(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -228,22 +255,52 @@ func (ms *ManagementService) ListAdapters(c *gin.Context) {
 }
 
 // GetAdapter handles GET /adapters/:name
-// @Summary Get adapter details
-// @Description Retrieve metadata for a specific MCP server adapter.
+// @Summary Get an adapter
+// @Description Retrieve details of a specific MCP server adapter including discovered capabilities.
 // @Tags adapters
 // @Produce json
 // @Param name path string true "Adapter name"
 // @Success 200 {object} models.AdapterResource
 // @Failure 404 {object} ErrorResponse
-// @Router /adapters/{name} [get]
+// @Router /api/v1/adapters/{name} [get]
 func (ms *ManagementService) GetAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
+	// Check if adapter belongs to user
+	if adapter.CreatedBy != userID {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	// Check if MCP functionality needs refresh
+	refresh := c.Query("refresh") == "true"
+	if refresh && (adapter.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		adapter.ConnectionType == models.ConnectionTypeStreamableHttp) {
+		log.Printf("GetAdapter: Refreshing MCP capabilities for adapter %s", name)
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(*adapter)
+		if err != nil {
+			log.Printf("GetAdapter: Failed to refresh MCP capabilities for %s: %v", name, err)
+			// Don't fail the request, just log the error
+		} else {
+			adapter.MCPFunctionality = functionality
+			// Update the stored adapter with refreshed capabilities
+			if err := ms.store.UpsertAsync(*adapter, ctx); err != nil {
+				log.Printf("GetAdapter: Failed to store refreshed capabilities for %s: %v", name, err)
+			}
+			log.Printf("GetAdapter: Successfully refreshed capabilities for %s", name)
+		}
+	}
+
 	c.JSON(http.StatusOK, adapter)
 }
 
@@ -258,7 +315,7 @@ func (ms *ManagementService) GetAdapter(c *gin.Context) {
 // @Success 200 {object} models.AdapterResource
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name} [put]
+// @Router /api/v1/adapters/{name} [put]
 func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	name := c.Param("name")
 	var data models.AdapterData
@@ -273,8 +330,12 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	existing, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || existing == nil {
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
+	existing, err := ms.store.Get(ctx, name)
+	if err != nil || existing.CreatedBy != userID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter does not exist."})
 		return
 	}
@@ -284,15 +345,48 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 	updated.Create(data, existing.CreatedBy, existing.CreatedAt)
 
 	// Check if deployment needs update (only for K8s)
+	deploymentUpdated := false
 	if (existing.ConnectionType == models.ConnectionTypeSSE || existing.ConnectionType == models.ConnectionTypeStreamableHttp) && ms.needsDeploymentUpdate(*existing, data) {
 		if ms.kubeClient != nil {
 			if err := ms.deployAdapter(&data, ctx); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update deployment: %v", err)})
 				return
 			}
+			deploymentUpdated = true
 		} else {
 			log.Printf("Skipping Kubernetes deployment update for adapter %s (running in local mode)", name)
 		}
+	}
+
+	// Rediscover MCP capabilities if connection type changed or deployment was updated
+	shouldRediscover := false
+	if existing.ConnectionType != data.ConnectionType ||
+		existing.RemoteUrl != data.RemoteUrl ||
+		(data.Authentication != nil && existing.Authentication != data.Authentication) ||
+		deploymentUpdated {
+		shouldRediscover = true
+	}
+
+	if shouldRediscover && (data.ConnectionType == models.ConnectionTypeRemoteHttp ||
+		data.ConnectionType == models.ConnectionTypeStreamableHttp) {
+		log.Printf("UpdateAdapter: Rediscovering MCP capabilities for adapter %s", name)
+
+		// Wait a moment for the adapter to be ready if deployment was updated
+		if deploymentUpdated {
+			time.Sleep(2 * time.Second)
+		}
+
+		functionality, err := ms.mcpDiscovery.DiscoverCapabilities(updated)
+		if err != nil {
+			log.Printf("UpdateAdapter: Failed to rediscover MCP capabilities for %s: %v", name, err)
+			// Don't fail the update, just log the error
+		} else {
+			updated.MCPFunctionality = functionality
+			log.Printf("UpdateAdapter: Successfully rediscovered capabilities for %s", name)
+		}
+	} else {
+		// Preserve existing functionality if not rediscovering
+		updated.MCPFunctionality = existing.MCPFunctionality
 	}
 
 	if err := ms.store.UpsertAsync(updated, ctx); err != nil {
@@ -312,19 +406,23 @@ func (ms *ManagementService) UpdateAdapter(c *gin.Context) {
 // @Success 204
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name} [delete]
+// @Router /api/v1/adapters/{name} [delete]
 func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
 
-	// Check ownership (simplified)
-	adapter, _ := ms.store.TryGetAsync(name, ctx)
-	if adapter == nil {
+	// Check ownership
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The adapter does not exist."})
 		return
 	}
 
-	if err := ms.store.DeleteAsync(name, ctx); err != nil {
+	if err := ms.store.Delete(ctx, name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -354,14 +452,18 @@ func (ms *ManagementService) DeleteAdapter(c *gin.Context) {
 // @Success 200 {object} models.AdapterStatus
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/status [get]
+// @Router /api/v1/adapters/{name}/status [get]
 func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 	name := c.Param("name")
 	ctx := context.Background()
+	userID := c.GetString("userId")
+	if userID == "" {
+		userID = "default-user"
+	}
 
 	// Get adapter to check type
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
+	adapter, err := ms.store.Get(ctx, name)
+	if err != nil || adapter.CreatedBy != userID {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
 		return
 	}
@@ -379,46 +481,6 @@ func (ms *ManagementService) GetAdapterStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, status)
-}
-
-// GetAdapterLogs handles GET /adapters/:name/logs
-// @Summary Get adapter logs
-// @Description Access the running logs of an MCP server adapter.
-// @Tags adapters
-// @Produce json
-// @Param name path string true "Adapter name"
-// @Success 200 {object} LogsResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /adapters/{name}/logs [get]
-func (ms *ManagementService) GetAdapterLogs(c *gin.Context) {
-	name := c.Param("name")
-	ctx := context.Background()
-
-	// Get adapter to check type
-	adapter, err := ms.store.TryGetAsync(name, ctx)
-	if err != nil || adapter == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Adapter not found"})
-		return
-	}
-
-	var logs string
-	if adapter.ConnectionType == models.ConnectionTypeSSE || adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
-		instance := c.Query("instance")
-		ordinal := 0
-		if instance != "" {
-			// Parse instance
-		}
-		logs, err = ms.getDeploymentLogs(name, ordinal, ctx)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	} else {
-		logs = "Non-K8s adapter - logs not available"
-	}
-
-	c.JSON(http.StatusOK, gin.H{"logs": logs})
 }
 
 // Helper methods (simplified implementations)

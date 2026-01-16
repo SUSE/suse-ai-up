@@ -1,5 +1,8 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+# Build stage - compile Go binaries for multiple architectures
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+
+ARG TARGETARCH
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH}
 
 WORKDIR /app
 
@@ -10,35 +13,39 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o service ./cmd/service
+# Build the unified binary
+RUN go build -ldflags="-w -s" -o suse-ai-up ./cmd/uniproxy
 
-# Final stage
-FROM alpine:latest
+# Final stage - minimal runtime image
+FROM registry.suse.com/bci/bci-base:16.0
 
-RUN apk --no-cache add ca-certificates
+# Install only essential runtime dependencies
+RUN zypper --non-interactive install ca-certificates timezone
 
 # Create non-root user
-RUN adduser -D -s /bin/sh -u 1000 mcpuser
+RUN useradd -r -s /bin/bash -u 1000 mcpuser
 
-# Set working directory
 WORKDIR /home/mcpuser/
 
-# Copy the binary from builder stage
-COPY --from=builder /app/service .
+# Copy binary, config, and docs
+COPY --from=builder /app/suse-ai-up .
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/docs ./docs
 
-# Copy swagger files
-COPY ./docs/swagger.json ./swagger.json
-COPY ./swagger.html ./swagger.html
+# Clean up and set permissions
+RUN rm -f config/comprehensive_mcp_servers.yaml*
 
-# Change ownership to non-root user
-RUN chown mcpuser:mcpuser service swagger.json swagger.html
+RUN chown -R mcpuser:mcpuser suse-ai-up config
 
 # Switch to non-root user
 USER 1000
 
-# Expose port
-EXPOSE 8001
+# Health check - check if the proxy port is responding
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD nc -z localhost 8911 || exit 1
 
-# Run the binary
-CMD ["./service"]
+# Expose unified service ports
+EXPOSE 8911 3911
+
+# Run the unified binary
+CMD ["./suse-ai-up"]

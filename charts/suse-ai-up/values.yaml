@@ -1,0 +1,551 @@
+# SUSE AI Universal Proxy Helm Chart Values
+# This file contains all configurable values for the SUSE AI Universal Proxy
+
+# Installation type (used by questions.yaml for UI logic)
+installType: "quickstart"  # quickstart or custom
+
+# Service resource profile (used by questions.yaml for UI logic)
+serviceResources: "standard"  # light, standard, heavy, or custom
+
+# Override the fullname of the chart
+fullnameOverride: ""
+
+# Deployment configuration
+replicaCount: 1
+
+# Image configuration
+image:
+  registry: ghcr.io
+  repository: suse/uniproxy
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+  # Multi-architecture support
+  architecture:
+    - amd64
+    - arm64
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+  # Node selector, tolerations, and affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Service configuration
+services:
+  # Unified proxy service (includes registry, discovery, and plugin functionality)
+  proxy:
+    enabled: true
+    port: 8911
+    tlsPort: 3911
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# TLS Configuration
+tls:
+  enabled: true
+  autoGenerate: true
+  certFile: ""  # Path to certificate file
+  keyFile: ""   # Path to private key file
+  secretName: "suse-ai-up-tls"
+
+# CORS Configuration
+cors:
+  allowedOrigins: "*"  # Allow all origins by default for public access
+
+# Service API Keys (for inter-service authentication)
+serviceApiKeys: ""
+
+# Authentication Configuration
+auth:
+  mode: "local"  # local, github, rancher, dev
+  devMode: false  # Enable development mode (bypass auth)
+
+  # Local authentication (password-based)
+  local:
+    defaultAdminPassword: "admin"  # Initial admin password
+    forcePasswordChange: true     # Force password change on first login
+    passwordMinLength: 8          # Minimum password length
+
+  # GitHub OAuth configuration
+  github:
+    clientId: ""        # GitHub OAuth App Client ID
+    clientSecret: ""    # GitHub OAuth App Client Secret
+    redirectUri: ""     # OAuth callback URL (auto-generated if empty)
+    allowedOrgs: []     # List of allowed GitHub organizations
+    adminTeams: []      # GitHub teams that get admin permissions
+
+  # Rancher OIDC configuration
+  rancher:
+    issuerUrl: ""       # Rancher OIDC issuer URL
+    clientId: ""        # Rancher OIDC Client ID
+    clientSecret: ""    # Rancher OIDC Client Secret
+    redirectUri: ""     # OIDC callback URL (auto-generated if empty)
+    adminGroups: []     # Rancher groups that get admin permissions
+    fallbackLocal: true # Allow local auth fallback
+
+# Initial Users Configuration (for Helm setup)
+initialUsers:
+  enabled: true
+  users:
+    - id: "admin"
+      name: "System Administrator"
+      email: "admin@suse.ai"
+      password: ""  # If empty, uses auth.local.defaultAdminPassword
+      groups: ["mcp-admins"]
+      authProvider: "local"
+  # Additional users can be added here
+  # - id: "user1"
+  #   name: "Example User"
+  #   email: "user1@company.com"
+  #   password: "secure_password"
+  #   groups: ["mcp-users"]
+  #   authProvider: "local"
+
+# Initial Groups Configuration
+initialGroups:
+  enabled: true
+  groups:
+    - id: "mcp-admins"
+      name: "MCP Administrators"
+      description: "Full administrative access to all MCP proxy features"
+      permissions: [
+        # User management - full CRUD
+        "user:create", "user:read", "user:update", "user:delete",
+        # Group management - full CRUD
+        "group:create", "group:read", "group:update", "group:delete",
+        # Adapter management - full CRUD
+        "adapter:create", "adapter:read", "adapter:update", "adapter:delete", "adapter:assign",
+        # Server/Discovery management - full CRUD
+        "server:create", "server:read", "server:update", "server:delete",
+        "discovery:create", "discovery:read", "discovery:update", "discovery:delete",
+        # Registry management - full CRUD
+        "registry:create", "registry:read", "registry:update", "registry:delete"
+      ]
+    - id: "mcp-users"
+      name: "MCP Users"
+      description: "Basic access to MCP servers and limited adapter operations"
+      permissions: [
+        # Basic read access
+        "server:read", "adapter:read",
+        # Limited adapter operations (POST/GET, no delete)
+        "adapter:create", "adapter:assign"
+      ]
+
+# Monitoring Configuration
+monitoring:
+  enabled: false
+
+  # Prometheus configuration (connects to existing Prometheus)
+  prometheus:
+    enabled: false
+    existingService: ""  # Name of existing Prometheus service
+    namespace: "monitoring"
+
+    # ServiceMonitor configuration for Prometheus Operator
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+
+  # Grafana configuration (connects to existing Grafana)
+  grafana:
+    enabled: false
+    existingService: ""  # Name of existing Grafana service
+    namespace: "monitoring"
+
+    # Grafana dashboard configuration
+    dashboard:
+      enabled: true
+      tags: ["ai", "mcp", "proxy"]
+
+# Ingress Configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: suse-ai-up.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: suse-ai-up-tls
+      hosts:
+        - suse-ai-up.local
+
+# Service Configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+  # Service ports
+  ports:
+    proxy:
+      http: 8911
+      https: 3911
+    health:
+      http: 8911
+      https: 3911
+
+# Pod Security Context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+# Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  capabilities:
+    drop:
+      - ALL
+
+# Probes Configuration
+probes:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Network Policies
+networkPolicy:
+  enabled: false
+  allowExternal: true
+
+# Persistence Configuration
+persistence:
+  enabled: false
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  storageClass: ""
+
+# Logging Configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json, text
+  outputs:
+    - stdout
+
+# Metrics Configuration
+metrics:
+  enabled: true
+  path: "/metrics"
+  port: 9090
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Resource quotas and limits
+quotas:
+  enabled: false
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+
+# Custom environment variables
+extraEnvVars: []
+
+# Custom volumes
+extraVolumes: []
+
+# Custom volume mounts
+extraVolumeMounts: []
+
+# Additional containers
+extraContainers: []
+
+# Init containers
+initContainers: []
+
+# Lifecycle hooks
+lifecycle: {}
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# Priority class
+priorityClassName: ""
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "suse-ai-up-proxy-sa"
+
+# RBAC configuration
+rbac:
+  create: true
+  rules: []
+
+# Pod annotations
+podAnnotations: {}
+
+# Deployment annotations
+deploymentAnnotations: {}
+
+# Service annotations
+serviceAnnotations: {}
+
+# MCP Registry Configuration
+registry:
+  # Enable loading servers from YAML file
+  enabled: true
+
+  # External registry URL (if set, will fetch registry from URL instead of ConfigMap)
+  # Leave empty to use ConfigMap-based registry
+  url: ""
+
+  # Timeout for registry URL fetch (only used when url is set)
+  timeout: "30s"
+
+  # MCP servers configuration (will be loaded into ConfigMap)
+  servers: |
+    - name: uyuni
+      image: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+      type: server
+      meta:
+        category: system-management
+        sidecarConfig:
+          commandType: docker
+          command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}} -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 ghcr.io/uyuni-project/mcp-server-uyuni:latest
+          port: 8000
+          source: manual-config
+          lastUpdated: '2025-12-11T16:30:00Z'
+        tags:
+        - uyuni
+        - patch-management
+        - linux
+        - system-administration
+        - suse
+      about:
+        icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+        title: SUSE Uyuni
+        description: "The Uyuni MCP Server is a Model Context Protocol (MCP) server implementation that bridges the gap between Large Language Models (LLMs) and the Uyuni configuration and infrastructure management solution."
+      source:
+        commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
+        project: https://github.com/uyuni-project/mcp-server-uyuni
+      config:
+        description: Configure Uyuni server connection
+        secrets:
+        - env: UYUNI_SERVER
+          example: http://uyuni.example.com
+          name: uyuni.server
+          templated: true
+          type: text
+        - env: UYUNI_USER
+          example: admin
+          name: uyuni.user
+          templated: true
+          type: text
+        - env: UYUNI_PASS
+          example: your_password_here
+          name: uyuni.pass
+          templated: true
+          type: secret
+        - env: UYUNI_MCP_SSL_VERIFY
+          example: 'true'
+          name: uyuni.ssl_verify
+          templated: false
+          type: bool
+        - env: UYUNI_MCP_WRITE_TOOLS_ENABLED
+          example: 'false'
+          name: uyuni.write_tools_enabled
+          templated: false
+          type: bool
+        - env: UYUNI_SSH_PRIV_KEY
+          example: '-----BEGIN OPENSSH PRIVATE KEY-----
+
+            ...'
+          name: uyuni.ssh_priv_key
+          templated: false
+          type: text
+        - env: UYUNI_SSH_PRIV_KEY_PASS
+          example: your_key_passphrase
+          name: uyuni.ssh_priv_key_pass
+          templated: false
+          type: text
+    - name: bugzilla
+      image: none
+      type: server
+      meta:
+        category: issue-tracking
+        sidecarConfig:
+          commandType: python
+          command: uv run mcp-bugzilla --host 0.0.0.0 --port 8000 --bugzilla-server {{bugzilla.server}} --api-key-header ApiKey
+          port: 8000
+          source: manual-config
+          lastUpdated: '2025-12-11T16:30:00Z'
+        tags:
+        - bugzilla
+        - issue-tracking
+        - bug-reports
+        - suse
+      about:
+        icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+        title: SUSE Bugzilla
+        description: "A robust MCP server that provides seamless interaction with Bugzilla instances through the Model Context Protocol. This server exposes a comprehensive set of tools and prompts, enabling AI models and other MCP clients to efficiently query bug information, manage comments, and leverage Bugzilla's powerful quicksearch capabilities."
+      source:
+        commit: 040bc4b80f18e4a60deae1aa9f0dcf5c5b0bb0bf
+        project: https://github.com/openSUSE/mcp-bugzilla
+      config:
+        description: Configure Bugzilla server connection
+        secrets:
+        - env: BUGZILLA_SERVER
+          example: https://bugzilla.suse.com
+          name: bugzilla.server
+          type: text
+          templated: true
+    - name: trento
+      image: registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest  # Required for docker type, optional for others
+      type: server
+      meta:
+        category: infrastructure
+        tags:
+          - sap
+          - suse
+        sidecarConfig:
+          commandType: docker
+          command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest {{trento-mcp-server.port}} {{trento-mcp-server.serverurl}} {{trento-mcp-server.mcp_tag_filter}}  
+          port: 8000
+          source: manual-config
+          lastUpdated: ''
+      about:
+        icon: https://avatars.githubusercontent.com/u/80825642
+        title: SUSE Trento
+        description: "The Trento MCP Server is a Model Context Protocol (MCP) implementation that bridges the gap between AI assistants and the Trento Project. Instead of navigating through web interfaces, you can now manage and monitor your SAP systems by simply conversing with your AI assistant in natural language."
+      source:
+        commit: none
+        project: https://github.com/trento-project/mcp-server  # Required for python type
+      config:
+        description: Configure Treno server connection
+        secrets:
+          - env: TRENTO_MCP_TRENTO_URL
+            example: https://demo.trento-project.io/
+            name: trento-mcp-server.serverurl
+            type: text
+            templated: true
+          - env: TRENTO_MCP_TAG_FILTER
+            example: MCP
+            name: trento-mcp-server.mcp_tag_filter
+            type: text
+            templated: true
+          - env: TRENTO_MCP_PORT
+            example: "8000"
+            name: trento-mcp-server.port
+            type: text
+            templated: true
+# Sidecar Configuration for MCP servers
+sidecar:
+  enabled: true
+
+  # Namespace for sidecar deployments
+  namespace: "suse-ai-up-mcp"
+
+  # Base image for sidecar containers (when not using docker commands)
+  image:
+    registry: python
+    repository: "3.11-slim"
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Resource limits for sidecar containers
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Port range for sidecar containers
+  portRange:
+    min: 8000
+    max: 9000
+
+  # Runtime configurations
+  runtimes:
+    npx:
+      enabled: true
+      packages: ["nodejs", "npm"]
+    python:
+      enabled: true
+      packages: ["python3", "python3-pip"]
+    uv:
+      enabled: true
+      packages: ["python3", "python3-pip"]
+
+  # Git configuration
+  git:
+    enabled: true
+    packages: ["git"]
+
+  # Security context for sidecar containers
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    capabilities:
+      drop:
+        - ALL
+
+  # Health check configuration
+  healthCheck:
+    enabled: true
+    path: "/health"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Node selector, tolerations, and affinity for sidecar pods
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

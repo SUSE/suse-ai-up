@@ -24,14 +24,28 @@ type TokenInfo struct {
 
 // AuthorizationInfo holds authorization state
 type AuthorizationInfo struct {
-	Status              string    `json:"status"` // "unauthorized", "authorizing", "authorized", "expired", "failed"
-	AuthorizationURL    string    `json:"authorizationUrl,omitempty"`
-	ErrorMessage        string    `json:"errorMessage,omitempty"`
-	AuthorizedAt        time.Time `json:"authorizedAt,omitempty"`
-	LastTokenRefresh    time.Time `json:"lastTokenRefresh,omitempty"`
-	AuthorizationServer string    `json:"authorizationServer,omitempty"`
-	ResourceServer      string    `json:"resourceServer,omitempty"`
-	ClientID            string    `json:"clientId,omitempty"`
+	Status           string    `json:"status"` // "unauthorized", "authorizing", "authorized", "expired", "failed"
+	AuthorizationURL string    `json:"authorizationUrl,omitempty"`
+	ErrorMessage     string    `json:"errorMessage,omitempty"`
+	AuthorizedAt     time.Time `json:"authorizedAt,omitempty"`
+	ExpiresAt        time.Time `json:"expiresAt,omitempty"`
+	AccessToken      string    `json:"accessToken,omitempty"`
+	RefreshToken     string    `json:"refreshToken,omitempty"`
+	TokenType        string    `json:"tokenType,omitempty"`
+	Scope            string    `json:"scope,omitempty"`
+}
+
+// MCPClientInfo holds MCP client information
+type MCPClientInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// MCPServerInfo holds MCP server information
+type MCPServerInfo struct {
+	Name     string `json:"name"`
+	Version  string `json:"version"`
+	Protocol string `json:"protocol"`
 }
 
 // SessionDetails holds detailed session information
@@ -42,9 +56,15 @@ type SessionDetails struct {
 	ConnectionType    string             `json:"connectionType"`
 	CreatedAt         time.Time          `json:"createdAt"`
 	LastActivity      time.Time          `json:"lastActivity"`
-	Status            string             `json:"status"` // "active", "expired", "invalidated"
+	Status            string             `json:"status"`
 	TokenInfo         *TokenInfo         `json:"tokenInfo,omitempty"`
 	AuthorizationInfo *AuthorizationInfo `json:"authorizationInfo,omitempty"`
+
+	// MCP-specific fields
+	MCPSessionID    string                 `json:"mcpSessionId,omitempty"`
+	MCPCapabilities map[string]interface{} `json:"mcpCapabilities,omitempty"`
+	MCPClientInfo   *MCPClientInfo         `json:"mcpClientInfo,omitempty"`
+	MCPServerInfo   *MCPServerInfo         `json:"mcpServerInfo,omitempty"`
 }
 
 // SessionStore interface defines session management operations
@@ -65,6 +85,17 @@ type SessionStore interface {
 	GetAuthorizationInfo(sessionID string) (*AuthorizationInfo, error)
 	IsTokenValid(sessionID string) bool
 	RefreshToken(sessionID, newAccessToken string, expiresAt time.Time) error
+	// MCP-specific methods
+	SetMCPSessionID(sessionID, mcpSessionID string) error
+	GetMCPSessionID(sessionID string) (string, error)
+	SetMCPCapabilities(sessionID string, capabilities map[string]interface{}) error
+	GetMCPCapabilities(sessionID string) (map[string]interface{}, error)
+	SetMCPClientInfo(sessionID string, clientInfo *MCPClientInfo) error
+	GetMCPClientInfo(sessionID string) (*MCPClientInfo, error)
+	SetMCPServerInfo(sessionID string, serverInfo *MCPServerInfo) error
+	GetMCPServerInfo(sessionID string) (*MCPServerInfo, error)
+	FindByMCPSessionID(mcpSessionID string) (*SessionDetails, error)
+	GetActiveMCPSessions() ([]SessionDetails, error)
 }
 
 // InMemorySessionStore is a simple in-memory session store
@@ -297,4 +328,145 @@ func (s *InMemorySessionStore) RefreshToken(sessionID, newAccessToken string, ex
 
 	s.sessions[sessionID] = session
 	return nil
+}
+
+// SetMCPSessionID sets the MCP session ID for a session
+func (s *InMemorySessionStore) SetMCPSessionID(sessionID, mcpSessionID string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	session.MCPSessionID = mcpSessionID
+	s.sessions[sessionID] = session
+	return nil
+}
+
+// GetMCPSessionID retrieves the MCP session ID for a session
+func (s *InMemorySessionStore) GetMCPSessionID(sessionID string) (string, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return "", fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	return session.MCPSessionID, nil
+}
+
+// SetMCPCapabilities sets the MCP capabilities for a session
+func (s *InMemorySessionStore) SetMCPCapabilities(sessionID string, capabilities map[string]interface{}) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	session.MCPCapabilities = capabilities
+	s.sessions[sessionID] = session
+	return nil
+}
+
+// GetMCPCapabilities retrieves the MCP capabilities for a session
+func (s *InMemorySessionStore) GetMCPCapabilities(sessionID string) (map[string]interface{}, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	return session.MCPCapabilities, nil
+}
+
+// SetMCPClientInfo sets the MCP client information for a session
+func (s *InMemorySessionStore) SetMCPClientInfo(sessionID string, clientInfo *MCPClientInfo) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	session.MCPClientInfo = clientInfo
+	s.sessions[sessionID] = session
+	return nil
+}
+
+// GetMCPClientInfo retrieves the MCP client information for a session
+func (s *InMemorySessionStore) GetMCPClientInfo(sessionID string) (*MCPClientInfo, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	return session.MCPClientInfo, nil
+}
+
+// SetMCPServerInfo sets the MCP server information for a session
+func (s *InMemorySessionStore) SetMCPServerInfo(sessionID string, serverInfo *MCPServerInfo) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	session.MCPServerInfo = serverInfo
+	s.sessions[sessionID] = session
+	return nil
+}
+
+// GetMCPServerInfo retrieves the MCP server information for a session
+func (s *InMemorySessionStore) GetMCPServerInfo(sessionID string) (*MCPServerInfo, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	return session.MCPServerInfo, nil
+}
+
+// FindByMCPSessionID finds a session by its MCP session ID
+func (s *InMemorySessionStore) FindByMCPSessionID(mcpSessionID string) (*SessionDetails, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	for _, session := range s.sessions {
+		if session.MCPSessionID == mcpSessionID {
+			return &session, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no session found with MCP session ID: %s", mcpSessionID)
+}
+
+// GetActiveMCPSessions returns all active MCP sessions
+func (s *InMemorySessionStore) GetActiveMCPSessions() ([]SessionDetails, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	var mcpSessions []SessionDetails
+	for _, session := range s.sessions {
+		if session.MCPSessionID != "" && session.Status == "active" {
+			mcpSessions = append(mcpSessions, session)
+		}
+	}
+
+	return mcpSessions, nil
 }

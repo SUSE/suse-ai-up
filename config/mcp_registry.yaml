@@ -1,0 +1,291 @@
+- name: uyuni
+  image: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+  type: server
+  meta:
+    category: system-management
+    sidecarConfig:
+      commandType: docker
+      command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}} -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 ghcr.io/uyuni-project/mcp-server-uyuni:latest
+      port: 8000
+      source: manual-config
+      lastUpdated: '2025-12-11T16:30:00Z'
+    tags:
+    - uyuni
+    - patch-management
+    - linux
+    - system-administration
+    - suse
+  about:
+    icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+    title: SUSE Uyuni
+    description: "The Uyuni MCP Server is a Model Context Protocol (MCP) server implementation that bridges the gap between Large Language Models (LLMs) and the Uyuni configuration and infrastructure management solution."
+  source:
+    commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
+    project: https://github.com/uyuni-project/mcp-server-uyuni
+  config:
+    description: Configure Uyuni server connection
+    secrets:
+    - env: UYUNI_SERVER
+      example: http://uyuni.example.com
+      name: uyuni.server
+      templated: true
+      type: text
+    - env: UYUNI_USER
+      example: admin
+      name: uyuni.user
+      templated: true
+      type: text
+    - env: UYUNI_PASS
+      example: your_password_here
+      name: uyuni.pass
+      templated: true
+      type: secret
+    - env: UYUNI_MCP_SSL_VERIFY
+      example: 'true'
+      name: uyuni.ssl_verify
+      templated: false
+      type: bool
+    - env: UYUNI_MCP_WRITE_TOOLS_ENABLED
+      example: 'false'
+      name: uyuni.write_tools_enabled
+      templated: false
+      type: bool
+    - env: UYUNI_SSH_PRIV_KEY
+      example: '-----BEGIN OPENSSH PRIVATE KEY-----
+
+        ...'
+      name: uyuni.ssh_priv_key
+      templated: false
+      type: text
+    - env: UYUNI_SSH_PRIV_KEY_PASS
+      example: your_key_passphrase
+      name: uyuni.ssh_priv_key_pass
+      templated: false
+      type: text
+- name: bugzilla
+  image: none
+  type: server
+  meta:
+    category: issue-tracking
+    sidecarConfig:
+      commandType: python
+      command: uv run mcp-bugzilla --host 0.0.0.0 --port 8000 --bugzilla-server {{bugzilla.server}} --api-key-header ApiKey
+      port: 8000
+      source: manual-config
+      lastUpdated: '2025-12-11T16:30:00Z'
+    tags:
+    - bugzilla
+    - issue-tracking
+    - bug-reports
+    - suse
+  about:
+    icon: https://apps.rancher.io/logos/suse-ai-deployer.png
+    title: SUSE Bugzilla
+    description: "A robust MCP server that provides seamless interaction with Bugzilla instances through the Model Context Protocol. This server exposes a comprehensive set of tools and prompts, enabling AI models and other MCP clients to efficiently query bug information, manage comments, and leverage Bugzilla's powerful quicksearch capabilities."
+  source:
+    commit: 040bc4b80f18e4a60deae1aa9f0dcf5c5b0bb0bf
+    project: https://github.com/openSUSE/mcp-bugzilla
+  config:
+    description: Configure Bugzilla server connection
+    secrets:
+    - env: BUGZILLA_SERVER
+      example: https://bugzilla.suse.com
+      name: bugzilla.server
+      type: text
+      templated: true
+- name: trento
+  image: registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: infrastructure
+    tags:
+      - sap
+      - suse
+    sidecarConfig:
+      commandType: docker
+      command: docker run  registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest {{trento-mcp-server.port}} {{trento-mcp-server.serverurl}} {{trento-mcp-server.mcp_tag_filter}}  
+      port: 8000
+      source: manual-config
+      lastUpdated: ''
+  about:
+    icon: https://avatars.githubusercontent.com/u/80825642
+    title: SUSE Trento
+    description: "The Trento MCP Server is a Model Context Protocol (MCP) implementation that bridges the gap between AI assistants and the Trento Project. Instead of navigating through web interfaces, you can now manage and monitor your SAP systems by simply conversing with your AI assistant in natural language."
+  source:
+    commit: none
+    project: https://github.com/trento-project/mcp-server  # Required for python type
+  config:
+    description: Configure Treno server connection
+    secrets:
+      - env: TRENTO_MCP_TRENTO_URL
+        example: https://demo.trento-project.io/
+        name: trento-mcp-server.serverurl
+        type: text
+        templated: true
+      - env: TRENTO_MCP_TAG_FILTER
+        example: MCP
+        name: trento-mcp-server.mcp_tag_filter
+        type: text
+        templated: true
+      - env: TRENTO_MCP_PORT
+        example: "8000"
+        name: trento-mcp-server.port
+        type: text
+        templated: true
+- name: gitea
+  image: none
+  type: server
+  meta:
+    category: devops
+    sidecarConfig:
+      commandType: go
+      command: gitea-mcp -t http --host {{gitea.host}} -port 8000 --token {{gitea.pat}}
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
+    tags:
+    - git
+    - devops
+  about:
+    description: Gitea MCP Server is an integration plugin designed to connect Gitea with Model Context Protocol (MCP) systems. This allows for seamless command execution and repository management through an MCP-compatible chat interface.
+    icon: https://gitea.com/assets/img/logo.svg
+    title: Gitea
+  source:
+    commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
+    project: https://gitea.com/gitea/gitea-mcp
+    release: https://gitea.com/gitea/gitea-mcp/releases/tag/v0.7.0
+  config:
+    description: ""
+    secrets:
+    - env: GITEA_HOST
+      example: "https://gitea.com"
+      name: gitea.host
+      templated: true
+      type: text
+    - env: GITEA_ACCESS_TOKEN
+      example: "<your personal access token>"
+      name: gitea.pat
+      templated: true
+      type: secret
+- name: confluence
+  image: ghcr.io/sooperset/mcp-atlassian:latest
+  type: server
+  meta:
+    category: productivity
+    tags:
+    - infrastructure
+    - devops
+    - atlassian
+    - confluence
+    - jira
+    sidecarConfig: {
+      commandType: python,
+       command: "uv run mcp-atlassian --transport streamable-http --port 8000 --confluence-url {{atlassian.confluence.url}} --confluence-personal-token {{atlassian.confluence.personal_token}}"
+    }
+  about:
+    description: Tools for Atlassian products (Confluence and Jira). This integration
+      supports both Atlassian Cloud and Jira Server/Data Center deployments.
+    icon: https://avatars.githubusercontent.com/u/43281909?s=200&v=4
+    title: "Atlassian Confluence"
+  source:
+    branch: v0.11.9
+    commit: 3b07fd3d05f88cd18c37a1739d4e0a1f37fa9aa5
+    project: https://github.com/sooperset/mcp-atlassian
+  config:
+    description: The MCP server is allowed to access these paths
+    secrets:
+    - env: CONFLUENCE_URL
+      example: "http://server.demo.com"
+      name: atlassian.confluence.url
+      templated: true
+      type: text
+    - env: CONFLUENCE_USERNAME
+      example: "your.email@company.com"
+      name: atlassian.confluence.username
+      type: text
+    - env: CONFLUENCE_API_TOKEN
+      example: your_api_token
+      name: atlassian.confluence.api_token
+      templated: true
+      type: secret
+    - env: CONFLUENCE_PERSONAL_TOKEN
+      example: your_api_token
+      templated: true
+      type: secret
+      name: atlassian.confluence.personal_token
+- name: jira
+  image: ghcr.io/sooperset/mcp-atlassian:latest
+  type: server
+  meta:
+    category: productivity
+    tags:
+    - infrastructure
+    - devops
+    - atlassian
+    - confluence
+    - jira
+    sidecarConfig: {
+      commandType: python,
+      command: "uv run mcp-atlassian --transport streamable-http --port 8000 --jira-url {{atlassian.jira.url}} --jira-username {{atlassian.jira.username}} --jira-personal-token {{atlassian.jira.personal_token}}"
+    }
+  about:
+    description: Tools for Atlassian products (Confluence and Jira). This integration
+      supports both Atlassian Cloud and Jira Server/Data Center deployments.
+    icon: https://avatars.githubusercontent.com/u/43281909?s=200&v=4
+    title: "Atlassian Jira"
+  source:
+    branch: v0.11.9
+    commit: 3b07fd3d05f88cd18c37a1739d4e0a1f37fa9aa5
+    project: https://github.com/sooperset/mcp-atlassian
+  config:
+    description: The MCP server is allowed to access these paths
+    secrets:
+    - env: JIRA_URL
+      example: "http://server.demo.com"
+      name: atlassian.jira.url
+      type: text
+    - env: JIRA_USERNAME
+      example: "your.email@company.com"
+      name: atlassian.jira.username
+      type: text
+    - env: JIRA_API_TOKEN
+      example: your_api_token
+      name: atlassian.jira.api_token
+      templated: true
+      type: secret
+    - env: JIRA_PERSONAL_TOKEN
+      example: your_api_token
+      name: atlassian.jira.personal_token
+      templated: true
+      type: secret
+- name: github-official
+  image: ghcr.io/github/github-mcp-server
+  type: remote
+  meta:
+    category: devops
+    tags:
+    - github
+    - devops
+    sidecarConfig:
+      commandType: http
+      command: https://api.githubcopilot.com/mcp/
+      source: manual-config
+      lastUpdated: '2025-12-18T15:14:30.169082Z'
+  about:
+    description: Official GitHub MCP Server, by GitHub. Provides seamless integration
+      with GitHub APIs, enabling advanced automation and interaction capabilities
+      for developers and tools.
+    icon: https://avatars.githubusercontent.com/u/9919?s=200&v=4
+    title: GitHub Official
+  source:
+    commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
+    project: https://github.com/github/github-mcp-server
+  config:
+    description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
+    secrets:
+    - env: GITHUB_PERSONAL_ACCESS_TOKEN
+      example: "gh_1234..."
+      name: github.personal_access_token
+      templated: true
+      type: text
+
+

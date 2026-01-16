@@ -11,6 +11,7 @@ type ServiceType string
 const (
 	ServiceTypeSmartAgents ServiceType = "smartagents"
 	ServiceTypeRegistry    ServiceType = "registry"
+	ServiceTypeVirtualMCP  ServiceType = "virtualmcp"
 )
 
 // ServiceCapability represents a capability provided by a plugin service

@@ -194,7 +194,7 @@ func TestPluginRegistration(t *testing.T) {
     service.SetProxyURL("http://localhost:8911")
 
     // Verify registration
-    resp, err := http.Get("http://localhost:8911/plugins/services")
+    resp, err := http.Get("http://localhost:8911/api/v1/plugins/services")
     // Assert service appears in list
 }
 
@@ -271,7 +271,7 @@ func (e PluginError) Error() string {
 }
 
 func (s *MyService) Register(ctx context.Context, proxyURL string) error {
-    req, err := http.NewRequestWithContext(ctx, "POST", proxyURL+"/plugins/register", bytes.NewReader(data))
+    req, err := http.NewRequestWithContext(ctx, "POST", proxyURL+"/api/v1/plugins/register", bytes.NewReader(data))
     if err != nil {
         return PluginError{
             ServiceID: s.serviceID,

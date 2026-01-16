@@ -3,7 +3,6 @@ package auth
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"suse-ai-up/pkg/clients"
@@ -11,12 +10,16 @@ import (
 
 // AdapterAuthMiddleware provides authentication for adapter endpoints
 type AdapterAuthMiddleware struct {
-	store clients.AdapterResourceStore
+	store        clients.AdapterResourceStore
+	tokenManager *TokenManager
 }
 
 // NewAdapterAuthMiddleware creates a new adapter authentication middleware
-func NewAdapterAuthMiddleware(store clients.AdapterResourceStore) *AdapterAuthMiddleware {
-	return &AdapterAuthMiddleware{store: store}
+func NewAdapterAuthMiddleware(store clients.AdapterResourceStore, tokenManager *TokenManager) *AdapterAuthMiddleware {
+	return &AdapterAuthMiddleware{
+		store:        store,
+		tokenManager: tokenManager,
+	}
 }
 
 // AuthError represents structured authentication error responses
@@ -34,7 +37,7 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 		userAgent := c.GetHeader("User-Agent")
 
 		// Get adapter configuration
-		adapter, err := aam.store.TryGetAsync(adapterName, nil)
+		adapter, err := aam.store.Get(c.Request.Context(), adapterName)
 		if err != nil {
 			// Log the error but let the main handler deal with it
 			fmt.Printf("AUTH: Failed to retrieve adapter %s: %v\n", adapterName, err)
@@ -73,34 +76,44 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 		// Validate based on auth type
 		switch adapter.Authentication.Type {
 		case "bearer":
-			if !strings.HasPrefix(authHeader, "Bearer ") {
-				fmt.Printf("AUTH: Invalid auth type for adapter %s from %s: expected Bearer, got %s\n",
-					adapterName, clientIP, strings.Split(authHeader, " ")[0])
+			// Extract token from header
+			token, err := ExtractTokenFromHeader(authHeader)
+			if err != nil {
+				fmt.Printf("AUTH: Invalid auth header for adapter %s from %s: %v\n", adapterName, clientIP, err)
 				c.JSON(http.StatusUnauthorized, AuthError{
-					Code:    "INVALID_AUTH_TYPE",
-					Message: "Bearer token required",
-					Details: "Authorization header must start with 'Bearer '",
+					Code:    ErrCodeInvalidFormat,
+					Message: "Invalid authorization header",
+					Details: err.Error(),
 				})
 				c.Abort()
 				return
 			}
 
-			token := strings.TrimPrefix(authHeader, "Bearer ")
-			if token == "" {
-				fmt.Printf("AUTH: Empty bearer token for adapter %s from %s\n", adapterName, clientIP)
-				c.JSON(http.StatusUnauthorized, AuthError{
-					Code:    "EMPTY_TOKEN",
-					Message: "Bearer token required",
-					Details: "Bearer token cannot be empty",
-				})
-				c.Abort()
-				return
+			// Try to validate as JWT token first (new format)
+			if aam.tokenManager != nil {
+				adapterURL := c.Request.URL.String()
+				tokenInfo, err := aam.tokenManager.ValidateToken(token, adapterURL)
+				if err == nil {
+					// JWT token validation successful
+					fmt.Printf("AUTH: Successful JWT authentication for adapter %s from %s (token: %s)\n",
+						adapterName, clientIP, tokenInfo.TokenID)
+					c.Set("user", tokenInfo.Subject)
+					c.Set("auth_type", "bearer_jwt")
+					c.Set("adapter_name", adapterName)
+					c.Set("token_info", tokenInfo)
+					c.Next()
+					return
+				}
+
+				// Log JWT validation failure but try legacy validation
+				fmt.Printf("AUTH: JWT validation failed for adapter %s, trying legacy: %v\n", adapterName, err)
 			}
 
-			if token != adapter.Authentication.Token {
-				fmt.Printf("AUTH: Invalid token for adapter %s from %s\n", adapterName, clientIP)
+			// Fallback to legacy token validation (string comparison)
+			if adapter.Authentication.BearerToken == nil || token != adapter.Authentication.BearerToken.Token {
+				fmt.Printf("AUTH: Invalid legacy token for adapter %s from %s\n", adapterName, clientIP)
 				c.JSON(http.StatusUnauthorized, AuthError{
-					Code:    "INVALID_TOKEN",
+					Code:    ErrCodeInvalidToken,
 					Message: "Authentication failed",
 					Details: "The provided Bearer token is invalid or expired",
 				})
@@ -108,10 +121,10 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 				return
 			}
 
-			// Authentication successful
-			fmt.Printf("AUTH: Successful authentication for adapter %s from %s\n", adapterName, clientIP)
+			// Legacy authentication successful
+			fmt.Printf("AUTH: Successful legacy authentication for adapter %s from %s\n", adapterName, clientIP)
 			c.Set("user", "authenticated-user")
-			c.Set("auth_type", "bearer")
+			c.Set("auth_type", "bearer_legacy")
 			c.Set("adapter_name", adapterName)
 			c.Next()
 
@@ -119,7 +132,7 @@ func (aam *AdapterAuthMiddleware) Middleware() gin.HandlerFunc {
 			// For now, delegate to existing OAuth middleware
 			// This could be enhanced to support adapter-specific OAuth configs
 			fmt.Printf("AUTH: OAuth authentication requested for adapter %s from %s\n", adapterName, clientIP)
-			oauthMiddleware := NewOAuthMiddleware(&OAuthConfig{
+			oauthMiddleware := NewOAuthMiddleware(&ExternalOAuthConfig{
 				Required: true,
 			})
 			oauthMiddleware.Middleware()(c)

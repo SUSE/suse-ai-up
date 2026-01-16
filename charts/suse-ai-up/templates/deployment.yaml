@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "suse-ai-up.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "suse-ai-up.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "suse-ai-up.serviceAccountName" . }}
+      {{- end }}
+      containers:
+        - name: suse-ai-up
+          image: {{ include "suse-ai-up.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: proxy-http
+              containerPort: {{ .Values.services.proxy.port }}
+              protocol: TCP
+            {{- if .Values.tls.enabled }}
+            - name: proxy-https
+              containerPort: {{ .Values.services.proxy.tlsPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: CORS_ALLOWED_ORIGINS
+              value: "{{ .Values.cors.allowedOrigins }}"
+{{- if .Values.registry.url }}
+            - name: MCP_REGISTRY_URL
+              value: "{{ .Values.registry.url }}"
+            - name: REGISTRY_TIMEOUT
+              value: "{{ .Values.registry.timeout }}"
+{{- end }}
+            # Authentication Configuration
+            - name: AUTH_MODE
+              value: "{{ .Values.auth.mode }}"
+            - name: DEV_MODE
+              value: "{{ .Values.auth.devMode }}"
+{{- if eq .Values.auth.mode "local" }}
+            - name: ADMIN_PASSWORD
+              value: "{{ .Values.auth.local.defaultAdminPassword }}"
+            - name: FORCE_PASSWORD_CHANGE
+              value: "{{ .Values.auth.local.forcePasswordChange }}"
+            - name: PASSWORD_MIN_LENGTH
+              value: "{{ .Values.auth.local.passwordMinLength }}"
+{{- end }}
+{{- if eq .Values.auth.mode "github" }}
+            - name: GITHUB_CLIENT_ID
+              value: "{{ .Values.auth.github.clientId }}"
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "suse-ai-up.fullname" . }}-auth
+                  key: github-client-secret
+            - name: GITHUB_REDIRECT_URI
+              value: "{{ .Values.auth.github.redirectUri }}"
+            - name: GITHUB_ALLOWED_ORGS
+              value: {{ .Values.auth.github.allowedOrgs | join "," | quote }}
+            - name: GITHUB_ADMIN_TEAMS
+              value: {{ .Values.auth.github.adminTeams | join "," | quote }}
+{{- end }}
+{{- if eq .Values.auth.mode "rancher" }}
+            - name: RANCHER_ISSUER_URL
+              value: "{{ .Values.auth.rancher.issuerUrl }}"
+            - name: RANCHER_CLIENT_ID
+              value: "{{ .Values.auth.rancher.clientId }}"
+            - name: RANCHER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "suse-ai-up.fullname" . }}-auth
+                  key: rancher-client-secret
+            - name: RANCHER_REDIRECT_URI
+              value: "{{ .Values.auth.rancher.redirectUri }}"
+            - name: RANCHER_ADMIN_GROUPS
+              value: {{ .Values.auth.rancher.adminGroups | join "," | quote }}
+            - name: RANCHER_FALLBACK_LOCAL
+              value: "{{ .Values.auth.rancher.fallbackLocal }}"
+{{- end }}
+            # Initial Users and Groups Configuration
+            - name: CREATE_INITIAL_USERS
+              value: "{{ .Values.initialUsers.enabled }}"
+            - name: INITIAL_USERS
+              value: {{ .Values.initialUsers.users | toJson | quote }}
+            - name: CREATE_INITIAL_GROUPS
+              value: "{{ .Values.initialGroups.enabled }}"
+            - name: INITIAL_GROUPS
+              value: {{ .Values.initialGroups.groups | toJson | quote }}
+          volumeMounts:
+            {{- if .Values.registry.enabled }}
+            - name: registry-config
+              mountPath: /home/mcpuser/config
+              readOnly: true
+            {{- end }}
+            - name: docs-config
+              mountPath: /home/mcpuser/docs
+              readOnly: true
+          resources:
+            {{- toYaml .Values.services.proxy.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.registry.enabled }}
+        - name: registry-config
+          configMap:
+            name: {{ include "suse-ai-up.fullname" . }}-registry
+        {{- end }}
+        - name: docs-config
+          configMap:
+            name: {{ include "suse-ai-up.fullname" . }}-docs
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

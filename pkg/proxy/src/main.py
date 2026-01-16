@@ -25,6 +25,18 @@ if transport == "http":
 
 # Create server
 server_name = "MCP Example Server with Auth" if transport == "http" else "MCP Example Server"
+
+# Configure FastMCP for HTTP transport with proper security
+if transport == "http":
+    # Configure trusted proxies and security settings
+    import os
+    # Set trusted proxies to enable request filtering
+    os.environ['FASTMCP_TRUSTED_PROXIES'] = '127.0.0.1,::1,localhost'
+    # Enable secure headers
+    os.environ['FASTMCP_SECURE_HEADERS'] = 'true'
+    # Disable CSRF protection warnings for development
+    os.environ['FASTMCP_CSRF_PROTECTION'] = 'false'
+
 app = FastMCP(server_name, auth=token_verifier) if token_verifier else FastMCP(server_name)
 
 @app.tool()
