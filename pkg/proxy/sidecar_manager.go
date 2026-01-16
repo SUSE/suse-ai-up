@@ -526,8 +526,12 @@ if [ -n "$DOWNLOAD_URL" ]; then
         tar -xzf binary.tar.gz
         if [ -f "` + binaryName + `" ]; then
             chmod +x ` + binaryName + `
-            echo "Starting server..."
-            ./` + originalCommand + `
+            echo "Moving binary to /usr/bin..."
+            mv ` + binaryName + ` /usr/bin/
+            echo "Binary extracted successfully, testing server startup..."
+            ` + binaryName + ` -t http --host http://gitea.com || echo "Server startup test completed"
+            echo "Test completed, starting actual server..."
+            ` + originalCommand + `
         else
             echo "Binary ` + binaryName + ` not found, falling back to build..."
             zypper -n in git && git clone ` + projectURL + ` && cd ` + repo + ` && go build -o ` + binaryName + ` && ./` + originalCommand + `
