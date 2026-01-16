@@ -133,7 +133,7 @@
         type: text
         templated: true
 - name: gitea
-  image: docker.gitea.com/gitea-mcp-server
+  image: none
   type: server
   meta:
     category: devops
@@ -141,8 +141,8 @@
     - git
     - devops
     sidecarConfig:
-      commandType: docker
-      command: docker run  -e {{gitea.host}} -e {{gitea.pat}} docker.gitea.com/gitea-mcp-server -t streamable-http 
+      commandType: go
+      command: gitea-mcp -t streamable-http --host {{gitea.host}}  
       source: manual-config
       lastUpdated: '2025-12-18T15:14:30.169082Z'
   about:
