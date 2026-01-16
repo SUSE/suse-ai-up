@@ -20,8 +20,9 @@ import (
 	"suse-ai-up/pkg/proxy"
 	"suse-ai-up/pkg/services"
 
-	"gopkg.in/yaml.v3"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Service represents the registry service
