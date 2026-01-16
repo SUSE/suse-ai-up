@@ -225,7 +225,7 @@
     - jira
     sidecarConfig: {
       commandType: python,
-      command: "uv run mcp-atlassian --transport streamable-http --port 8000 --jira-url {{atlassian.jira.url}} --jira-username {{atlassian.jira.username}} --jira-token {{atlassian.jira.api_token}} --jira-personal-token {{atlassian.jira.personal_token}}"
+      command: "uv run mcp-atlassian --transport streamable-http --port 8000 --jira-url {{atlassian.jira.url}} --jira-username {{atlassian.jira.username}} --jira-personal-token {{atlassian.jira.personal_token}}"
     }
   about:
     description: Tools for Atlassian products (Confluence and Jira). This integration
