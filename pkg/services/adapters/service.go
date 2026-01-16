@@ -286,10 +286,13 @@ func (as *AdapterService) processCommandTemplates(sidecarConfig *models.SidecarC
 	processedConfig := *sidecarConfig
 
 	// Process template variables based on command type
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: CommandType: %s\n", sidecarConfig.CommandType)
 	switch sidecarConfig.CommandType {
 	case "docker":
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing docker templates\n")
 		processedConfig.Command = as.processDockerTemplates(sidecarConfig.Command, server)
 	case "python", "npx":
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Processing python/npx templates\n")
 		// For python/npx, templates are processed but the command structure may remain similar
 		processedConfig.Command = as.processGenericTemplates(sidecarConfig.Command, server)
 	default:
@@ -310,9 +313,108 @@ func (as *AdapterService) processDockerTemplates(command string, server *models.
 
 // processGenericTemplates processes templates for python/npx commands
 func (as *AdapterService) processGenericTemplates(command string, server *models.MCPServer) string {
-	// For generic commands, we can either substitute directly or leave as environment variables
-	// For now, we'll leave the template syntax for the container to handle
-	return command
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: processGenericTemplates called with command: %s\n", command)
+	// For generic commands, substitute template variables with environment variable references
+	return as.processTemplatesGeneric(command, server)
+}
+
+// processTemplatesGeneric processes templates for generic commands, substituting all found templates
+func (as *AdapterService) processTemplatesGeneric(command string, server *models.MCPServer) string {
+	// Find all template variables in the command
+	templateRegex := regexp.MustCompile(`\{\{([^}]+)\}\}`)
+	matches := templateRegex.FindAllStringSubmatch(command, -1)
+
+	result := command
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		varName := strings.TrimSpace(match[1])
+
+		// Look up the variable in config.secrets
+		envName := as.lookupTemplatedVariableGeneric(varName, server)
+		if envName == "" {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s not found, skipping\n", varName)
+			continue
+		}
+
+		// For generic commands, substitute with environment variable reference
+		substitution := fmt.Sprintf("$%s", envName)
+		templatePattern := fmt.Sprintf("{{%s}}", varName)
+		result = strings.ReplaceAll(result, templatePattern, substitution)
+
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Replaced %s with %s\n", templatePattern, substitution)
+	}
+
+	return result
+}
+
+// lookupTemplatedVariableGeneric looks up template variables for generic processing (always substitutes)
+func (as *AdapterService) lookupTemplatedVariableGeneric(varName string, server *models.MCPServer) string {
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: lookupTemplatedVariableGeneric called for varName: %s\n", varName)
+
+	if server.Meta == nil {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: server.Meta is nil\n")
+		return ""
+	}
+
+	// First try direct secrets (new format)
+	secretsRaw, ok := server.Meta["secrets"]
+	if !ok {
+		// Fall back to config.secrets (old format)
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets not found directly, trying config.secrets\n")
+		configRaw, ok := server.Meta["config"]
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: config not found in server.Meta, available keys: %+v\n", getMapKeys(server.Meta))
+			return ""
+		}
+
+		configMap, ok := configRaw.(map[string]interface{})
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: config is not a map, type: %T\n", configRaw)
+			return ""
+		}
+
+		secretsRaw, ok = configMap["secrets"]
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets not found in config, available config keys: %+v\n", getMapKeys(configMap))
+			return ""
+		}
+	}
+
+	secretsSlice, ok := secretsRaw.([]interface{})
+	if !ok {
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: secrets is not a slice, type: %T, value: %+v\n", secretsRaw, secretsRaw)
+		return ""
+	}
+
+	fmt.Printf("ADAPTER_SERVICE_DEBUG: Found %d secrets\n", len(secretsSlice))
+
+	for _, secretRaw := range secretsSlice {
+		secretMap, ok := secretRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if this secret matches the variable name
+		name, ok := secretMap["name"].(string)
+		if !ok || name != varName {
+			continue
+		}
+
+		// Get the environment variable name
+		envName, ok := secretMap["env"].(string)
+		if !ok {
+			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s missing env field\n", varName)
+			return ""
+		}
+
+		fmt.Printf("ADAPTER_SERVICE_DEBUG: Found variable %s -> %s\n", varName, envName)
+		return envName
+	}
+
+	return ""
 }
 
 // processTemplates processes template variables using a custom substitution function
@@ -401,12 +503,7 @@ func (as *AdapterService) lookupTemplatedVariable(varName string, server *models
 			continue
 		}
 
-		// Check if templated flag is true
-		templated, ok := secretMap["templated"].(bool)
-		if !ok || !templated {
-			fmt.Printf("ADAPTER_SERVICE_DEBUG: Variable %s found but not templated\n", varName)
-			return ""
-		}
+		// Note: We now process all variables, not just templated ones
 
 		// Get the environment variable name
 		envName, ok := secretMap["env"].(string)

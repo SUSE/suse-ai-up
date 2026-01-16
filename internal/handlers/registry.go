@@ -739,9 +739,7 @@ func (h *RegistryHandler) ReloadRegistry(c *gin.Context) {
 
 	// If no URL configured or URL failed, fall back to local file
 	if source == "" || err != nil {
-		if source == "" {
-			source = "config/mcp_registry.yaml"
-		}
+		source = "config/mcp_registry.yaml"
 		log.Printf("Loading MCP registry from local file: %s", source)
 
 		data, readErr := os.ReadFile(source)
@@ -754,6 +752,8 @@ func (h *RegistryHandler) ReloadRegistry(c *gin.Context) {
 			} else {
 				// Count servers in registry after loading
 				serverCount = len(h.Store.ListMCPServers())
+				// Clear any previous error since fallback succeeded
+				err = nil
 			}
 		}
 	}

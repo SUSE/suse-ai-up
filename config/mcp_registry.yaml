@@ -67,17 +67,17 @@
   type: server
   meta:
     category: issue-tracking
+    sidecarConfig:
+      commandType: python
+      command: uv run mcp-bugzilla --host 0.0.0.0 --port 8000 --bugzilla-server {{bugzilla.server}} --api-key-header ApiKey
+      port: 8000
+      source: manual-config
+      lastUpdated: '2025-12-11T16:30:00Z'
     tags:
     - bugzilla
     - issue-tracking
     - bug-reports
     - suse
-    sidecarConfig:
-      commandType: python
-      command: uv run mcp-bugzilla --bugzilla-server {{bugzilla.server}} --api-key-header {{bugzilla.apikey}} --host 0.0.0.0 --port 8000
-      port: 8000
-      source: manual-config
-      lastUpdated: '2025-12-11T16:30:00Z'
   about:
     icon: https://apps.rancher.io/logos/suse-ai-deployer.png
     title: SUSE Bugzilla
@@ -92,11 +92,6 @@
       example: https://bugzilla.suse.com
       name: bugzilla.server
       type: text
-      templated: true
-    - env: BUGZILLA_APIKEY
-      example: your_api_key_here
-      name: bugzilla.apikey
-      type: secret
       templated: true
 - name: trento
   image: registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest  # Required for docker type, optional for others
