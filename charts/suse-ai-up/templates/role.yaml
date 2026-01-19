@@ -1,0 +1,31 @@
+{{- if .Values.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-cluster-role
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "services", "pods/log", "events", "namespaces", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "suse-ai-up.fullname" . }}-sidecar-role
+  namespace: {{ .Values.sidecar.namespace }}
+  labels:
+    {{- include "suse-ai-up.labels" . | nindent 4 }}
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "services", "pods/log", "events", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+{{- end }}
