@@ -1,4 +1,4 @@
-# SUSE AI Uniproxy
+# SUSE AI Universal Proxy
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
@@ -12,7 +12,7 @@ A comprehensive, modular MCP (Model Context Protocol) proxy system that enables 
 
 **🔍 Network Discovery** - Automated network scanning to discover MCP servers, detect authentication types, and assess security vulnerabilities.
 
-**📚 Server Registry** - Curated registry of remote MCP servers from mcpservers.org, including GitHub, Notion, Sentry, Linear, and 20+ other popular services.
+**📚 Server Registry** - Curated registry of MCP Servers, including GitHub, SUSE MCP's, Atlassian, Gitea, and 20+ other popular services (yes you may contribute to the list!).
 
 **🔌 Plugin Management** - Dynamic plugin system for extending functionality with service registration, health monitoring, and capability routing.
 
@@ -46,11 +46,6 @@ The system uses a **main container + sidecar architecture** where services run a
 ```
 
 ## 🏃‍♂️ Quick Start
-
-### Docker (Single Command)
-```bash
-docker run -p 8911:8911 suse/suse-ai-up:latest
-```
 
 ### Kubernetes + Helm
 ```bash
@@ -90,11 +85,6 @@ Universal Proxy require Kubernets so the ideal development way is to deploy the 
 - **Features**: External plugin registration, health monitoring, custom MCP server types
 - **Ports**: Variable (configured per plugin)
 - **Integration**: Register with main proxy service via API
-
-## 🌐 Remote MCP Servers
-
-The registry includes **20+ curated remote MCP servers** from [mcpservers.org](https://mcpservers.org/remote-mcp-servers), providing instant access to popular services:
-
 
 ### 🚀 Quick Examples
 
