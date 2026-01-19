@@ -1,0 +1,10 @@
+[project]
+name = "simplemcp"
+version = "0.0.0"
+description = "A simple mcp"
+readme = "README.md"
+requires-python = "==3.13.*"
+
+dependencies = [
+    "fastmcp==2.14.0"
+]

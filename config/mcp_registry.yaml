@@ -287,5 +287,36 @@
       name: github.personal_access_token
       templated: true
       type: text
+- name: dynatrace
+  image: none  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: infrastructure
+    tags:
+    - mcp
+    - infrastructure
+    - monitoring
+    sidecarConfig:
+      commandType: npx
+      command: npx -y @dynatrace-oss/dynatrace-mcp-server@latest --server -p 8000 {{dynatrace.dt_env}}
+    port: 8000
+    source: https://github.com/elastic/mcp-server-elasticsearch
+    lastUpdated: 
+  about:
+    icon: https://avatars.githubusercontent.com/u/58178984
+    title: "Dynatrace"
+    description: "The Dynatrace MCP server allows AI Assistants to interact with the Dynatrace observability platform, bringing real-time observability data directly into your development workflow."
+  source:
+    commit: 
+    project: https://github.com/elastic/mcp-server-elasticsearch  # Required for python and go types
+    release:      # Optional for go type (enables pre-built binary downloads)
+  config:
+    description: Insert your DT Environment URL to use this MCP
+    secrets:
+    - env: DT_ENVIRONMENT
+      example: "https://abc12345.apps.dynatrace.com"
+      name: dynatrace.dt_env
+      templated: true
+      type: text
 
 
