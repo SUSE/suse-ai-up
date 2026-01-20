@@ -79,8 +79,8 @@
     - bug-reports
     - suse
   about:
-    icon: https://apps.rancher.io/logos/suse-ai-deployer.png
-    title: SUSE Bugzilla
+    icon: https://avatars.githubusercontent.com/u/623819
+    title: OpenSUSE Bugzilla
     description: "A robust MCP server that provides seamless interaction with Bugzilla instances through the Model Context Protocol. This server exposes a comprehensive set of tools and prompts, enabling AI models and other MCP clients to efficiently query bug information, manage comments, and leverage Bugzilla's powerful quicksearch capabilities."
   source:
     commit: 040bc4b80f18e4a60deae1aa9f0dcf5c5b0bb0bf
