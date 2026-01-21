@@ -20,7 +20,7 @@
     title: SUSE Uyuni
     description: "The Uyuni MCP Server is a Model Context Protocol (MCP) server implementation that bridges the gap between Large Language Models (LLMs) and the Uyuni configuration and infrastructure management solution."
   source:
-    commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
+    commit: 1846945421ef47599d77737cbc7b7b9b874983b8
     project: https://github.com/uyuni-project/mcp-server-uyuni
   config:
     description: Configure Uyuni server connection
@@ -79,11 +79,11 @@
     - bug-reports
     - suse
   about:
-    icon: https://apps.rancher.io/logos/suse-ai-deployer.png
-    title: SUSE Bugzilla
+    icon: https://avatars.githubusercontent.com/u/623819
+    title: OpenSUSE Bugzilla
     description: "A robust MCP server that provides seamless interaction with Bugzilla instances through the Model Context Protocol. This server exposes a comprehensive set of tools and prompts, enabling AI models and other MCP clients to efficiently query bug information, manage comments, and leverage Bugzilla's powerful quicksearch capabilities."
   source:
-    commit: 040bc4b80f18e4a60deae1aa9f0dcf5c5b0bb0bf
+    commit: a47ef5d8ea4d646f5ee2c88b72c8106dae9687bd
     project: https://github.com/openSUSE/mcp-bugzilla
   config:
     description: Configure Bugzilla server connection
