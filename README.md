@@ -16,6 +16,13 @@ A comprehensive, modular MCP (Model Context Protocol) proxy system that enables 
 
 **🔌 Plugin Management** - Dynamic plugin system for extending functionality with service registration, health monitoring, and capability routing.
 
+## 📖 Documentation
+
+- **[QUICKSTART](QUICKSTART.md)** - Get started quickly with SUSE AI Universal Proxy
+- **[REGISTRY](REGISTRY.md)** - Learn about MCP server registry management
+- **[SECURITY](SECURITY.md)** - Security guidelines and best practices
+- **[AUTHENTICATION](AUTHENTICATION.md)** - Authentication and authorization options
+
 ## 🏗️ Architecture
 
 The system uses a **main container + sidecar architecture** where services run as coordinated containers within a single Kubernetes pod:
@@ -47,16 +54,47 @@ The system uses a **main container + sidecar architecture** where services run a
 
 ## 🏃‍♂️ Quick Start
 
-### Kubernetes + Helm
+## Setup SUSE AI Universal Proxy (Helm installation)
+
+1. Open a local terminal 
+2. Clone the repository: `https://github.com/suse/suse-ai-up` (branch: main)
+3. enter in the folder `suse-ai-up`
+4. In values.yaml, set:
+   - `service.type: LoadBalancer`
+   - `auth.method: development` (for no auth)
+
+Install using the helm chart:
+
 ```bash
-helm install suse-ai-up charts/suse-ai-up
+helm install suse-ai-up ./charts/suse-ai-up
 ```
-If you use Rancher is even more simpler:
-1. Add https://github.com/SUSE/suse-ai-up to the respositories in your selected cluster (local or downstream)
-2. Use "main" as Git branch
-3. Create and wait for the repository to show the status "Active"
-4. Click on "Charts" in the cluster Apps
-5. Follow the wizard to install.
+5. Wait for the installation to be completed
+
+Get Service IP
+```bash
+kubectl get svc suse-ai-up-service -n suse-ai-up -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+## (Alternative) Setup SUSE AI Universal Proxy (in Rancher)
+
+1. In Rancher, add repository: `https://github.com/suse/suse-ai-up` (branch: main)
+2. Go to Apps → Charts
+3. Find and install "SUSE AI Universal Proxy"
+4. Click Install and wait for completion
+
+
+## Setup SUSE AI Universal Proxy UI
+
+1. In Rancher, add repository: `https://github.com/suse/suse-ai-up-ext`(branch: v0.1.0)
+2. Go to Extensions
+3. Find and install "SUSE AI Universal Proxy"
+
+## Verify Installation and Access Swagger Docs
+
+Access API documentation:
+```
+http://{IP ADDRESS}:8911/docs/index.html
+```
 
 ### Local Development
 ```bash
@@ -100,7 +138,6 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE.md) for de
 
 ## 🆘 Support
 
-- **Documentation**: [docs/](docs/)
 - **Issues**: [GitHub Issues](https://github.com/suse/suse-ai-up/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/suse/suse-ai-up/discussions)
 
