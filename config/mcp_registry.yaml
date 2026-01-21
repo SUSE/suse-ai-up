@@ -20,7 +20,7 @@
     title: SUSE Uyuni
     description: "The Uyuni MCP Server is a Model Context Protocol (MCP) server implementation that bridges the gap between Large Language Models (LLMs) and the Uyuni configuration and infrastructure management solution."
   source:
-    commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
+    commit: a47ef5d8ea4d646f5ee2c88b72c8106dae9687bd
     project: https://github.com/uyuni-project/mcp-server-uyuni
   config:
     description: Configure Uyuni server connection
