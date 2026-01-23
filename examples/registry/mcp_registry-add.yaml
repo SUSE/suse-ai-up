@@ -1,0 +1,22 @@
+- name: simlplemcp
+  image: none  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: demo
+    tags:
+    - mcp
+    - demo
+    sidecarConfig:
+      commandType: python
+      command: uv run server.py
+    port: 8000
+    source: https://github.com/alessandro-festa/simplemcp
+    lastUpdated: 
+  about:
+    icon: https://raw.githubusercontent.com/rancher/icons/refs/heads/master/svg/apps.svg
+    title: "My Simple MCP"
+    description: "A simple MCP server to demonstrate the usage of the MCP Registry"
+  source:
+    commit: 
+    project: https://github.com/alessandro-festa/simplemcp  # Required for python and go types
+    release:      # Optional for go type (enables pre-built binary downloads)
