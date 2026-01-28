@@ -639,7 +639,7 @@ func RunUniproxy() {
 	registryHandler := handlers.NewRegistryHandler(registryStore, registryManager, adapterStore, userGroupService, cfg, k8sClient)
 
 	// Initialize user/group and route assignment handlers
-	userGroupHandler := handlers.NewUserGroupHandler(userGroupService)
+	userGroupHandler := handlers.NewUserGroupHandler(userGroupService, adapterService)
 	authHandler := handlers.NewAuthHandler(userAuthService)
 	routeAssignmentHandler := handlers.NewRouteAssignmentHandler(userGroupService, registryStore)
 	logging.ProxyLogger.Info("UserGroupHandler created: %v", userGroupHandler != nil)
@@ -836,6 +836,7 @@ func RunUniproxy() {
 			// Read operations - no auth required
 			groups.GET("", ginToHTTPHandler(userGroupHandler.HandleGroups))
 			groups.GET("/:id", ginToHTTPHandler(userGroupHandler.GetGroup))
+			groups.GET("/:id/adapters", ginToHTTPHandler(userGroupHandler.ListGroupAdapters))
 
 			// Write operations - require authentication
 			protectedGroups := groups.Group("")
