@@ -1417,3 +1417,33 @@ func (as *AdapterService) ListGroupAdapters(ctx context.Context, userID, groupID
 
 	return as.adapterGroupAssignmentStore.ListAssignmentsForGroup(ctx, groupID)
 }
+
+// ListGroupAdapters lists all adapters assigned to a group
+func (as *AdapterService) ListGroupAdapters(ctx context.Context, userID, groupID string, userGroupService *services.UserGroupService) ([]models.AdapterGroupAssignment, error) {
+	// Check if user has access to view group details
+
+	if userGroupService != nil {
+		canView := false
+		// Check admin/manager permissions
+		if canManage, _ := userGroupService.CanManageGroups(ctx, userID); canManage {
+			canView = true
+		} else {
+			// Check if user is member of the group
+			user, err := userGroupService.GetUser(ctx, userID)
+			if err == nil {
+				for _, userGroupID := range user.Groups {
+					if userGroupID == groupID {
+						canView = true
+						break
+					}
+				}
+			}
+		}
+
+		if !canView {
+			return nil, fmt.Errorf("access denied")
+		}
+	}
+
+	return as.adapterGroupAssignmentStore.ListAssignmentsForGroup(ctx, groupID)
+}
