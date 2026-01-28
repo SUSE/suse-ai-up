@@ -561,7 +561,7 @@ type AdapterGroupAssignment struct {
 	ID         string    `json:"id"`
 	AdapterID  string    `json:"adapterId"`
 	GroupID    string    `json:"groupId"`
-	Permission string    `json:"permission"` // "read" for now
+	Permission string    `json:"permission"` // "read" or "deny"
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 	CreatedBy  string    `json:"createdBy"`
