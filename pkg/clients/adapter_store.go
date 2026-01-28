@@ -22,6 +22,19 @@ type AdapterResourceStore interface {
 	UpsertAsync(adapter models.AdapterResource, ctx context.Context) error
 }
 
+// AdapterGroupAssignmentStore defines the interface for adapter group assignment storage
+type AdapterGroupAssignmentStore interface {
+	CreateAssignment(ctx context.Context, assignment models.AdapterGroupAssignment) error
+	GetAssignment(ctx context.Context, adapterID, groupID string) (*models.AdapterGroupAssignment, error)
+	UpdateAssignment(ctx context.Context, assignment models.AdapterGroupAssignment) error
+	DeleteAssignment(ctx context.Context, adapterID, groupID string) error
+	ListAssignments(ctx context.Context) ([]models.AdapterGroupAssignment, error)
+	ListAssignmentsForAdapter(ctx context.Context, adapterID string) ([]models.AdapterGroupAssignment, error)
+	ListAssignmentsForGroup(ctx context.Context, groupID string) ([]models.AdapterGroupAssignment, error)
+	// Check if a group has access to an adapter
+	HasAccess(ctx context.Context, adapterID, groupID string) (bool, error)
+}
+
 // FileAdapterStore implements AdapterResourceStore using file-based storage
 type FileAdapterStore struct {
 	filePath string

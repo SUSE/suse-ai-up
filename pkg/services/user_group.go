@@ -101,17 +101,17 @@ func (ugs *UserGroupService) CanAccessServer(ctx context.Context, userID, server
 	}
 
 	// Check if user has admin permissions (can access all servers)
-	if ugs.hasPermission(user.Groups, "server:*") {
+	if ugs.HasPermission(user.Groups, "server:*") {
 		return true, nil
 	}
 
 	// Check specific server access permissions
-	if ugs.hasPermission(user.Groups, fmt.Sprintf("server:%s:*", serverID)) {
+	if ugs.HasPermission(user.Groups, fmt.Sprintf("server:%s:*", serverID)) {
 		return true, nil
 	}
 
 	// Check read access to the server
-	if ugs.hasPermission(user.Groups, fmt.Sprintf("server:%s:read", serverID)) {
+	if ugs.HasPermission(user.Groups, fmt.Sprintf("server:%s:read", serverID)) {
 		return true, nil
 	}
 
@@ -130,7 +130,7 @@ func (ugs *UserGroupService) CanManageUsers(ctx context.Context, userID string) 
 		return false, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return ugs.hasPermission(user.Groups, "user:manage"), nil
+	return ugs.HasPermission(user.Groups, "user:manage"), nil
 }
 
 // CanManageGroups checks if a user can manage groups
@@ -145,7 +145,7 @@ func (ugs *UserGroupService) CanManageGroups(ctx context.Context, userID string)
 		return false, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return ugs.hasPermission(user.Groups, "group:manage"), nil
+	return ugs.HasPermission(user.Groups, "group:manage"), nil
 }
 
 // CanCreateAdapters checks if a user can create adapters
@@ -155,7 +155,7 @@ func (ugs *UserGroupService) CanCreateAdapters(ctx context.Context, userID strin
 		return false, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return ugs.hasPermission(user.Groups, "adapter:create"), nil
+	return ugs.HasPermission(user.Groups, "adapter:create"), nil
 }
 
 // GetUserGroups gets all groups for a user
@@ -233,8 +233,8 @@ func (ugs *UserGroupService) InitializeDefaultGroups(ctx context.Context) error 
 	return nil
 }
 
-// hasPermission checks if any of the user's groups have the specified permission
-func (ugs *UserGroupService) hasPermission(userGroups []string, permission string) bool {
+// HasPermission checks if any of the user's groups have the specified permission
+func (ugs *UserGroupService) HasPermission(userGroups []string, permission string) bool {
 	for _, groupID := range userGroups {
 		group, err := ugs.groupStore.Get(context.Background(), groupID)
 		if err != nil {

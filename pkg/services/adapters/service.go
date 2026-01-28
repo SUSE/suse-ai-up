@@ -20,24 +20,26 @@ import (
 
 // AdapterService manages adapters for remote MCP servers
 type AdapterService struct {
-	store               clients.AdapterResourceStore
-	registryStore       clients.MCPServerStore
-	capabilityDiscovery *mcp.CapabilityDiscoveryService
-	sidecarManager      *proxy.SidecarManager
+	store                       clients.AdapterResourceStore
+	adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore
+	registryStore               clients.MCPServerStore
+	capabilityDiscovery         *mcp.CapabilityDiscoveryService
+	sidecarManager              *proxy.SidecarManager
 }
 
 // NewAdapterService creates a new adapter service
-func NewAdapterService(store clients.AdapterResourceStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager) *AdapterService {
+func NewAdapterService(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager) *AdapterService {
 	return &AdapterService{
-		store:               store,
-		registryStore:       registryStore,
-		capabilityDiscovery: mcp.NewCapabilityDiscoveryService(),
-		sidecarManager:      sidecarManager,
+		store:                       store,
+		adapterGroupAssignmentStore: adapterGroupAssignmentStore,
+		registryStore:               registryStore,
+		capabilityDiscovery:         mcp.NewCapabilityDiscoveryService(),
+		sidecarManager:              sidecarManager,
 	}
 }
 
 // CreateAdapter creates a new adapter from a registry server
-func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID, name string, envVars map[string]string, auth *models.AdapterAuthConfig) (*models.AdapterResource, error) {
+func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID, name string, envVars map[string]string, auth *models.AdapterAuthConfig, userGroupService *services.UserGroupService) (*models.AdapterResource, error) {
 	logging.AdapterLogger.Info("ADAPTER_SERVICE: CreateAdapter started for server ID %s (user: %s)", mcpServerID, userID)
 
 	// Get the MCP server from registry - first try by ID, then by name
@@ -283,6 +285,42 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		if err := as.store.Update(ctx, *adapter); err != nil {
 			logging.AdapterLogger.Error("Failed to update adapter status in store: %v", err)
 			return nil, fmt.Errorf("failed to update adapter: %w", err)
+		}
+	}
+
+	// Assign adapter to admin groups
+	if userGroupService != nil {
+		// Get admin groups
+		groups, err := userGroupService.ListGroups(ctx)
+		if err == nil {
+			for _, group := range groups {
+				// Check if group has adapter:assign permission or adapter:* permission
+				hasPermission := false
+				for _, perm := range group.Permissions {
+					if perm == "adapter:assign" || perm == "adapter:*" || perm == "*" {
+						hasPermission = true
+						break
+					}
+				}
+
+				if hasPermission {
+					// Assign this adapter to the admin group
+					assignment := models.AdapterGroupAssignment{
+						AdapterID:  adapter.ID,
+						GroupID:    group.ID,
+						Permission: "read",
+						CreatedAt:  time.Now().UTC(),
+						UpdatedAt:  time.Now().UTC(),
+						CreatedBy:  "system",
+					}
+
+					if err := as.adapterGroupAssignmentStore.CreateAssignment(ctx, assignment); err != nil {
+						logging.AdapterLogger.Warn("Failed to assign adapter %s to admin group %s: %v", adapter.ID, group.ID, err)
+					} else {
+						logging.AdapterLogger.Info("Assigned adapter %s to admin group %s", adapter.ID, group.ID)
+					}
+				}
+			}
 		}
 	}
 
@@ -788,7 +826,23 @@ func (as *AdapterService) GetAdapter(ctx context.Context, userID, adapterID stri
 			if canManage, err := userGroupService.CanManageGroups(ctx, userID); err == nil && canManage {
 				// Admin can access any adapter
 			} else {
-				return nil, fmt.Errorf("adapter not found")
+				// Check if user's groups have access to this adapter
+				user, err := userGroupService.GetUser(ctx, userID)
+				if err != nil {
+					return nil, fmt.Errorf("adapter not found")
+				}
+
+				hasAccess := false
+				for _, groupID := range user.Groups {
+					if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapterID, groupID); access {
+						hasAccess = true
+						break
+					}
+				}
+
+				if !hasAccess {
+					return nil, fmt.Errorf("adapter not found")
+				}
 			}
 		} else {
 			return nil, fmt.Errorf("adapter not found")
@@ -807,12 +861,59 @@ func (as *AdapterService) ListAdapters(ctx context.Context, userID string, userG
 		}
 	}
 
-	// Regular users only see their own adapters
-	return as.store.List(ctx, userID)
+	// Regular users see their own adapters plus adapters assigned to their groups
+	userAdapters, err := as.store.List(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get user's groups
+	user, err := userGroupService.GetUser(ctx, userID)
+	if err != nil {
+		// If we can't get user groups, just return their own adapters
+		return userAdapters, nil
+	}
+
+	// Get all adapter assignments for user's groups
+	groupAdapterMap := make(map[string]bool) // adapterID -> hasAccess
+	for _, groupID := range user.Groups {
+		assignments, err := as.adapterGroupAssignmentStore.ListAssignmentsForGroup(ctx, groupID)
+		if err != nil {
+			continue // Skip group if we can't get assignments
+		}
+
+		for _, assignment := range assignments {
+			if assignment.Permission == "read" {
+				groupAdapterMap[assignment.AdapterID] = true
+			}
+		}
+	}
+
+	// Add adapters from groups that user doesn't already own
+	allAdapters := userAdapters
+	seenAdapters := make(map[string]bool)
+
+	// Mark user's own adapters as seen
+	for _, adapter := range userAdapters {
+		seenAdapters[adapter.ID] = true
+	}
+
+	// Add adapters from groups
+	for adapterID := range groupAdapterMap {
+		if !seenAdapters[adapterID] {
+			adapter, err := as.store.Get(ctx, adapterID)
+			if err == nil {
+				allAdapters = append(allAdapters, *adapter)
+				seenAdapters[adapterID] = true
+			}
+		}
+	}
+
+	return allAdapters, nil
 }
 
 // UpdateAdapter updates an adapter
-func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adapter models.AdapterResource) error {
+func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adapter models.AdapterResource, userGroupService *services.UserGroupService) error {
 	// Check if adapter belongs to user
 	existing, err := as.store.Get(ctx, adapter.ID)
 	if err != nil {
@@ -820,7 +921,29 @@ func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adap
 	}
 
 	if existing.CreatedBy != userID {
-		return fmt.Errorf("adapter not found")
+		// Check if user has group-based access to update this adapter
+		canUpdate := false
+		if userGroupService != nil {
+			// Check admin permissions first
+			if canManage, _ := userGroupService.CanManageGroups(ctx, userID); canManage {
+				canUpdate = true
+			} else {
+				// Check if user's groups have access to this adapter
+				user, err := userGroupService.GetUser(ctx, userID)
+				if err == nil {
+					for _, groupID := range user.Groups {
+						if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapter.ID, groupID); access {
+							canUpdate = true
+							break
+						}
+					}
+				}
+			}
+		}
+
+		if !canUpdate {
+			return fmt.Errorf("adapter not found")
+		}
 	}
 
 	// Update the adapter
@@ -829,34 +952,59 @@ func (as *AdapterService) UpdateAdapter(ctx context.Context, userID string, adap
 }
 
 // DeleteAdapter deletes an adapter and its associated resources
-func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID string) error {
+func (as *AdapterService) DeleteAdapter(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) error {
 	logging.AdapterLogger.Info("DeleteAdapter called for adapter %s by user %s", adapterID, userID)
 
-	// Get adapter before deletion to check if it has sidecar resources
+	// Get adapter before deletion to check permissions
 	adapter, err := as.store.Get(ctx, adapterID)
 	if err != nil {
 		logging.AdapterLogger.Error("Failed to get adapter %s: %v", adapterID, err)
-	} else if adapter != nil {
-		logging.AdapterLogger.Info("Found adapter %s with connection type: %s", adapterID, adapter.ConnectionType)
+		return err
+	}
 
-		// If this is a sidecar adapter (StreamableHttp with sidecar config), clean up the sidecar resources
-		if adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil {
-			if as.sidecarManager == nil {
-				logging.AdapterLogger.Warn("SidecarManager is nil, cannot cleanup sidecar for adapter %s", adapterID)
+	// Check if user can delete this adapter
+	if adapter.CreatedBy != userID {
+		// Check if user has group-based access to delete this adapter
+		canDelete := false
+		if userGroupService != nil {
+			// Check admin permissions first
+			if canManage, _ := userGroupService.CanManageGroups(ctx, userID); canManage {
+				canDelete = true
 			} else {
-				logging.AdapterLogger.Info("Cleaning up sidecar for adapter %s", adapterID)
-				if cleanupErr := as.sidecarManager.CleanupSidecar(ctx, adapterID); cleanupErr != nil {
-					// Log the error but don't fail the adapter deletion
-					logging.AdapterLogger.Warn("Failed to cleanup sidecar for adapter %s: %v", adapterID, cleanupErr)
-				} else {
-					logging.AdapterLogger.Success("Successfully initiated sidecar cleanup for adapter %s", adapterID)
+				// Check if user's groups have access to this adapter
+				user, err := userGroupService.GetUser(ctx, userID)
+				if err == nil {
+					for _, groupID := range user.Groups {
+						if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapterID, groupID); access {
+							canDelete = true
+							break
+						}
+					}
 				}
 			}
+		}
+
+		if !canDelete {
+			logging.AdapterLogger.Warn("User %s does not have permission to delete adapter %s", userID, adapterID)
+			return fmt.Errorf("adapter not found")
+		}
+	}
+
+	// If this is a sidecar adapter (StreamableHttp with sidecar config), clean up the sidecar resources
+	if adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig != nil {
+		if as.sidecarManager == nil {
+			logging.AdapterLogger.Warn("SidecarManager is nil, cannot cleanup sidecar for adapter %s", adapterID)
 		} else {
-			logging.AdapterLogger.Info("Adapter %s is not a sidecar adapter (type: %s), skipping sidecar cleanup", adapterID, adapter.ConnectionType)
+			logging.AdapterLogger.Info("Cleaning up sidecar for adapter %s", adapterID)
+			if cleanupErr := as.sidecarManager.CleanupSidecar(ctx, adapterID); cleanupErr != nil {
+				// Log the error but don't fail the adapter deletion
+				logging.AdapterLogger.Warn("Failed to cleanup sidecar for adapter %s: %v", adapterID, cleanupErr)
+			} else {
+				logging.AdapterLogger.Success("Successfully initiated sidecar cleanup for adapter %s", adapterID)
+			}
 		}
 	} else {
-		logging.AdapterLogger.Warn("Adapter %s not found in store", adapterID)
+		logging.AdapterLogger.Info("Adapter %s is not a sidecar adapter (type: %s), skipping sidecar cleanup", adapterID, adapter.ConnectionType)
 	}
 
 	// Delete the adapter from store
@@ -1123,4 +1271,119 @@ func (as *AdapterService) generateSecureToken() string {
 		return fmt.Sprintf("token-%d-%s", time.Now().Unix(), "fallback")
 	}
 	return base64.URLEncoding.EncodeToString(bytes)
+}
+
+// AssignAdapterToGroup assigns an adapter to a group
+func (as *AdapterService) AssignAdapterToGroup(ctx context.Context, userID, adapterID, groupID, permission string, userGroupService *services.UserGroupService) error {
+	// Check if user has permission to manage assignments
+	canManage := false
+	if userGroupService != nil {
+		if canManageGroups, _ := userGroupService.CanManageGroups(ctx, userID); canManageGroups {
+			canManage = true
+		} else {
+			// Check if user has adapter:assign permission
+			user, err := userGroupService.GetUser(ctx, userID)
+			if err == nil {
+				if userGroupService.HasPermission(user.Groups, "adapter:assign") {
+					canManage = true
+				}
+			}
+		}
+	}
+
+	if !canManage {
+		// Users can also assign their own adapters
+		adapter, err := as.store.Get(ctx, adapterID)
+		if err != nil {
+			return err
+		}
+		if adapter.CreatedBy != userID {
+			return fmt.Errorf("insufficient permissions to assign adapter")
+		}
+	}
+
+	// Validate adapter exists
+	if _, err := as.store.Get(ctx, adapterID); err != nil {
+		return err
+	}
+
+	// Create assignment
+	assignment := models.AdapterGroupAssignment{
+		AdapterID:  adapterID,
+		GroupID:    groupID,
+		Permission: permission,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+		CreatedBy:  userID,
+	}
+
+	return as.adapterGroupAssignmentStore.CreateAssignment(ctx, assignment)
+}
+
+// RemoveAdapterFromGroup removes an adapter from a group
+func (as *AdapterService) RemoveAdapterFromGroup(ctx context.Context, userID, adapterID, groupID string, userGroupService *services.UserGroupService) error {
+	// Check permissions (same as AssignAdapterToGroup)
+	canManage := false
+	if userGroupService != nil {
+		if canManageGroups, _ := userGroupService.CanManageGroups(ctx, userID); canManageGroups {
+			canManage = true
+		} else {
+			user, err := userGroupService.GetUser(ctx, userID)
+			if err == nil {
+				if userGroupService.HasPermission(user.Groups, "adapter:assign") {
+					canManage = true
+				}
+			}
+		}
+	}
+
+	if !canManage {
+		adapter, err := as.store.Get(ctx, adapterID)
+		if err != nil {
+			return err
+		}
+		if adapter.CreatedBy != userID {
+			return fmt.Errorf("insufficient permissions to remove adapter assignment")
+		}
+	}
+
+	return as.adapterGroupAssignmentStore.DeleteAssignment(ctx, adapterID, groupID)
+}
+
+// ListAdapterAssignments lists all group assignments for an adapter
+func (as *AdapterService) ListAdapterAssignments(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) ([]models.AdapterGroupAssignment, error) {
+	// Check if user has access to view assignments
+	// Users can see assignments for adapters they own or have access to
+
+	adapter, err := as.store.Get(ctx, adapterID)
+	if err != nil {
+		return nil, err
+	}
+
+	hasAccess := false
+	if adapter.CreatedBy == userID {
+		hasAccess = true
+	} else if userGroupService != nil {
+		// Check admin/manager permissions
+		if canManage, _ := userGroupService.CanManageGroups(ctx, userID); canManage {
+			hasAccess = true
+		} else {
+			// Check if user has read access to the adapter via groups
+			user, err := userGroupService.GetUser(ctx, userID)
+			if err == nil {
+				for _, groupID := range user.Groups {
+					if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapterID, groupID); access {
+						hasAccess = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if !hasAccess {
+		return nil, fmt.Errorf("adapter not found or access denied")
+	}
+
+	return as.adapterGroupAssignmentStore.ListAssignmentsForAdapter(ctx, adapterID)
 }

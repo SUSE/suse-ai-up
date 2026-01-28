@@ -119,6 +119,69 @@ Get scan results:
 curl -X GET "http://{IP ADDRESS}:8912/api/v1/discovery/results"
 ```
 
+
+## User and Group Management
+
+### Create a User
+
+Create a new user who will access the adapters:
+
+```bash
+curl -X POST "http://{IP ADDRESS}:8911/api/v1/users" \
+  -H "Content-Type: application/json" \
+  -H "X-User-ID: admin" \
+  -d '{
+    "username": "developer",
+    "email": "dev@example.com",
+    "password": "securepassword",
+    "roles": ["user"]
+  }'
+```
+
+### Create a Group
+
+Create a group to manage access to specific adapters:
+
+```bash
+curl -X POST "http://{IP ADDRESS}:8911/api/v1/groups" \
+  -H "Content-Type: application/json" \
+  -H "X-User-ID: admin" \
+  -d '{
+    "name": "backend-team",
+    "description": "Backend developers",
+    "permissions": []
+  }'
+```
+
+### Add User to Group
+
+Add the developer user to the backend-team group:
+
+```bash
+curl -X POST "http://{IP ADDRESS}:8911/api/v1/groups/backend-team/users" \
+  -H "Content-Type: application/json" \
+  -H "X-User-ID: admin" \
+  -d '{
+    "userId": "developer"
+  }'
+```
+
+### Assign Adapter to Group
+
+Give the backend-team group access to the uyuni-adapter:
+
+```bash
+curl -X POST "http://{IP ADDRESS}:8911/api/v1/adapters/uyuni-adapter/groups" \
+  -H "Content-Type: application/json" \
+  -H "X-User-ID: admin" \
+  -d '{
+    "groupId": "backend-team",
+    "permission": "read"
+  }'
+```
+
+Now any user in the `backend-team` group can access the `uyuni-adapter`.
+
 ## Next Steps
 
 - Explore full [EXAMPLES.md](examples/EXAMPLES.md) for advanced usage

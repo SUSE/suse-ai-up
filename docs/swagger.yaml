@@ -23,6 +23,16 @@ definitions:
       tokenType:
         type: string
     type: object
+  handlers.AddAdapterToGroupRequest:
+    properties:
+      groupId:
+        example: mcp-users
+        type: string
+      permission:
+        description: '"read"'
+        example: read
+        type: string
+    type: object
   handlers.AddUserToGroupRequest:
     properties:
       userId:
@@ -396,6 +406,24 @@ definitions:
       useWorkloadIdentity:
         example: false
         type: boolean
+    type: object
+  models.AdapterGroupAssignment:
+    properties:
+      adapterId:
+        type: string
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      groupId:
+        type: string
+      id:
+        type: string
+      permission:
+        description: '"read" for now'
+        type: string
+      updatedAt:
+        type: string
     type: object
   models.AdapterLifecycleStatus:
     enum:
@@ -1108,7 +1136,7 @@ definitions:
           type: object
         type: array
       lastUpdated:
-        example: "2025-12-12T10:00:00Z"
+        example: "2024-01-01T00:00:00Z"
         type: string
       port:
         description: Port assignment
@@ -1116,6 +1144,9 @@ definitions:
         type: integer
       projectURL:
         example: https://github.com/user/repo
+        type: string
+      releaseURL:
+        example: https://github.com/user/repo/releases/tag/v1.0.0
         type: string
       source:
         description: Metadata
@@ -1468,6 +1499,121 @@ paths:
       tags:
       - adapters
       - authentication
+  /api/v1/adapters/{name}/groups:
+    get:
+      description: List all groups that have access to this adapter
+      parameters:
+      - description: Adapter Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AdapterGroupAssignment'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List adapter group assignments
+      tags:
+      - adapters
+    post:
+      consumes:
+      - application/json
+      description: Assign an adapter to a specific group with permissions
+      parameters:
+      - description: Adapter Name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Assignment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddAdapterToGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Assign adapter to group
+      tags:
+      - adapters
+  /api/v1/adapters/{name}/groups/{groupId}:
+    delete:
+      description: Remove an adapter assignment from a specific group
+      parameters:
+      - description: Adapter Name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Group ID
+        in: path
+        name: groupId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Remove adapter from group
+      tags:
+      - adapters
   /api/v1/adapters/{name}/health:
     post:
       consumes:

@@ -43,6 +43,12 @@ type CreateAdapterRequest struct {
 	DeploymentMethod     string                    `json:"deploymentMethod,omitempty"` // "helm", "docker", "systemd", "local"
 }
 
+// AddAdapterToGroupRequest represents a request to add an adapter to a group
+type AddAdapterToGroupRequest struct {
+	GroupID    string `json:"groupId" example:"mcp-users"`
+	Permission string `json:"permission" example:"read"` // "read"
+}
+
 // CreateAdapterResponse represents the response for adapter creation
 type CreateAdapterResponse struct {
 	ID              string                   `json:"id"`
@@ -185,6 +191,7 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 		req.Name,
 		req.EnvironmentVariables,
 		req.Authentication,
+		h.userGroupService,
 	)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -446,7 +453,7 @@ func (h *AdapterHandler) UpdateAdapter(w http.ResponseWriter, r *http.Request) {
 	updateAdapter.LastUpdatedAt = time.Now().UTC()
 
 	// Update adapter
-	if err := h.adapterService.UpdateAdapter(r.Context(), userID, updateAdapter); err != nil {
+	if err := h.adapterService.UpdateAdapter(r.Context(), userID, updateAdapter, h.userGroupService); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to update adapter: " + err.Error()})
@@ -533,7 +540,7 @@ func (h *AdapterHandler) DeleteAdapter(w http.ResponseWriter, r *http.Request) {
 	// Note: Sidecar cleanup is handled automatically by the adapter service
 
 	// Delete the adapter
-	if err := h.adapterService.DeleteAdapter(r.Context(), userID, adapterID); err != nil {
+	if err := h.adapterService.DeleteAdapter(r.Context(), userID, adapterID, h.userGroupService); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if err.Error() == "adapter not found" {
 			w.WriteHeader(http.StatusNotFound)
@@ -898,4 +905,187 @@ func (h *AdapterHandler) SyncAdapterCapabilities(w http.ResponseWriter, r *http.
 		"status":  "capabilities_synced",
 		"message": "Adapter capabilities have been synchronized",
 	})
+}
+
+// AssignAdapterToGroup assigns an adapter to a group
+// @Summary Assign adapter to group
+// @Description Assign an adapter to a specific group with permissions
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param name path string true "Adapter Name"
+// @Param request body AddAdapterToGroupRequest true "Assignment details"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/adapters/{name}/groups [post]
+func (h *AdapterHandler) AssignAdapterToGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract adapter ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 || parts[1] != "groups" {
+		http.NotFound(w, r)
+		return
+	}
+	adapterID := parts[0]
+
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	var req AddAdapterToGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	if req.GroupID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "groupId is required"})
+		return
+	}
+
+	permission := req.Permission
+	if permission == "" {
+		permission = "read"
+	}
+
+	if err := h.adapterService.AssignAdapterToGroup(r.Context(), userID, adapterID, req.GroupID, permission, h.userGroupService); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(err.Error(), "not found") {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Resource not found: " + err.Error()})
+		} else if strings.Contains(err.Error(), "permissions") {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		} else if strings.Contains(err.Error(), "already exists") {
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to assign adapter: " + err.Error()})
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "assigned",
+		"message": fmt.Sprintf("Adapter %s assigned to group %s", adapterID, req.GroupID),
+	})
+}
+
+// RemoveAdapterFromGroup removes an adapter from a group
+// @Summary Remove adapter from group
+// @Description Remove an adapter assignment from a specific group
+// @Tags adapters
+// @Produce json
+// @Param name path string true "Adapter Name"
+// @Param groupId path string true "Group ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/adapters/{name}/groups/{groupId} [delete]
+func (h *AdapterHandler) RemoveAdapterFromGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract adapter ID and group ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 3 || parts[1] != "groups" {
+		http.NotFound(w, r)
+		return
+	}
+	adapterID := parts[0]
+	groupID := parts[2]
+
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	if err := h.adapterService.RemoveAdapterFromGroup(r.Context(), userID, adapterID, groupID, h.userGroupService); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(err.Error(), "not found") {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Resource not found: " + err.Error()})
+		} else if strings.Contains(err.Error(), "permissions") {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to remove assignment: " + err.Error()})
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListAdapterGroupAssignments lists all group assignments for an adapter
+// @Summary List adapter group assignments
+// @Description List all groups that have access to this adapter
+// @Tags adapters
+// @Produce json
+// @Param name path string true "Adapter Name"
+// @Success 200 {array} models.AdapterGroupAssignment
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/adapters/{name}/groups [get]
+func (h *AdapterHandler) ListAdapterGroupAssignments(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract adapter ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 || parts[1] != "groups" {
+		http.NotFound(w, r)
+		return
+	}
+	adapterID := parts[0]
+
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	assignments, err := h.adapterService.ListAdapterAssignments(r.Context(), userID, adapterID, h.userGroupService)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(err.Error(), "not found") {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Adapter not found"})
+		} else if strings.Contains(err.Error(), "denied") {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Access denied"})
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to list assignments: " + err.Error()})
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(assignments)
 }

@@ -443,6 +443,7 @@ func RunUniproxy() {
 	// Initialize stores
 	// Use file-based adapter store for persistence
 	adapterStore := clients.NewFileAdapterStore("/tmp/adapters.json")
+	adapterGroupAssignmentStore := clients.NewFileAdapterGroupAssignmentStore("/tmp/adapter_assignments.json")
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
@@ -607,7 +608,7 @@ func RunUniproxy() {
 
 	// Initialize AdapterService with SidecarManager
 	logging.ProxyLogger.Info("Initializing AdapterService with SidecarManager")
-	adapterService := adaptersvc.NewAdapterService(adapterStore, registryStore, sidecarManager)
+	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, registryStore, sidecarManager)
 	logging.ProxyLogger.Info("AdapterService created: %v", adapterService != nil)
 	adapterHandler := handlers.NewAdapterHandler(adapterService, userGroupService)
 	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
@@ -717,6 +718,11 @@ func RunUniproxy() {
 			adapters.PUT("/:name", ginToHTTPHandler(adapterHandler.UpdateAdapter))
 			adapters.DELETE("/:name", ginToHTTPHandler(adapterHandler.DeleteAdapter))
 			adapters.POST("/:name/health", ginToHTTPHandler(adapterHandler.CheckAdapterHealth))
+
+			// Group assignments
+			adapters.POST("/:name/groups", ginToHTTPHandler(adapterHandler.AssignAdapterToGroup))
+			adapters.DELETE("/:name/groups/:groupId", ginToHTTPHandler(adapterHandler.RemoveAdapterFromGroup))
+			adapters.GET("/:name/groups", ginToHTTPHandler(adapterHandler.ListAdapterGroupAssignments))
 
 			// Token management
 			adapters.GET("/:name/token", tokenHandler.GetAdapterToken)

@@ -191,6 +191,7 @@ func TestAdapterService_BugzillaSidecarExtraction(t *testing.T) {
 func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	// Create mock stores
 	adapterStore := clients.NewInMemoryAdapterStore()
+	adapterGroupAssignmentStore := clients.NewInMemoryAdapterGroupAssignmentStore()
 	serverStore := clients.NewInMemoryMCPServerStore()
 
 	// Create test server with stdio package and sidecar config
@@ -218,7 +219,7 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	}
 
 	// Create adapter service (without sidecar manager for now)
-	service := NewAdapterService(adapterStore, serverStore, nil)
+	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil)
 
 	// Verify server was stored
 	storedServer, err := serverStore.GetMCPServer(testServer.ID)
@@ -243,7 +244,7 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	}
 
 	// Create adapter - this should fail because sidecar manager is required for stdio-based servers
-	_, err = service.CreateAdapter(context.Background(), "test-user", testServer.ID, "test-adapter", map[string]string{}, nil)
+	_, err = service.CreateAdapter(context.Background(), "test-user", testServer.ID, "test-adapter", map[string]string{}, nil, nil)
 	if err == nil {
 		t.Fatal("Expected adapter creation to fail without sidecar manager")
 	}

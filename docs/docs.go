@@ -261,6 +261,179 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/adapters/{name}/groups": {
+            "get": {
+                "description": "List all groups that have access to this adapter",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "List adapter group assignments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AdapterGroupAssignment"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Assign an adapter to a specific group with permissions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Assign adapter to group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignment details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AddAdapterToGroupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/adapters/{name}/groups/{groupId}": {
+            "delete": {
+                "description": "Remove an adapter assignment from a specific group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "adapters"
+                ],
+                "summary": "Remove adapter from group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Adapter Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/adapters/{name}/health": {
             "post": {
                 "description": "Check the health of an adapter's sidecar and update its status",
@@ -3063,6 +3236,20 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.AddAdapterToGroupRequest": {
+            "type": "object",
+            "properties": {
+                "groupId": {
+                    "type": "string",
+                    "example": "mcp-users"
+                },
+                "permission": {
+                    "description": "\"read\"",
+                    "type": "string",
+                    "example": "read"
+                }
+            }
+        },
         "handlers.AddUserToGroupRequest": {
             "type": "object",
             "properties": {
@@ -3623,6 +3810,33 @@ const docTemplate = `{
                 "useWorkloadIdentity": {
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "models.AdapterGroupAssignment": {
+            "type": "object",
+            "properties": {
+                "adapterId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "groupId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "permission": {
+                    "description": "\"read\" for now",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -4682,7 +4896,7 @@ const docTemplate = `{
                 },
                 "lastUpdated": {
                     "type": "string",
-                    "example": "2025-12-12T10:00:00Z"
+                    "example": "2024-01-01T00:00:00Z"
                 },
                 "port": {
                     "description": "Port assignment",
@@ -4692,6 +4906,10 @@ const docTemplate = `{
                 "projectURL": {
                     "type": "string",
                     "example": "https://github.com/user/repo"
+                },
+                "releaseURL": {
+                    "type": "string",
+                    "example": "https://github.com/user/repo/releases/tag/v1.0.0"
                 },
                 "source": {
                     "description": "Metadata",

@@ -556,6 +556,17 @@ type RouteAssignment struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
+// AdapterGroupAssignment represents assignment of adapters to groups with permissions
+type AdapterGroupAssignment struct {
+	ID         string    `json:"id"`
+	AdapterID  string    `json:"adapterId"`
+	GroupID    string    `json:"groupId"`
+	Permission string    `json:"permission"` // "read" for now
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+	CreatedBy  string    `json:"createdBy"`
+}
+
 // AutoSpawnConfig represents auto-spawning configuration for servers
 type AutoSpawnConfig struct {
 	Enabled          bool              `json:"enabled"`
