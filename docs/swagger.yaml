@@ -420,7 +420,7 @@ definitions:
       id:
         type: string
       permission:
-        description: '"read" for now'
+        description: '"read" or "deny"'
         type: string
       updatedAt:
         type: string
@@ -2732,6 +2732,39 @@ paths:
       summary: Update a group
       tags:
       - groups
+  /api/v1/groups/{id}/adapters:
+    get:
+      description: List all adapters assigned to a specific group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AdapterGroupAssignment'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List group adapters
+      tags:
+      - groups
   /api/v1/groups/{id}/members:
     post:
       consumes:
@@ -3178,6 +3211,31 @@ paths:
       summary: Upload a local MCP server implementation
       tags:
       - registry
+  /api/v1/user/config:
+    get:
+      description: Get the aggregated client configuration for all adapters the user
+        has access to
+      parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get client configuration
+      tags:
+      - adapters
   /api/v1/users:
     get:
       description: Retrieve a list of all users in the system

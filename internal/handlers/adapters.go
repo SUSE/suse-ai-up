@@ -1089,3 +1089,81 @@ func (h *AdapterHandler) ListAdapterGroupAssignments(w http.ResponseWriter, r *h
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(assignments)
 }
+
+// GetClientConfig returns the client configuration for all adapters the user has access to
+// @Summary Get client configuration
+// @Description Get the aggregated client configuration for all adapters the user has access to
+// @Tags adapters
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/user/config [get]
+func (h *AdapterHandler) GetClientConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	adapters, err := h.adapterService.ListAdapters(r.Context(), userID, h.userGroupService)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to list adapters: " + err.Error()})
+		return
+	}
+
+	// Initialize response structure
+	geminiServers := make(map[string]interface{})
+	vscodeServers := make(map[string]interface{})
+
+	for _, adapter := range adapters {
+		// Use the stored configuration which contains the correct URL and auth token
+		serverConfig, ok := adapter.MCPClientConfig.MCPServers[adapter.Name]
+		if !ok {
+			// Try to find any server config if the name doesn't match
+			for _, config := range adapter.MCPClientConfig.MCPServers {
+				serverConfig = config
+				break
+			}
+		}
+
+		// Skip if no config found
+		if serverConfig.URL == "" && serverConfig.Command == "" {
+			continue
+		}
+
+		// Gemini Config
+		geminiServers[adapter.Name] = map[string]interface{}{
+			"httpUrl": serverConfig.URL,
+			"headers": serverConfig.Headers,
+		}
+
+		// VSCode Config
+		vscodeServers[adapter.Name] = map[string]interface{}{
+			"url":     serverConfig.URL,
+			"headers": serverConfig.Headers,
+			"type":    "http",
+		}
+	}
+
+	response := map[string]interface{}{
+		"mcpClientConfig": map[string]interface{}{
+			"gemini": map[string]interface{}{
+				"mcpServers": geminiServers,
+			},
+			"vscode": map[string]interface{}{
+				"servers": vscodeServers,
+				"inputs":  []interface{}{},
+			},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}

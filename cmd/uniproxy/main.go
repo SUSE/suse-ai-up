@@ -729,6 +729,10 @@ func RunUniproxy() {
 			adapters.POST("/:name/token/validate", tokenHandler.ValidateToken)
 			adapters.POST("/:name/token/refresh", tokenHandler.RefreshToken)
 
+			// User config
+			logging.ProxyLogger.Info("Registering user config route")
+			v1.GET("/user/config", ginToHTTPHandler(adapterHandler.GetClientConfig))
+
 			// Authentication
 			adapters.GET("/:name/client-token", mcpAuthHandler.GetClientToken)
 			adapters.POST("/:name/validate-auth", mcpAuthHandler.ValidateAuthConfig)
