@@ -114,15 +114,15 @@ func NewService(config *Config) *Service {
 	// Initialize user/group service
 	service.userGroupService = services.NewUserGroupService(service.userStore, service.groupStore)
 
+	// Initialize adapter service (sidecar manager will be set later if available)
+	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.adapterGroupAssignmentStore, service.store, service.sidecarManager)
+
 	// Initialize handlers
-	service.userGroupHandler = handlers.NewUserGroupHandler(service.userGroupService)
+	service.userGroupHandler = handlers.NewUserGroupHandler(service.userGroupService, service.adapterService)
 	service.routeAssignmentHandler = handlers.NewRouteAssignmentHandler(service.userGroupService, service)
 
 	// Initialize sync manager
 	service.syncManager = NewSyncManager(service.store)
-
-	// Initialize adapter service (sidecar manager will be set later if available)
-	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.adapterGroupAssignmentStore, service.store, service.sidecarManager)
 
 	return service
 }
