@@ -119,7 +119,6 @@ Get scan results:
 curl -X GET "http://{IP ADDRESS}:8912/api/v1/discovery/results"
 ```
 
-
 ## User and Group Management
 
 ### Create a User
@@ -186,5 +185,4 @@ Now any user in the `backend-team` group can access the `uyuni-adapter`.
 
 - Explore full [EXAMPLES.md](examples/EXAMPLES.md) for advanced usage
 - Check [README.md](README.md) for architecture details
-- Visit [GitHub Issues](https://github.com/suse/suse-ai-up/issues) for support</content>
-<parameter name="filePath">/Users/alessandrofesta/Documents/innovation/suse-ai-up/QUICKSTART.md
+- Visit [GitHub Issues](https://github.com/suse/suse-ai-up/issues) for support
