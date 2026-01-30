@@ -146,14 +146,7 @@ func (rm *DefaultRegistryManager) matchesFilters(server *models.MCPServer, filte
 			if source, ok := server.Meta["source"].(string); !ok || source != value {
 				return false
 			}
-		case "registry_source":
-			// Check registry source (yaml, official, docker, etc.)
-			if server.Meta == nil {
-				return false
-			}
-			if registrySource, ok := server.Meta["registry_source"].(string); !ok || registrySource != value {
-				return false
-			}
+
 		}
 	}
 

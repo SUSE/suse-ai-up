@@ -691,7 +691,7 @@ func (a *RemoteHTTPProxyAdapter) extractSessionID(c *gin.Context) string {
 
 // generateSessionID generates a new session ID
 func (a *RemoteHTTPProxyAdapter) generateSessionID() string {
-	return fmt.Sprintf("remote-http-%d", time.Now().UnixNano())
+	return fmt.Sprintf("remote-http-%s", uuid.New().String())
 }
 
 // getRequestID extracts request ID from message

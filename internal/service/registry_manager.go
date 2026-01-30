@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // New import
+	"k8s.io/client-go/kubernetes" // New import
 	"suse-ai-up/pkg/models"
 )
 
@@ -31,99 +33,26 @@ type RegistryManager struct {
 	httpClient     *http.Client
 	enableOfficial bool
 	syncInterval   time.Duration
-	customSources  []string
+	customSources  []models.RegistrySourceConfig // Changed type
 	lastSync       time.Time
+	k8sClient      kubernetes.Interface        // New field
 }
 
 // NewRegistryManager creates a new registry manager
-func NewRegistryManager(store MCPServerStore, enableOfficial bool, syncInterval time.Duration, customSources []string) *RegistryManager {
+func NewRegistryManager(store MCPServerStore, enableOfficial bool, syncInterval time.Duration, customSources []models.RegistrySourceConfig, k8sClient kubernetes.Interface) *RegistryManager {
 	return &RegistryManager{
 		store:          store,
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 		enableOfficial: enableOfficial,
 		syncInterval:   syncInterval,
 		customSources:  customSources,
+		k8sClient:      k8sClient, // Assign the new client
 	}
 }
 
-// SyncOfficialRegistry syncs from the official MCP registry
-func (rm *RegistryManager) SyncOfficialRegistry(ctx context.Context) error {
-	if !rm.enableOfficial {
-		log.Printf("RegistryManager: Official registry sync disabled")
-		return nil
-	}
 
-	// Check if we need to sync based on interval
-	if time.Since(rm.lastSync) < rm.syncInterval {
-		log.Printf("RegistryManager: Skipping sync, last sync was %v ago", time.Since(rm.lastSync))
-		return nil
-	}
 
-	log.Printf("RegistryManager: Starting official registry sync")
 
-	// Fetch from official registry
-	servers, err := rm.fetchOfficialRegistry(ctx)
-	if err != nil {
-		log.Printf("RegistryManager: Failed to fetch official registry: %v", err)
-		return fmt.Errorf("failed to fetch official registry: %w", err)
-	}
-
-	// Store servers
-	for _, server := range servers {
-		server.ValidationStatus = "synced"
-		server.DiscoveredAt = time.Now()
-
-		if err := rm.store.CreateMCPServer(server); err != nil {
-			// Log error but continue with other servers
-			log.Printf("RegistryManager: Failed to store server %s: %v", server.ID, err)
-		}
-	}
-
-	rm.lastSync = time.Now()
-	log.Printf("RegistryManager: Successfully synced %d servers from official registry", len(servers))
-
-	return nil
-}
-
-// fetchOfficialRegistry fetches servers from the official MCP registry
-func (rm *RegistryManager) fetchOfficialRegistry(ctx context.Context) ([]*models.MCPServer, error) {
-	const officialURL = "https://registry.modelcontextprotocol.io/v0/servers?limit=100"
-
-	req, err := http.NewRequestWithContext(ctx, "GET", officialURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := rm.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch registry: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("registry returned status %d", resp.StatusCode)
-	}
-
-	var result struct {
-		Servers []map[string]interface{} `json:"servers"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	var servers []*models.MCPServer
-	for _, serverData := range result.Servers {
-		server, err := rm.parseOfficialServer(serverData)
-		if err != nil {
-			log.Printf("RegistryManager: Failed to parse server: %v", err)
-			continue
-		}
-		servers = append(servers, server)
-	}
-
-	return servers, nil
-}
 
 // parseOfficialServer converts official registry format to our MCPServer model
 func (rm *RegistryManager) parseOfficialServer(data map[string]interface{}) (*models.MCPServer, error) {
@@ -235,20 +164,47 @@ func (rm *RegistryManager) UploadRegistryEntries(entries []*models.MCPServer) er
 }
 
 // LoadFromCustomSource loads registry data from a custom source
-func (rm *RegistryManager) LoadFromCustomSource(sourceURL string) error {
-	log.Printf("RegistryManager: Loading from custom source: %s", sourceURL)
+func (rm *RegistryManager) LoadFromCustomSource(sourceConfig models.RegistrySourceConfig) error {
+	log.Printf("RegistryManager: Loading from custom source: %s", sourceConfig.URL)
 
-	u, err := url.Parse(sourceURL)
+	u, err := url.Parse(sourceConfig.URL)
 	if err != nil {
 		return fmt.Errorf("invalid source URL: %w", err)
 	}
 
 	var data []byte
+	var authToken string // New variable for token
+
+	// Fetch auth token if configured
+	if sourceConfig.Auth != nil && sourceConfig.Auth.SecretName != "" && sourceConfig.Auth.SecretKey != "" {
+		if rm.k8sClient == nil {
+			return fmt.Errorf("kubernetes client is not configured to fetch auth token for source: %s", sourceConfig.URL)
+		}
+
+		// Assume namespace is where the pod is running, usually 'default' or from env var
+		namespace := os.Getenv("POD_NAMESPACE")
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		secret, err := rm.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), sourceConfig.Auth.SecretName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get secret %s/%s for registry source %s: %w", namespace, sourceConfig.Auth.SecretName, sourceConfig.URL, err)
+		}
+
+		tokenBytes, ok := secret.Data[sourceConfig.Auth.SecretKey]
+		if !ok {
+			return fmt.Errorf("secret %s/%s does not contain key %s for registry source %s", namespace, sourceConfig.Auth.SecretName, sourceConfig.Auth.SecretKey, sourceConfig.URL)
+		}
+		authToken = string(tokenBytes)
+	}
+
 	switch u.Scheme {
 	case "file":
 		data, err = rm.loadFromFile(u.Path)
 	case "http", "https":
-		data, err = rm.loadFromHTTP(sourceURL)
+		// Pass the token to loadFromHTTP
+		data, err = rm.loadFromHTTP(sourceConfig.URL, authToken, sourceConfig.Auth.Type)
 	default:
 		return fmt.Errorf("unsupported source scheme: %s", u.Scheme)
 	}
@@ -285,9 +241,31 @@ func (rm *RegistryManager) loadFromFile(filePath string) ([]byte, error) {
 	return os.ReadFile(filePath)
 }
 
-// loadFromHTTP loads data from an HTTP URL
-func (rm *RegistryManager) loadFromHTTP(url string) ([]byte, error) {
-	resp, err := rm.httpClient.Get(url)
+// loadFromHTTP loads data from an HTTP URL, applying authentication if token is provided
+func (rm *RegistryManager) loadFromHTTP(url string, authToken string, authType string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+
+	// Add cache-busting headers
+	req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.Header.Set("Pragma", "no-cache")
+
+	// Add authentication header if token is provided
+	if authToken != "" {
+		switch strings.ToLower(authType) {
+		case "basic":
+			// authToken should be base64 encoded "username:password"
+			req.Header.Set("Authorization", "Basic "+authToken)
+		case "bearer", "": // Default to Bearer if type is not specified
+			req.Header.Set("Authorization", "Bearer "+authToken)
+		default:
+			return nil, fmt.Errorf("unsupported authentication type for HTTP source: %s", authType)
+		}
+	}
+
+	resp, err := rm.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -304,15 +282,28 @@ func (rm *RegistryManager) loadFromHTTP(url string) ([]byte, error) {
 func (rm *RegistryManager) SyncAllSources(ctx context.Context) error {
 	log.Printf("RegistryManager: Starting sync from all sources")
 
-	// Sync official registry if enabled
-	if err := rm.SyncOfficialRegistry(ctx); err != nil {
-		log.Printf("RegistryManager: Official registry sync failed: %v", err)
+	// Read custom sources from file if path is provided via environment variable
+	customSourcesPath := os.Getenv("MCP_CUSTOM_REGISTRY_SOURCES_PATH")
+	if customSourcesPath != "" {
+		log.Printf("RegistryManager: Loading custom registry sources from file: %s", customSourcesPath)
+		data, err := os.ReadFile(customSourcesPath)
+		if err != nil {
+			log.Printf("RegistryManager: Failed to read custom registry sources file %s: %v", customSourcesPath, err)
+		} else {
+			var fileSources []models.RegistrySourceConfig
+			if err := json.Unmarshal(data, &fileSources); err != nil {
+				log.Printf("RegistryManager: Failed to parse custom registry sources from %s: %v", customSourcesPath, err)
+			} else {
+				rm.customSources = append(rm.customSources, fileSources...)
+				log.Printf("RegistryManager: Loaded %d custom registry sources from file %s", len(fileSources), customSourcesPath)
+			}
+		}
 	}
 
 	// Sync custom sources
 	for _, source := range rm.customSources {
 		if err := rm.LoadFromCustomSource(source); err != nil {
-			log.Printf("RegistryManager: Failed to sync custom source %s: %v", source, err)
+			log.Printf("RegistryManager: Failed to sync custom source %s: %v", source.URL, err)
 		}
 	}
 

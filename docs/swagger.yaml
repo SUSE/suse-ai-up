@@ -92,6 +92,40 @@ definitions:
       new_password:
         type: string
     type: object
+  handlers.CreateAdapterRequest:
+    properties:
+      authentication:
+        $ref: '#/definitions/models.AdapterAuthConfig'
+      deploymentMethod:
+        description: '"helm", "docker", "systemd", "local"'
+        type: string
+      description:
+        type: string
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      mcpServerId:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.CreateAdapterResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/models.MCPFunctionality'
+      createdAt:
+        type: string
+      id:
+        type: string
+      mcpClientConfig:
+        additionalProperties: true
+        type: object
+      mcpServerId:
+        type: string
+      status:
+        type: string
+    type: object
   handlers.CreateGroupRequest:
     properties:
       description:
@@ -1503,6 +1537,11 @@ paths:
     get:
       description: List all groups that have access to this adapter
       parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
       - description: Adapter Name
         in: path
         name: name
@@ -1537,6 +1576,11 @@ paths:
       - application/json
       description: Assign an adapter to a specific group with permissions
       parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
       - description: Adapter Name
         in: path
         name: name
@@ -1580,6 +1624,11 @@ paths:
     delete:
       description: Remove an adapter assignment from a specific group
       parameters:
+      - default: default-user
+        description: User ID
+        in: header
+        name: X-User-ID
+        type: string
       - description: Adapter Name
         in: path
         name: name

@@ -274,6 +274,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "description": "Adapter Name",
                         "name": "name",
                         "in": "path",
@@ -323,6 +330,13 @@ const docTemplate = `{
                 ],
                 "summary": "Assign adapter to group",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Adapter Name",
@@ -388,6 +402,13 @@ const docTemplate = `{
                 ],
                 "summary": "Remove adapter from group",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Adapter Name",
@@ -3423,6 +3444,57 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "new_password": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateAdapterRequest": {
+            "type": "object",
+            "properties": {
+                "authentication": {
+                    "$ref": "#/definitions/models.AdapterAuthConfig"
+                },
+                "deploymentMethod": {
+                    "description": "\"helm\", \"docker\", \"systemd\", \"local\"",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "environmentVariables": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "mcpServerId": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateAdapterResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "$ref": "#/definitions/models.MCPFunctionality"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mcpClientConfig": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "mcpServerId": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }

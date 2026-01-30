@@ -105,7 +105,6 @@ func TestSessionStoreOperations(t *testing.T) {
 		Status:           "authorized",
 		AuthorizationURL: "https://auth.example.com/authorize",
 		AuthorizedAt:     time.Now(),
-		ClientID:         "test-client",
 	}
 
 	err = store.SetAuthorizationInfo("test-session", authInfo)

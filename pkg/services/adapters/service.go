@@ -217,7 +217,9 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 
 	// Create adapter resource
 	adapter := &models.AdapterResource{}
-	adapter.Create(*adapterData, userID, time.Now())
+	// Set createdBy to "system" to prevent automatic user ownership
+	// Access should be granted via group assignments only
+	adapter.Create(*adapterData, "system", time.Now())
 
 	// Store adapter
 	if err := as.store.Create(ctx, *adapter); err != nil {

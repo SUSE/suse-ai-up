@@ -337,12 +337,20 @@ registry:
   # Enable loading servers from YAML file
   enabled: true
 
-  # External registry URL (if set, will fetch registry from URL instead of ConfigMap)
-  # Leave empty to use ConfigMap-based registry
-  url: ""
+  # List of custom registry sources to sync from (can include authenticated Git repositories)
+  # Each source can specify a URL and optional authentication details.
+  customSources:
+    # - url: "https://my-private-git.com/raw/registry.json"
+    #   auth:
+    #     secretName: "my-registry-secret"
+    #     secretKey: "token"
+    #     type: "bearer" # or "basic"
 
-  # Timeout for registry URL fetch (only used when url is set)
-  timeout: "30s"
+    # Example of a public source
+    - url: "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/index.json"
+    - url: "https://mcpservers.org/remote-mcp-servers.json"
+    - url: "https://raw.githubusercontent.com/modelcontextprotocol/examples/main/README.md"
+    # Add your custom sources here
 
   # MCP servers configuration (will be loaded into ConfigMap)
   servers: |

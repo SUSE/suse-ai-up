@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,34 +21,72 @@ func newMockSessionStore() *mockSessionStore {
 	}
 }
 
-func (m *mockSessionStore) CreateSession(sessionID string, adapterName string, authInfo session.AuthorizationInfo) error {
+func (m *mockSessionStore) Get(sessionID string) (string, bool) {
+	if session, exists := m.sessions[sessionID]; exists {
+		return session.TargetAddress, true
+	}
+	return "", false
+}
+
+func (m *mockSessionStore) Set(sessionID, targetAddress string) error {
+	return m.SetWithDetails(sessionID, "", targetAddress, "")
+}
+
+func (m *mockSessionStore) SetWithDetails(sessionID, adapterName, targetAddress, connectionType string) error {
 	m.sessions[sessionID] = &session.SessionDetails{
-		SessionID:    sessionID,
-		AdapterName:  adapterName,
-		AuthInfo:     authInfo,
-		CreatedAt:    time.Now(),
-		LastActivity: time.Now(),
+		SessionID:      sessionID,
+		AdapterName:    adapterName,
+		TargetAddress:  targetAddress,
+		ConnectionType: connectionType,
+		CreatedAt:      time.Now(),
+		LastActivity:   time.Now(),
 	}
 	return nil
+}
+
+func (m *mockSessionStore) ListByAdapter(adapterName string) ([]session.SessionDetails, error) {
+	var sessions []session.SessionDetails
+	for _, s := range m.sessions {
+		if s.AdapterName == adapterName {
+			sessions = append(sessions, *s)
+		}
+	}
+	return sessions, nil
+}
+
+func (m *mockSessionStore) GetDetails(sessionID string) (*session.SessionDetails, error) {
+	if session, exists := m.sessions[sessionID]; exists {
+		return session, nil
+	}
+	return nil, fmt.Errorf("session not found: %s", sessionID)
 }
 
 func (m *mockSessionStore) GetSession(sessionID string) (*session.SessionDetails, error) {
 	if session, exists := m.sessions[sessionID]; exists {
 		return session, nil
 	}
-	return nil, session.ErrSessionNotFound
+	return nil, fmt.Errorf("session not found: %s", sessionID)
 }
 
 func (m *mockSessionStore) UpdateActivity(sessionID string) error {
-	if session, exists := m.sessions[sessionID]; exists {
-		session.LastActivity = time.Now()
+	if _, exists := m.sessions[sessionID]; exists {
+		// In a mock, we might not actually update a timestamp, just confirm existence
 		return nil
 	}
-	return session.ErrSessionNotFound
+	return fmt.Errorf("session not found: %s", sessionID)
 }
 
-func (m *mockSessionStore) DeleteSession(sessionID string) error {
+func (m *mockSessionStore) Delete(sessionID string) error {
 	delete(m.sessions, sessionID)
+	return nil
+}
+
+func (m *mockSessionStore) DeleteByAdapter(adapterName string) error {
+	for id, session := range m.sessions {
+		if session.AdapterName == adapterName {
+			delete(m.sessions, id)
+		}
+	}
 	return nil
 }
 
@@ -59,7 +98,7 @@ func (m *mockSessionStore) GetActiveSessions() ([]*session.SessionDetails, error
 	return sessions, nil
 }
 
-func (m *mockSessionStore) CleanupExpiredSessions() error {
+func (m *mockSessionStore) CleanupExpired(maxAge time.Duration) error {
 	return nil
 }
 
@@ -69,59 +108,44 @@ func (m *mockSessionStore) SetMCPSessionID(sessionID, mcpSessionID string) error
 		session.MCPSessionID = mcpSessionID
 		return nil
 	}
-	return session.ErrSessionNotFound
+	return fmt.Errorf("session not found: %s", sessionID)
 }
 
 func (m *mockSessionStore) GetMCPSessionID(sessionID string) (string, error) {
 	if session, exists := m.sessions[sessionID]; exists {
 		return session.MCPSessionID, nil
 	}
-	return "", session.ErrSessionNotFound
+	return "", fmt.Errorf("session not found: %s", sessionID)
 }
 
-func (m *mockSessionStore) SetMCPCapabilities(sessionID string, capabilities interface{}) error {
+func (m *mockSessionStore) SetMCPCapabilities(sessionID string, capabilities map[string]interface{}) error {
 	if session, exists := m.sessions[sessionID]; exists {
 		session.MCPCapabilities = capabilities
 		return nil
 	}
-	return session.ErrSessionNotFound
+	return fmt.Errorf("session not found: %s", sessionID)
 }
 
-func (m *mockSessionStore) GetMCPCapabilities(sessionID string) (interface{}, error) {
+func (m *mockSessionStore) GetMCPCapabilities(sessionID string) (map[string]interface{}, error) {
 	if session, exists := m.sessions[sessionID]; exists {
 		return session.MCPCapabilities, nil
 	}
-	return nil, session.ErrSessionNotFound
+	return nil, fmt.Errorf("session not found: %s", sessionID)
 }
 
-func (m *mockSessionStore) SetMCPClientInfo(sessionID string, clientInfo interface{}) error {
+func (m *mockSessionStore) SetMCPClientInfo(sessionID string, clientInfo *session.MCPClientInfo) error {
 	if session, exists := m.sessions[sessionID]; exists {
 		session.MCPClientInfo = clientInfo
 		return nil
 	}
-	return session.ErrSessionNotFound
+	return fmt.Errorf("session not found: %s", sessionID)
 }
 
-func (m *mockSessionStore) GetMCPClientInfo(sessionID string) (interface{}, error) {
+func (m *mockSessionStore) GetMCPClientInfo(sessionID string) (*session.MCPClientInfo, error) {
 	if session, exists := m.sessions[sessionID]; exists {
 		return session.MCPClientInfo, nil
 	}
-	return nil, session.ErrSessionNotFound
-}
-
-func (m *mockSessionStore) SetMCPServerInfo(sessionID string, serverInfo interface{}) error {
-	if session, exists := m.sessions[sessionID]; exists {
-		session.MCPServerInfo = serverInfo
-		return nil
-	}
-	return session.ErrSessionNotFound
-}
-
-func (m *mockSessionStore) GetMCPServerInfo(sessionID string) (interface{}, error) {
-	if session, exists := m.sessions[sessionID]; exists {
-		return session.MCPServerInfo, nil
-	}
-	return nil, session.ErrSessionNotFound
+	return nil, fmt.Errorf("session not found: %s", sessionID)
 }
 
 func (m *mockSessionStore) FindByMCPSessionID(mcpSessionID string) (*session.SessionDetails, error) {
@@ -130,14 +154,67 @@ func (m *mockSessionStore) FindByMCPSessionID(mcpSessionID string) (*session.Ses
 			return session, nil
 		}
 	}
-	return nil, session.ErrSessionNotFound
+	return nil, fmt.Errorf("no session found with MCP session ID: %s", mcpSessionID)
 }
 
-func (m *mockSessionStore) GetActiveMCPSessions() ([]*session.SessionDetails, error) {
-	var sessions []*session.SessionDetails
+func (m *mockSessionStore) SetTokenInfo(sessionID string, tokenInfo *session.TokenInfo) error {
+	if session, exists := m.sessions[sessionID]; exists {
+		session.TokenInfo = tokenInfo
+		return nil
+	}
+	return fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) GetTokenInfo(sessionID string) (*session.TokenInfo, error) {
+	if session, exists := m.sessions[sessionID]; exists {
+		return session.TokenInfo, nil
+	}
+	return nil, fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) SetAuthorizationInfo(sessionID string, authInfo *session.AuthorizationInfo) error {
+	if session, exists := m.sessions[sessionID]; exists {
+		session.AuthorizationInfo = authInfo
+		return nil
+	}
+	return fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) GetAuthorizationInfo(sessionID string) (*session.AuthorizationInfo, error) {
+	if session, exists := m.sessions[sessionID]; exists {
+		return session.AuthorizationInfo, nil
+	}
+	return nil, fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) IsTokenValid(sessionID string) bool {
+	return true // Mock always valid
+}
+
+func (m *mockSessionStore) RefreshToken(sessionID, newAccessToken string, expiresAt time.Time) error {
+	return nil
+}
+
+func (m *mockSessionStore) SetMCPServerInfo(sessionID string, serverInfo *session.MCPServerInfo) error {
+	if session, exists := m.sessions[sessionID]; exists {
+		session.MCPServerInfo = serverInfo
+		return nil
+	}
+	return fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) GetMCPServerInfo(sessionID string) (*session.MCPServerInfo, error) {
+	if session, exists := m.sessions[sessionID]; exists {
+		return session.MCPServerInfo, nil
+	}
+	return nil, fmt.Errorf("session not found: %s", sessionID)
+}
+
+func (m *mockSessionStore) GetActiveMCPSessions() ([]session.SessionDetails, error) {
+	var sessions []session.SessionDetails
 	for _, session := range m.sessions {
 		if session.MCPSessionID != "" {
-			sessions = append(sessions, session)
+			sessions = append(sessions, *session)
 		}
 	}
 	return sessions, nil
@@ -157,17 +234,19 @@ func TestMessageRouter_HandleToolsList(t *testing.T) {
 
 	// Create test adapter with MCP functionality
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
-		MCPFunctionality: &models.MCPFunctionality{
-			Tools: []models.MCPTool{
-				{
-					Name:        "test-tool",
-					Description: "A test tool",
-					InputSchema: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"input": map[string]interface{}{
-								"type": "string",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+			MCPFunctionality: &models.MCPFunctionality{
+				Tools: []models.MCPTool{
+					{
+						Name:        "test-tool",
+						Description: "A test tool",
+						InputSchema: map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"input": map[string]interface{}{
+									"type": "string",
+								},
 							},
 						},
 					},
@@ -249,14 +328,16 @@ func TestMessageRouter_HandleResourcesList(t *testing.T) {
 
 	// Create test adapter with MCP functionality
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
-		MCPFunctionality: &models.MCPFunctionality{
-			Resources: []models.MCPResource{
-				{
-					URI:         "test://resource/1",
-					Name:        "Test Resource",
-					Description: "A test resource",
-					MimeType:    "text/plain",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+			MCPFunctionality: &models.MCPFunctionality{
+				Resources: []models.MCPResource{
+					{
+						URI:         "test://resource/1",
+						Name:        "Test Resource",
+						Description: "A test resource",
+						MimeType:    "text/plain",
+					},
 				},
 			},
 		},
@@ -323,12 +404,14 @@ func TestMessageRouter_HandlePromptsList(t *testing.T) {
 
 	// Create test adapter with MCP functionality
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
-		MCPFunctionality: &models.MCPFunctionality{
-			Prompts: []models.MCPPrompt{
-				{
-					Name:        "test-prompt",
-					Description: "A test prompt",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+			MCPFunctionality: &models.MCPFunctionality{
+				Prompts: []models.MCPPrompt{
+					{
+						Name:        "test-prompt",
+						Description: "A test prompt",
+					},
 				},
 			},
 		},
@@ -395,7 +478,9 @@ func TestMessageRouter_CacheIntegration(t *testing.T) {
 
 	// Create test adapter without MCP functionality (will use cache/proxy)
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+		},
 	}
 
 	// Create test message
@@ -411,7 +496,7 @@ func TestMessageRouter_CacheIntegration(t *testing.T) {
 	sessionID := "test-session"
 
 	// This will fail to proxy since we don't have a real server, but we can test cache behavior
-	response, err := router.RouteMessage(ctx, message, adapter, sessionID)
+	_, err := router.RouteMessage(ctx, message, adapter, sessionID)
 
 	// We expect an error since there's no real server to proxy to
 	if err == nil {
@@ -439,12 +524,14 @@ func TestMessageRouter_MonitoringIntegration(t *testing.T) {
 
 	// Create test adapter with MCP functionality
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
-		MCPFunctionality: &models.MCPFunctionality{
-			Tools: []models.MCPTool{
-				{
-					Name:        "test-tool",
-					Description: "A test tool",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+			MCPFunctionality: &models.MCPFunctionality{
+				Tools: []models.MCPTool{
+					{
+						Name:        "test-tool",
+						Description: "A test tool",
+					},
 				},
 			},
 		},
@@ -560,7 +647,9 @@ func TestMessageRouter_UnknownMethod(t *testing.T) {
 
 	// Create test adapter
 	adapter := models.AdapterResource{
-		Name: "test-adapter",
+		AdapterData: models.AdapterData{
+			Name: "test-adapter",
+		},
 	}
 
 	// Create test message with unknown method
@@ -575,7 +664,7 @@ func TestMessageRouter_UnknownMethod(t *testing.T) {
 	ctx := context.Background()
 	sessionID := "test-session"
 
-	response, err := router.RouteMessage(ctx, message, adapter, sessionID)
+	_, err := router.RouteMessage(ctx, message, adapter, sessionID)
 
 	// We expect an error since there's no real server to proxy to
 	if err == nil {

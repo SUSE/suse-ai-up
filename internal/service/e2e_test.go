@@ -238,7 +238,6 @@ func TestEndToEndOAuthAuthorizationFlow(t *testing.T) {
 		authInfo := &session.AuthorizationInfo{
 			Status:       "authorized",
 			AuthorizedAt: time.Now(),
-			ClientID:     "test-client",
 		}
 		err = sessionStore.SetAuthorizationInfo(sessionID, authInfo)
 		if err != nil {

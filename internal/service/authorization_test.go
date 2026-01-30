@@ -50,6 +50,33 @@ func (m *MockSessionStore) RefreshToken(sessionID, newAccessToken string, expire
 	return nil
 }
 
+func (m *MockSessionStore) SetMCPSessionID(sessionID, mcpSessionID string) error { return nil }
+func (m *MockSessionStore) GetMCPSessionID(sessionID string) (string, error)     { return "", nil }
+func (m *MockSessionStore) SetMCPCapabilities(sessionID string, capabilities map[string]interface{}) error {
+	return nil
+}
+func (m *MockSessionStore) GetMCPCapabilities(sessionID string) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *MockSessionStore) SetMCPClientInfo(sessionID string, clientInfo *session.MCPClientInfo) error {
+	return nil
+}
+func (m *MockSessionStore) GetMCPClientInfo(sessionID string) (*session.MCPClientInfo, error) {
+	return nil, nil
+}
+func (m *MockSessionStore) SetMCPServerInfo(sessionID string, serverInfo *session.MCPServerInfo) error {
+	return nil
+}
+func (m *MockSessionStore) GetMCPServerInfo(sessionID string) (*session.MCPServerInfo, error) {
+	return nil, nil
+}
+func (m *MockSessionStore) FindByMCPSessionID(mcpSessionID string) (*session.SessionDetails, error) {
+	return nil, nil
+}
+func (m *MockSessionStore) GetActiveMCPSessions() ([]session.SessionDetails, error) {
+	return nil, nil
+}
+
 func TestGeneratePKCE(t *testing.T) {
 	as := &AuthorizationService{}
 

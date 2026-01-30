@@ -106,15 +106,81 @@ func parseTrentoConfig(config string) (trentoURL, token string, err error) {
 	return urlPart, tokenPart, nil
 }
 
+// generateClientConfig creates the client-specific configuration for a given adapter
+func (h *AdapterHandler) generateClientConfig(adapter *models.AdapterResource, includeSecrets bool) map[string]interface{} {
+	clientConfig := make(map[string]interface{})
+
+	// Retrieve the stored MCPClientConfig from the adapter resource
+	// This contains the internal representation with real URLs and tokens
+	internalMCPClientConfig := adapter.MCPClientConfig
+
+	logging.AdapterLogger.Info("generateClientConfig: adapter=%s, includeSecrets=%v, servers=%d", adapter.Name, includeSecrets, len(internalMCPClientConfig.MCPServers))
+
+	// Assuming a single server entry per adapter for simplicity in current structure
+	var serverConfig models.MCPServerConfig
+	foundConfig := false
+	if config, ok := internalMCPClientConfig.MCPServers[adapter.Name]; ok {
+		serverConfig = config
+		foundConfig = true
+	} else {
+		// Fallback: if adapter.Name doesn't match a key, try to find any config
+		for _, cfg := range internalMCPClientConfig.MCPServers {
+			serverConfig = cfg
+			foundConfig = true
+			break
+		}
+	}
+
+	if !foundConfig || (serverConfig.URL == "" && serverConfig.Command == "") {
+		logging.AdapterLogger.Info("generateClientConfig: no valid config found for adapter %s", adapter.Name)
+		return clientConfig // Return empty if no valid server config found
+	}
+
+	// Prepare headers
+	headers := make(map[string]string)
+	if includeSecrets {
+		// Use real headers from stored config
+		for k, v := range serverConfig.Headers {
+			headers[k] = v
+		}
+	} else {
+		// Use placeholder for security
+		headers["Authorization"] = "Bearer adapter-session-token"
+	}
+
+	// Gemini Configuration
+	if serverConfig.URL != "" {
+		geminiServerConfig := map[string]interface{}{
+			"httpUrl": serverConfig.URL, // Use the URL from the stored config
+			"headers": headers,
+		}
+		clientConfig["gemini"] = map[string]interface{}{
+			"mcpServers": map[string]interface{}{
+				adapter.Name: geminiServerConfig,
+			},
+		}
+	}
+
+	// VSCode Configuration
+	// VSCode client often uses "url" field instead of "httpUrl"
+	if serverConfig.URL != "" {
+		vscodeServerConfig := map[string]interface{}{
+			"url":     serverConfig.URL, // Use the URL from the stored config
+			"headers": headers,
+			"type":    "http", // Assuming HTTP connection type for VSCode client
+		}
+		clientConfig["vscode"] = map[string]interface{}{
+			"servers": map[string]interface{}{
+				adapter.Name: vscodeServerConfig,
+			},
+			"inputs": []interface{}{}, // VSCode clients might have inputs, but not part of adapter config directly
+		}
+	}
+
+	return clientConfig
+}
+
 // HandleAdapters handles both listing and creating adapters
-// @Summary List adapters
-// @Description List all adapters for the current user
-// @Tags adapters
-// @Produce json
-// @Param X-User-ID header string false "User ID" default(default-user)
-// @Success 200 {array} models.AdapterResource "List of adapters"
-// @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /api/v1/adapters [get]
 func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -127,6 +193,17 @@ func (h *AdapterHandler) HandleAdapters(w http.ResponseWriter, r *http.Request) 
 }
 
 // CreateAdapter creates a new adapter from a registry server
+// @Summary Create adapter
+// @Description Create a new MCP adapter
+// @Tags adapters
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param request body CreateAdapterRequest true "Adapter creation request"
+// @Success 201 {object} CreateAdapterResponse "Created adapter"
+// @Failure 400 {object} ErrorResponse "Invalid request"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters [post]
 func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 	logging.AdapterLogger.Info("CreateAdapter handler invoked")
 
@@ -201,67 +278,13 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate MCP client configurations for different client types
-	var mcpClientConfig map[string]interface{}
-	if adapter.ConnectionType == models.ConnectionTypeRemoteHttp {
-		// For remote HTTP servers, provide direct connection config
-		mcpClientConfig = map[string]interface{}{
-			"gemini": map[string]interface{}{
-				"mcpServers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"url": adapter.RemoteUrl,
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-					},
-				},
-			},
-			"vscode": map[string]interface{}{
-				"inputs": []interface{}{},
-				"servers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"type": "http",
-						"url":  adapter.RemoteUrl,
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-					},
-				},
-			},
-		}
-	} else if adapter.ConnectionType == models.ConnectionTypeStreamableHttp {
-		mcpClientConfig = map[string]interface{}{
-			"gemini": map[string]interface{}{
-				"mcpServers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"httpUrl": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-					},
-				},
-			},
-			"vscode": map[string]interface{}{
-				"servers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"url": fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", adapter.ID),
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-						"type": "http",
-					},
-				},
-				"inputs": []interface{}{},
-			},
-		}
-	} else {
-		// For other connection types (stdio, etc.), use stdio format
-		mcpClientConfig = map[string]interface{}{"stdio": "format"}
-	}
+	// Use includeSecrets=false to return placeholder tokens for creation response
+	adapterClientConfig := h.generateClientConfig(adapter, false)
 
 	response := CreateAdapterResponse{
 		ID:              adapter.ID,
 		MCPServerID:     req.MCPServerID,
-		MCPClientConfig: mcpClientConfig,
+		MCPClientConfig: adapterClientConfig, // Use the generated config
 		Capabilities:    adapter.MCPFunctionality,
 		Status:          "ready",
 		CreatedAt:       adapter.CreatedAt,
@@ -273,6 +296,14 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListAdapters lists all adapters for the current user
+// @Summary List adapters
+// @Description List all adapters for the current user
+// @Tags adapters
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Success 200 {array} models.AdapterResource "List of adapters"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/adapters [get]
 func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 	logging.AdapterLogger.Info("ListAdapters handler invoked")
 	if r.Method != http.MethodGet {
@@ -297,37 +328,15 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 	listAdapters := make([]map[string]interface{}, len(adapters))
 	for i, adapter := range adapters {
 		// Generate MCP client configurations for different client types
-		mcpClientConfig := map[string]interface{}{
-			"gemini": map[string]interface{}{
-				"mcpServers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"httpUrl": adapter.URL,
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-					},
-				},
-			},
-			"vscode": map[string]interface{}{
-				"servers": map[string]interface{}{
-					adapter.ID: map[string]interface{}{
-						"url": adapter.URL,
-						"headers": map[string]string{
-							"Authorization": "Bearer adapter-session-token",
-						},
-						"type": "http",
-					},
-				},
-				"inputs": []interface{}{},
-			},
-		}
+		// Use includeSecrets=false to return placeholder tokens for list view
+		adapterClientConfig := h.generateClientConfig(&adapter, false)
 
 		adapterMap := map[string]interface{}{
 			"id":              adapter.ID,
 			"name":            adapter.Name,
 			"description":     adapter.Description,
-			"url":             adapter.URL,
-			"mcpClientConfig": mcpClientConfig,
+			"url":             adapter.URL,         // This is the proxy URL
+			"mcpClientConfig": adapterClientConfig, // Use the generated config
 			"capabilities":    adapter.MCPFunctionality,
 			"status":          adapter.Status,
 			"createdAt":       adapter.CreatedAt,
@@ -913,6 +922,7 @@ func (h *AdapterHandler) SyncAdapterCapabilities(w http.ResponseWriter, r *http.
 // @Tags adapters
 // @Accept json
 // @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
 // @Param name path string true "Adapter Name"
 // @Param request body AddAdapterToGroupRequest true "Assignment details"
 // @Success 201 {object} map[string]string
@@ -992,6 +1002,7 @@ func (h *AdapterHandler) AssignAdapterToGroup(w http.ResponseWriter, r *http.Req
 // @Description Remove an adapter assignment from a specific group
 // @Tags adapters
 // @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
 // @Param name path string true "Adapter Name"
 // @Param groupId path string true "Group ID"
 // @Success 204 "No Content"
@@ -1044,6 +1055,7 @@ func (h *AdapterHandler) RemoveAdapterFromGroup(w http.ResponseWriter, r *http.R
 // @Description List all groups that have access to this adapter
 // @Tags adapters
 // @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
 // @Param name path string true "Adapter Name"
 // @Success 200 {array} models.AdapterGroupAssignment
 // @Failure 403 {object} ErrorResponse
@@ -1119,47 +1131,42 @@ func (h *AdapterHandler) GetClientConfig(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Initialize response structure
-	geminiServers := make(map[string]interface{})
-	vscodeServers := make(map[string]interface{})
+	finalGeminiServers := make(map[string]interface{})
+	finalVscodeServers := make(map[string]interface{})
+
+	logging.AdapterLogger.Info("GetClientConfig: processing %d adapters for user %s", len(adapters), userID)
 
 	for _, adapter := range adapters {
-		// Use the stored configuration which contains the correct URL and auth token
-		serverConfig, ok := adapter.MCPClientConfig.MCPServers[adapter.Name]
-		if !ok {
-			// Try to find any server config if the name doesn't match
-			for _, config := range adapter.MCPClientConfig.MCPServers {
-				serverConfig = config
-				break
+		// Generate client config for this adapter, including real tokens
+		adapterClientConfig := h.generateClientConfig(&adapter, true)
+
+		logging.AdapterLogger.Info("GetClientConfig: generated config for adapter %s: %+v", adapter.Name, adapterClientConfig)
+
+		if geminiConfig, ok := adapterClientConfig["gemini"].(map[string]interface{}); ok {
+			if mcpServers, ok := geminiConfig["mcpServers"].(map[string]interface{}); ok {
+				for k, v := range mcpServers {
+					finalGeminiServers[k] = v
+				}
 			}
 		}
 
-		// Skip if no config found
-		if serverConfig.URL == "" && serverConfig.Command == "" {
-			continue
-		}
-
-		// Gemini Config
-		geminiServers[adapter.Name] = map[string]interface{}{
-			"httpUrl": serverConfig.URL,
-			"headers": serverConfig.Headers,
-		}
-
-		// VSCode Config
-		vscodeServers[adapter.Name] = map[string]interface{}{
-			"url":     serverConfig.URL,
-			"headers": serverConfig.Headers,
-			"type":    "http",
+		if vscodeConfig, ok := adapterClientConfig["vscode"].(map[string]interface{}); ok {
+			if servers, ok := vscodeConfig["servers"].(map[string]interface{}); ok {
+				for k, v := range servers {
+					finalVscodeServers[k] = v
+				}
+			}
 		}
 	}
 
 	response := map[string]interface{}{
 		"mcpClientConfig": map[string]interface{}{
 			"gemini": map[string]interface{}{
-				"mcpServers": geminiServers,
+				"mcpServers": finalGeminiServers,
 			},
 			"vscode": map[string]interface{}{
-				"servers": vscodeServers,
-				"inputs":  []interface{}{},
+				"servers": finalVscodeServers,
+				"inputs":  []interface{}{}, // Inputs are not aggregated from individual adapters
 			},
 		},
 	}

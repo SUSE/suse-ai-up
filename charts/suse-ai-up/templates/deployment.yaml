@@ -33,12 +33,9 @@ spec:
           env:
             - name: CORS_ALLOWED_ORIGINS
               value: "{{ .Values.cors.allowedOrigins }}"
-{{- if .Values.registry.url }}
-            - name: MCP_REGISTRY_URL
-              value: "{{ .Values.registry.url }}"
-            - name: REGISTRY_TIMEOUT
-              value: "{{ .Values.registry.timeout }}"
-{{- end }}
+            - name: MCP_CUSTOM_REGISTRY_SOURCES_PATH
+              value: "/etc/config/custom_registry_sources.json"
+
             # Authentication Configuration
             - name: AUTH_MODE
               value: "{{ .Values.auth.mode }}"
@@ -102,6 +99,9 @@ spec:
             - name: docs-config
               mountPath: /home/mcpuser/docs
               readOnly: true
+            - name: custom-registry-sources-config # New volume mount
+              mountPath: /etc/config
+              readOnly: true
           resources:
             {{- toYaml .Values.services.proxy.resources | nindent 12 }}
       volumes:
@@ -113,6 +113,12 @@ spec:
         - name: docs-config
           configMap:
             name: {{ include "suse-ai-up.fullname" . }}-docs
+        - name: custom-registry-sources-config # New volume
+          configMap:
+            name: {{ include "suse-ai-up.fullname" . }}-custom-registry-sources
+            items:
+              - key: custom_registry_sources.json
+                path: custom_registry_sources.json
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
