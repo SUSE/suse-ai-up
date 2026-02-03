@@ -1082,8 +1082,11 @@ func (h *AdapterHandler) ListAdapterGroupAssignments(w http.ResponseWriter, r *h
 		userID = "default-user"
 	}
 
+	logging.AdapterLogger.Info("ListAdapterAssignments handler: user=%s, adapter=%s", userID, adapterID)
+
 	assignments, err := h.adapterService.ListAdapterAssignments(r.Context(), userID, adapterID, h.userGroupService)
 	if err != nil {
+		logging.AdapterLogger.Error("ListAdapterAssignments failed: user=%s, adapter=%s, error=%v", userID, adapterID, err)
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(err.Error(), "not found") {
 			w.WriteHeader(http.StatusNotFound)
@@ -1097,6 +1100,8 @@ func (h *AdapterHandler) ListAdapterGroupAssignments(w http.ResponseWriter, r *h
 		}
 		return
 	}
+
+	logging.AdapterLogger.Info("ListAdapterAssignments success: user=%s, adapter=%s, count=%d", userID, adapterID, len(assignments))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(assignments)

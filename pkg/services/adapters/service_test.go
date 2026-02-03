@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 	"testing"
+	"time"
 
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/models"
+	core_services "suse-ai-up/pkg/services"
 )
 
 func TestAdapterService_hasStdioPackage(t *testing.T) {
@@ -253,5 +255,135 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	expectedError := "sidecar manager not available for adapter deployment"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestAdapterService_PermissionChecks(t *testing.T) {
+	// Setup In-Memory Stores
+	adapterStore := clients.NewInMemoryAdapterStore()
+	adapterGroupAssignmentStore := clients.NewInMemoryAdapterGroupAssignmentStore()
+	serverStore := clients.NewInMemoryMCPServerStore()
+	userStore := clients.NewInMemoryUserStore()
+	groupStore := clients.NewInMemoryGroupStore()
+
+	// Setup Services
+	userGroupService := core_services.NewUserGroupService(userStore, groupStore)
+	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil)
+
+	// Setup Context
+	ctx := context.Background()
+
+	// 1. Create Users
+	adminUser := models.User{ID: "admin", Groups: []string{"admin-group"}}
+	regularUser := models.User{ID: "user", Groups: []string{"assignable-group", "write-only-group", "read-only-group"}}
+	userStore.Create(ctx, adminUser)
+	userStore.Create(ctx, regularUser)
+
+	// 2. Create Groups
+	// Admin group can do everything
+	adminGroup := models.Group{
+		ID:          "admin-group",
+		Permissions: []string{"adapter:assign", "adapter:read", "adapter:create", "group:manage", "adapter:*"},
+		Members:     []string{"admin"},
+	}
+
+	// Group valid for assignment (has adapter:assign and adapter:read)
+	assignableGroup := models.Group{
+		ID:          "assignable-group",
+		Permissions: []string{"adapter:assign", "adapter:read"},
+		Members:     []string{"user"},
+	}
+
+	// Group that can be assigned to but cannot read adapters (missing adapter:read)
+	writeOnlyGroup := models.Group{
+		ID:          "write-only-group",
+		Permissions: []string{"adapter:assign"},
+		Members:     []string{"user"},
+	}
+
+	// Group that cannot be assigned to (missing adapter:assign)
+	readOnlyGroup := models.Group{
+		ID:          "read-only-group",
+		Permissions: []string{"adapter:read"},
+		Members:     []string{"user"},
+	}
+
+	groupStore.Create(ctx, adminGroup)
+	groupStore.Create(ctx, assignableGroup)
+	groupStore.Create(ctx, writeOnlyGroup)
+	groupStore.Create(ctx, readOnlyGroup)
+
+	// 3. Create Adapter (owned by admin)
+	adapter := models.AdapterResource{
+		AdapterData: models.AdapterData{Name: "test-adapter"},
+		ID:          "test-adapter",
+		CreatedBy:   "admin",
+		CreatedAt:   time.Now(),
+	}
+	adapterStore.Create(ctx, adapter)
+
+	// Test Case 1: Assign Adapter to Group WITHOUT adapter:assign permission
+	// Admin tries to assign to read-only-group
+	err := service.AssignAdapterToGroup(ctx, "admin", "test-adapter", "read-only-group", "read", userGroupService)
+	if err == nil {
+		t.Error("Expected error when assigning to group without adapter:assign permission")
+	} else if err.Error() != "insufficient permissions: group read-only-group does not have adapter:assign permission" {
+		t.Errorf("Unexpected error message: %v", err)
+	}
+
+	// Test Case 2: Assign Adapter to Group WITH adapter:assign permission
+	err = service.AssignAdapterToGroup(ctx, "admin", "test-adapter", "assignable-group", "read", userGroupService)
+	if err != nil {
+		t.Errorf("Expected success when assigning to valid group, got: %v", err)
+	}
+
+	// Assign to write-only group (valid for assignment)
+	err = service.AssignAdapterToGroup(ctx, "admin", "test-adapter", "write-only-group", "read", userGroupService)
+	if err != nil {
+		t.Errorf("Expected success when assigning to write-only group, got: %v", err)
+	}
+
+	// Test Case 3: List Adapters - Verify filtering based on adapter:read permission
+
+	// "user" is member of:
+	// - assignable-group (has adapter:read, has assignment) -> Should show adapter
+	// - write-only-group (NO adapter:read, has assignment) -> Should NOT show adapter via this group
+	// - read-only-group (has adapter:read, NO assignment) -> Should NOT show adapter (no assignment)
+
+	adapters, err := service.ListAdapters(ctx, "user", userGroupService)
+	if err != nil {
+		t.Fatalf("ListAdapters failed: %v", err)
+	}
+
+	// We expect to see "test-adapter" because it is assigned to "assignable-group" which has "adapter:read"
+	found := false
+	for _, a := range adapters {
+		if a.ID == "test-adapter" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected to find test-adapter for user (via assignable-group)")
+	}
+
+	// Now, let's remove assignment from "assignable-group" and keep it on "write-only-group"
+	// Since "write-only-group" does not have "adapter:read", the user should NOT see the adapter even if assigned.
+	service.RemoveAdapterFromGroup(ctx, "admin", "test-adapter", "assignable-group", userGroupService)
+
+	adapters, err = service.ListAdapters(ctx, "user", userGroupService)
+	if err != nil {
+		t.Fatalf("ListAdapters failed: %v", err)
+	}
+
+	found = false
+	for _, a := range adapters {
+		if a.ID == "test-adapter" {
+			found = true
+			break
+		}
+	}
+	if found {
+		t.Error("Expected NOT to find test-adapter because write-only-group lacks adapter:read permission")
 	}
 }

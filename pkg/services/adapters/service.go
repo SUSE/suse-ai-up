@@ -879,6 +879,18 @@ func (as *AdapterService) ListAdapters(ctx context.Context, userID string, userG
 	// Get all adapter assignments for user's groups
 	groupAdapterMap := make(map[string]bool) // adapterID -> hasAccess
 	for _, groupID := range user.Groups {
+		// NEW: Check if group has "adapter:read" permission
+		// Only groups with this permission can grant access to adapters
+		if userGroupService != nil {
+			hasReadPerm, err := userGroupService.CheckGroupPermission(ctx, groupID, "adapter:read")
+			if err != nil {
+				continue // Skip if group lookup fails
+			}
+			if !hasReadPerm {
+				continue // Skip if group doesn't have permission
+			}
+		}
+
 		assignments, err := as.adapterGroupAssignmentStore.ListAssignmentsForGroup(ctx, groupID)
 		if err != nil {
 			continue // Skip group if we can't get assignments
@@ -1309,6 +1321,19 @@ func (as *AdapterService) AssignAdapterToGroup(ctx context.Context, userID, adap
 		return err
 	}
 
+	// NEW: Check if target group has "adapter:assign" permission
+	// This ensures only authorized groups can have adapters assigned
+	if userGroupService != nil {
+		hasAssignPermission, err := userGroupService.CheckGroupPermission(ctx, groupID, "adapter:assign")
+		if err != nil {
+			// If group doesn't exist or other error
+			return err
+		}
+		if !hasAssignPermission {
+			return fmt.Errorf("insufficient permissions: group %s does not have adapter:assign permission", groupID)
+		}
+	}
+
 	// Create assignment
 	assignment := models.AdapterGroupAssignment{
 		AdapterID:  adapterID,
@@ -1354,29 +1379,50 @@ func (as *AdapterService) RemoveAdapterFromGroup(ctx context.Context, userID, ad
 
 // ListAdapterAssignments lists all group assignments for an adapter
 func (as *AdapterService) ListAdapterAssignments(ctx context.Context, userID, adapterID string, userGroupService *services.UserGroupService) ([]models.AdapterGroupAssignment, error) {
+	logging.AdapterLogger.Info("ListAdapterAssignments service: user=%s, adapter=%s", userID, adapterID)
+
 	// Check if user has access to view assignments
 	// Users can see assignments for adapters they own or have access to
 
 	adapter, err := as.store.Get(ctx, adapterID)
 	if err != nil {
+		logging.AdapterLogger.Error("ListAdapterAssignments: adapter not found in store: %s, error=%v", adapterID, err)
 		return nil, err
 	}
+	logging.AdapterLogger.Info("ListAdapterAssignments: found adapter %s, createdBy=%s", adapterID, adapter.CreatedBy)
 
 	hasAccess := false
 	if adapter.CreatedBy == userID {
+		logging.AdapterLogger.Info("ListAdapterAssignments: user is owner")
 		hasAccess = true
 	} else if userGroupService != nil {
 		// Check admin/manager permissions
 		if canManage, _ := userGroupService.CanManageGroups(ctx, userID); canManage {
+			logging.AdapterLogger.Info("ListAdapterAssignments: user has group:manage permission")
 			hasAccess = true
 		} else {
 			// Check if user has read access to the adapter via groups
 			user, err := userGroupService.GetUser(ctx, userID)
-			if err == nil {
-				for _, groupID := range user.Groups {
-					if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapterID, groupID); access {
-						hasAccess = true
-						break
+			if err != nil {
+				logging.AdapterLogger.Error("ListAdapterAssignments: failed to get user %s: %v", userID, err)
+			} else {
+				logging.AdapterLogger.Info("ListAdapterAssignments: user %s has groups: %v", userID, user.Groups)
+
+				// NEW: Check if user has adapter:assign permission
+				// Users with adapter:assign can view all adapter assignments
+				hasAssignPerm := userGroupService.HasPermission(user.Groups, "adapter:assign")
+				logging.AdapterLogger.Info("ListAdapterAssignments: user has adapter:assign=%v", hasAssignPerm)
+
+				if hasAssignPerm {
+					hasAccess = true
+				} else {
+					// Check if adapter is already assigned to user's groups
+					for _, groupID := range user.Groups {
+						if access, _ := as.adapterGroupAssignmentStore.HasAccess(ctx, adapterID, groupID); access {
+							logging.AdapterLogger.Info("ListAdapterAssignments: adapter assigned to user's group %s", groupID)
+							hasAccess = true
+							break
+						}
 					}
 				}
 			}
@@ -1384,10 +1430,18 @@ func (as *AdapterService) ListAdapterAssignments(ctx context.Context, userID, ad
 	}
 
 	if !hasAccess {
+		logging.AdapterLogger.Error("ListAdapterAssignments: access denied for user %s to adapter %s", userID, adapterID)
 		return nil, fmt.Errorf("adapter not found or access denied")
 	}
 
-	return as.adapterGroupAssignmentStore.ListAssignmentsForAdapter(ctx, adapterID)
+	assignments, err := as.adapterGroupAssignmentStore.ListAssignmentsForAdapter(ctx, adapterID)
+	if err != nil {
+		logging.AdapterLogger.Error("ListAdapterAssignments: failed to list assignments: %v", err)
+		return nil, err
+	}
+
+	logging.AdapterLogger.Info("ListAdapterAssignments: returning %d assignments", len(assignments))
+	return assignments, nil
 }
 
 // ListGroupAdapters lists all adapters assigned to a group

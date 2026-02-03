@@ -82,14 +82,70 @@ func (ugs *UserGroupService) DeleteGroup(ctx context.Context, id string) error {
 	return ugs.groupStore.Delete(ctx, id)
 }
 
-// AddUserToGroup adds a user to a group
+// AddUserToGroup adds a user to a group (updates both group.Members and user.Groups)
 func (ugs *UserGroupService) AddUserToGroup(ctx context.Context, groupID, userID string) error {
-	return ugs.groupStore.AddMember(ctx, groupID, userID)
+	// First, add user to group's Members list
+	if err := ugs.groupStore.AddMember(ctx, groupID, userID); err != nil {
+		return err
+	}
+
+	// Then, add group to user's Groups list
+	user, err := ugs.userStore.Get(ctx, userID)
+	if err != nil {
+		// Rollback: remove user from group since we can't update user
+		ugs.groupStore.RemoveMember(ctx, groupID, userID)
+		return fmt.Errorf("failed to get user for group update: %w", err)
+	}
+
+	// Check if group is already in user's Groups
+	for _, g := range user.Groups {
+		if g == groupID {
+			return nil // Already added, nothing to do
+		}
+	}
+
+	// Add group to user's Groups
+	user.Groups = append(user.Groups, groupID)
+	if err := ugs.userStore.Update(ctx, *user); err != nil {
+		// Rollback: remove user from group since update failed
+		ugs.groupStore.RemoveMember(ctx, groupID, userID)
+		return fmt.Errorf("failed to update user groups: %w", err)
+	}
+
+	return nil
 }
 
-// RemoveUserFromGroup removes a user from a group
+// RemoveUserFromGroup removes a user from a group (updates both group.Members and user.Groups)
 func (ugs *UserGroupService) RemoveUserFromGroup(ctx context.Context, groupID, userID string) error {
-	return ugs.groupStore.RemoveMember(ctx, groupID, userID)
+	// First, remove user from group's Members list
+	if err := ugs.groupStore.RemoveMember(ctx, groupID, userID); err != nil {
+		return err
+	}
+
+	// Then, remove group from user's Groups list
+	user, err := ugs.userStore.Get(ctx, userID)
+	if err != nil {
+		// User not found, but we already removed from group - that's the main operation
+		return nil
+	}
+
+	// Find and remove group from user's Groups
+	found := false
+	for i, g := range user.Groups {
+		if g == groupID {
+			user.Groups = append(user.Groups[:i], user.Groups[i+1:]...)
+			found = true
+			break
+		}
+	}
+
+	if found {
+		if err := ugs.userStore.Update(ctx, *user); err != nil {
+			return fmt.Errorf("failed to update user groups: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // CanAccessServer checks if a user can access a server based on route assignments
@@ -286,4 +342,19 @@ func (ugs *UserGroupService) ValidateUserID(ctx context.Context, userID string) 
 func (ugs *UserGroupService) ValidateGroupID(ctx context.Context, groupID string) error {
 	_, err := ugs.groupStore.Get(ctx, groupID)
 	return err
+}
+
+// CheckGroupPermission checks if a specific group has a permission
+func (ugs *UserGroupService) CheckGroupPermission(ctx context.Context, groupID string, permission string) (bool, error) {
+	group, err := ugs.groupStore.Get(ctx, groupID)
+	if err != nil {
+		return false, err
+	}
+
+	for _, groupPerm := range group.Permissions {
+		if ugs.permissionMatches(groupPerm, permission) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
