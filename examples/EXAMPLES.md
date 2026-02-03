@@ -400,6 +400,142 @@ helm upgrade suse-ai-up ./charts/suse-ai-up/suse-ai-up-1.0.0.tgz \
 kubectl rollout restart deployment/suse-ai-up -n suse-ai-up
 ```
 
+## User-Specific Configuration with Per-User Tokens
+
+### Get Your User Configuration
+
+Users can retrieve their personalized MCP client configuration which includes **per-user tokens** for secure adapter access:
+
+```bash
+# Get config for user 'alefesta'
+curl -X GET "http://${SERVICE_IP}:${PROXY_PORT}/api/v1/user/config" \
+  -H "X-User-ID: alefesta" | jq .
+```
+
+**Response with Per-User Tokens:**
+
+```json
+{
+  "mcpClientConfig": {
+    "gemini": {
+      "mcpServers": {
+        "bugzilla-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-bugzilla-adapter-aBc123...",
+            "X-User-ID": "alefesta"
+          },
+          "httpUrl": "http://localhost:8911/api/v1/adapters/bugzilla-adapter/mcp"
+        },
+        "uyuni-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-uyuni-adapter-xYz789...",
+            "X-User-ID": "alefesta"
+          },
+          "httpUrl": "http://localhost:8911/api/v1/adapters/uyuni-adapter/mcp"
+        }
+      }
+    },
+    "vscode": {
+      "inputs": [],
+      "servers": {
+        "bugzilla-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-bugzilla-adapter-aBc123...",
+            "X-User-ID": "alefesta"
+          },
+          "type": "http",
+          "url": "http://localhost:8911/api/v1/adapters/bugzilla-adapter/mcp"
+        },
+        "uyuni-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-uyuni-adapter-xYz789...",
+            "X-User-ID": "alefesta"
+          },
+          "type": "http",
+          "url": "http://localhost:8911/api/v1/adapters/uyuni-adapter/mcp"
+        }
+      }
+    }
+  }
+}
+```
+
+### How Per-User Tokens Work
+
+1. **Unique per user**: Each user gets their own token for each adapter
+2. **Format**: `uat-{userID}-{adapterID}-{random}` (User Adapter Token)
+3. **Auto-generated**: Created automatically when user requests config
+4. **Stored securely**: Tokens persisted in `user_adapter_tokens.json`
+5. **Validated**: Authentication middleware validates tokens on each request
+
+### Testing with Per-User Tokens
+
+**Using mcpinspector with your user token:**
+
+```bash
+# Get your user config and extract the token
+TOKEN=$(curl -s "http://${SERVICE_IP}:${PROXY_PORT}/api/v1/user/config" \
+  -H "X-User-ID: alefesta" | jq -r '.mcpClientConfig.gemini.mcpServers["bugzilla-adapter"].headers.Authorization' | sed 's/Bearer //')
+
+# Test connection with mcpinspector using the per-user token
+mcpinspector "http://${SERVICE_IP}:${PROXY_PORT}/api/v1/adapters/bugzilla-adapter/mcp" \
+  --header "Authorization: Bearer ${TOKEN}" \
+  --header "X-User-ID: alefesta"
+```
+
+### Assign Adapters to Groups
+
+Adapters must be assigned to groups for users to access them:
+
+```bash
+# Assign adapter to 'demo' group (user must have adapter:assign permission)
+curl -X POST "http://${SERVICE_IP}:${PROXY_PORT}/api/v1/adapters/bugzilla-adapter/groups" \
+  -H "X-User-ID: admin" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "groupId": "demo",
+    "permission": "read"
+  }' | jq .
+```
+
+**View Adapter Group Assignments:**
+
+```bash
+# List all groups assigned to an adapter
+curl -X GET "http://${SERVICE_IP}:${PROXY_PORT}/api/v1/adapters/bugzilla-adapter/groups" \
+  -H "X-User-ID: admin" | jq .
+```
+
+### Group-Based Access Requirements
+
+For a user to access an adapter via `api/v1/user/config`:
+
+1. **Group with `adapter:assign` permission**: The group must have this permission to be assignable
+2. **Group with `adapter:read` permission**: The group needs this to grant adapter access to members
+3. **User is group member**: User must be in the assigned group
+4. **Adapter assigned to group**: The adapter must be explicitly assigned to the group
+
+**Example Group Configuration:**
+
+```json
+{
+  "id": "demo",
+  "name": "Demo Group",
+  "members": ["alefesta"],
+  "permissions": [
+    "adapter:read",
+    "adapter:assign"
+  ]
+}
+```
+
+### Security Benefits
+
+- **User Isolation**: Each user has unique tokens
+- **Audit Trail**: System can track which user accessed which adapter
+- **Access Revocation**: Remove user from group or delete token without affecting others
+- **Backwards Compatible**: Static adapter tokens still work
+
 ## Cleanup and Uninstallation
 
 ### Remove All Adapters

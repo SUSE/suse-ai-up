@@ -255,7 +255,10 @@ Successful adapter creation returns:
     "gemini": {
       "mcpServers": {
         "adapter-name": {
-          "headers": {"Authorization": "Bearer <token>"},
+          "headers": {
+            "Authorization": "Bearer <token>",
+            "X-User-ID": "admin"
+          },
           "httpUrl": "http://localhost:8911/api/v1/adapters/adapter-name/mcp"
         }
       }
@@ -264,7 +267,10 @@ Successful adapter creation returns:
       "inputs": [],
       "servers": {
         "adapter-name": {
-          "headers": {"Authorization": "Bearer <token>"},
+          "headers": {
+            "Authorization": "Bearer <token>",
+            "X-User-ID": "admin"
+          },
           "type": "http",
           "url": "http://localhost:8911/api/v1/adapters/adapter-name/mcp"
         }
@@ -276,6 +282,11 @@ Successful adapter creation returns:
   "createdAt": "2026-01-12T09:15:30.123Z"
 }
 ```
+
+**Note on Tokens:**
+- When creating an adapter, a static adapter token is generated
+- When users request their config via `api/v1/user/config`, they receive **per-user tokens** (format: `uat-{userID}-{adapterID}-{random}`)
+- The `X-User-ID` header is always included to identify the user making the request
 
 ## Client Configuration
 
@@ -314,6 +325,62 @@ Use the `vscode` section for VSCode MCP extension:
   }
 }
 ```
+
+### Per-User Token Authentication
+
+When retrieving client configuration via `api/v1/user/config`, the system automatically generates **per-user tokens** for each adapter:
+
+**Key Features:**
+- **Unique per user**: Each user gets their own token for each adapter
+- **Token format**: `uat-{userID}-{adapterID}-{random}` 
+- **Auto-generated**: Created on-demand when user requests config
+- **X-User-ID included**: Always sent in headers for user identification
+
+**Example Config with Per-User Token:**
+
+```json
+{
+  "mcpServers": {
+    "my-adapter": {
+      "headers": {
+        "Authorization": "Bearer uat-alefesta-my-adapter-aBc123...",
+        "X-User-ID": "alefesta"
+      },
+      "httpUrl": "http://localhost:8911/api/v1/adapters/my-adapter/mcp"
+    }
+  }
+}
+```
+
+**VSCode Config:**
+
+```json
+{
+  "inputs": [],
+  "servers": {
+    "my-adapter": {
+      "headers": {
+        "Authorization": "Bearer uat-alefesta-my-adapter-aBc123...",
+        "X-User-ID": "alefesta"
+      },
+      "type": "http",
+      "url": "http://localhost:8911/api/v1/adapters/my-adapter/mcp"
+    }
+  }
+}
+```
+
+**Get Your User Config:**
+
+```bash
+curl -H "X-User-ID: alefesta" http://localhost:8911/api/v1/user/config
+```
+
+**Security Benefits:**
+- User isolation: Each user has unique tokens
+- Traceability: System can track which user accessed which adapter
+- Revocation: Admin can revoke individual user access without affecting others
+- Backward compatible: Also accepts adapter's static token
 
 ## Adapter Management
 

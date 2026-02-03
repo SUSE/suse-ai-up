@@ -181,6 +181,70 @@ curl -X POST "http://{IP ADDRESS}:8911/api/v1/adapters/uyuni-adapter/groups" \
 
 Now any user in the `backend-team` group can access the `uyuni-adapter`.
 
+## Get User-Specific Configuration (Per-User Tokens)
+
+Each user gets unique tokens for secure adapter access. When a user requests their configuration, the system automatically generates per-user tokens.
+
+### Get Your User Config
+
+```bash
+curl -X GET "http://{IP ADDRESS}:8911/api/v1/user/config" \
+  -H "X-User-ID: developer"
+```
+
+**Response includes per-user tokens:**
+
+```json
+{
+  "mcpClientConfig": {
+    "gemini": {
+      "mcpServers": {
+        "uyuni-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-developer-uyuni-adapter-aBc123...",
+            "X-User-ID": "developer"
+          },
+          "httpUrl": "http://localhost:8911/api/v1/adapters/uyuni-adapter/mcp"
+        }
+      }
+    },
+    "vscode": {
+      "inputs": [],
+      "servers": {
+        "uyuni-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-developer-uyuni-adapter-aBc123...",
+            "X-User-ID": "developer"
+          },
+          "type": "http",
+          "url": "http://localhost:8911/api/v1/adapters/uyuni-adapter/mcp"
+        }
+      }
+    }
+  }
+}
+```
+
+### Key Points:
+
+- **Unique per user**: Each user gets their own token (`uat-{userID}-{adapterID}-{random}`)
+- **Auto-generated**: Created when user requests config
+- **X-User-ID included**: Always sent for user identification
+- **Group membership required**: User must be in a group with `adapter:read` permission that's assigned to the adapter
+
+### Testing with mcpinspector
+
+```bash
+# Get user token from config
+TOKEN=$(curl -s "http://{IP ADDRESS}:8911/api/v1/user/config" \
+  -H "X-User-ID: developer" | jq -r '.mcpClientConfig.gemini.mcpServers["uyuni-adapter"].headers.Authorization' | sed 's/Bearer //')
+
+# Test with mcpinspector
+mcpinspector "http://{IP ADDRESS}:8911/api/v1/adapters/uyuni-adapter/mcp" \
+  --header "Authorization: Bearer ${TOKEN}" \
+  --header "X-User-ID: developer"
+```
+
 ## Next Steps
 
 - Explore full [EXAMPLES.md](examples/EXAMPLES.md) for advanced usage

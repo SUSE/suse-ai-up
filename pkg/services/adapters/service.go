@@ -23,6 +23,7 @@ type AdapterService struct {
 	store                       clients.AdapterResourceStore
 	adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore
 	registryStore               clients.MCPServerStore
+	userAdapterTokenStore       clients.UserAdapterTokenStore
 	capabilityDiscovery         *mcp.CapabilityDiscoveryService
 	sidecarManager              *proxy.SidecarManager
 }
@@ -33,9 +34,27 @@ func NewAdapterService(store clients.AdapterResourceStore, adapterGroupAssignmen
 		store:                       store,
 		adapterGroupAssignmentStore: adapterGroupAssignmentStore,
 		registryStore:               registryStore,
+		userAdapterTokenStore:       nil, // Will be set separately if needed
 		capabilityDiscovery:         mcp.NewCapabilityDiscoveryService(),
 		sidecarManager:              sidecarManager,
 	}
+}
+
+// NewAdapterServiceWithTokenStore creates a new adapter service with token store
+func NewAdapterServiceWithTokenStore(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager, tokenStore clients.UserAdapterTokenStore) *AdapterService {
+	return &AdapterService{
+		store:                       store,
+		adapterGroupAssignmentStore: adapterGroupAssignmentStore,
+		registryStore:               registryStore,
+		userAdapterTokenStore:       tokenStore,
+		capabilityDiscovery:         mcp.NewCapabilityDiscoveryService(),
+		sidecarManager:              sidecarManager,
+	}
+}
+
+// SetUserAdapterTokenStore sets the user adapter token store (for late initialization)
+func (as *AdapterService) SetUserAdapterTokenStore(store clients.UserAdapterTokenStore) {
+	as.userAdapterTokenStore = store
 }
 
 // CreateAdapter creates a new adapter from a registry server
@@ -1285,6 +1304,78 @@ func (as *AdapterService) generateSecureToken() string {
 		return fmt.Sprintf("token-%d-%s", time.Now().Unix(), "fallback")
 	}
 	return base64.URLEncoding.EncodeToString(bytes)
+}
+
+// GenerateUserAdapterToken creates a new unique token for a user-adapter pair
+func (as *AdapterService) GenerateUserAdapterToken(userID, adapterID string) string {
+	// Create a user-specific token with format: user-{userID}-adapter-{adapterID}-{random}
+	// This makes tokens traceable to users while maintaining uniqueness
+	randomPart := as.generateSecureToken()
+	token := fmt.Sprintf("uat-%s-%s-%s", userID, adapterID, randomPart)
+	return token
+}
+
+// GetOrCreateUserAdapterToken retrieves an existing token or creates a new one
+func (as *AdapterService) GetOrCreateUserAdapterToken(ctx context.Context, userID, adapterID string) (string, error) {
+	if as.userAdapterTokenStore == nil {
+		// Fallback to adapter's static token if no token store configured
+		logging.AdapterLogger.Warn("No user adapter token store configured, falling back to static token for user %s, adapter %s", userID, adapterID)
+		adapter, err := as.store.Get(ctx, adapterID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get adapter for token fallback: %w", err)
+		}
+		if adapter.Authentication != nil && adapter.Authentication.BearerToken != nil {
+			return adapter.Authentication.BearerToken.Token, nil
+		}
+		return as.generateSecureToken(), nil
+	}
+
+	// Try to get existing token
+	token, err := as.userAdapterTokenStore.GetToken(ctx, userID, adapterID)
+	if err == nil && token != nil && !token.IsExpired() {
+		logging.AdapterLogger.Info("Using existing user adapter token for user %s, adapter %s", userID, adapterID)
+		token.UpdateLastUsed()
+		as.userAdapterTokenStore.UpdateToken(ctx, *token)
+		return token.Token, nil
+	}
+
+	// Create new token
+	logging.AdapterLogger.Info("Creating new user adapter token for user %s, adapter %s", userID, adapterID)
+	tokenValue := as.GenerateUserAdapterToken(userID, adapterID)
+	newToken := models.UserAdapterToken{
+		UserID:    userID,
+		AdapterID: adapterID,
+		Token:     tokenValue,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	if err := as.userAdapterTokenStore.CreateToken(ctx, newToken); err != nil {
+		return "", fmt.Errorf("failed to create user adapter token: %w", err)
+	}
+
+	return tokenValue, nil
+}
+
+// ValidateUserAdapterToken validates a token and returns the associated user and adapter
+func (as *AdapterService) ValidateUserAdapterToken(ctx context.Context, token string) (userID, adapterID string, valid bool, err error) {
+	if as.userAdapterTokenStore == nil {
+		return "", "", false, fmt.Errorf("no user adapter token store configured")
+	}
+
+	tokenData, err := as.userAdapterTokenStore.GetTokenByValue(ctx, token)
+	if err != nil {
+		return "", "", false, err
+	}
+
+	if tokenData.IsExpired() {
+		return "", "", false, fmt.Errorf("token has expired")
+	}
+
+	// Update last used
+	tokenData.UpdateLastUsed()
+	as.userAdapterTokenStore.UpdateToken(ctx, *tokenData)
+
+	return tokenData.UserID, tokenData.AdapterID, true, nil
 }
 
 // AssignAdapterToGroup assigns an adapter to a group

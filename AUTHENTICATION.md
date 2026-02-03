@@ -486,6 +486,90 @@ curl -X GET http://localhost:8911/api/v1/users \
   -H "Authorization: Bearer <your_token>"
 ```
 
+### Per-User Adapter Tokens
+
+The system supports **per-user adapter tokens** for secure, user-specific access to MCP adapters. When a user requests their client configuration via `api/v1/user/config`, the system generates unique tokens for each adapter the user has access to.
+
+#### How It Works
+
+1. **Token Generation**: Each user gets unique tokens for each adapter they can access
+2. **Token Format**: `uat-{userID}-{adapterID}-{random}` (User Adapter Token)
+3. **Token Storage**: Tokens are persisted in `user_adapter_tokens.json`
+4. **Auto-Creation**: Tokens are created on-demand when users request their config
+
+#### User Config Response
+
+When calling `GET /api/v1/user/config` with `X-User-ID` header:
+
+```bash
+curl -X GET http://localhost:8911/api/v1/user/config \
+  -H "X-User-ID: alefesta"
+```
+
+Response includes per-user tokens:
+
+```json
+{
+  "mcpClientConfig": {
+    "gemini": {
+      "mcpServers": {
+        "bugzilla-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-bugzilla-adapter-aBc123...",
+            "X-User-ID": "alefesta"
+          },
+          "httpUrl": "http://localhost:8911/api/v1/adapters/bugzilla-adapter/mcp"
+        }
+      }
+    },
+    "vscode": {
+      "inputs": [],
+      "servers": {
+        "bugzilla-adapter": {
+          "headers": {
+            "Authorization": "Bearer uat-alefesta-bugzilla-adapter-aBc123...",
+            "X-User-ID": "alefesta"
+          },
+          "type": "http",
+          "url": "http://localhost:8911/api/v1/adapters/bugzilla-adapter/mcp"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Token Validation
+
+The authentication middleware validates per-user tokens:
+
+1. **JWT Token** (if TokenManager configured)
+2. **Per-User Token** - Looks up `user_adapter_tokens.json` for valid token
+3. **Adapter Static Token** - Fallback to adapter's original token (backward compatible)
+
+#### Security Benefits
+
+- **User Isolation**: Each user has unique tokens
+- **Traceability**: Tokens include user and adapter identifiers
+- **Revocation**: Can delete user tokens without affecting other users
+- **Audit**: Track which user accessed which adapter
+
+#### Managing User Adapter Tokens
+
+**List User's Tokens** (Admin Only):
+```bash
+curl -X GET http://localhost:8911/api/v1/users/alefesta/tokens \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Revoke User's Token** (Admin Only):
+```bash
+curl -X DELETE http://localhost:8911/api/v1/users/alefesta/tokens/bugzilla-adapter \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Note**: User adapter tokens are automatically created when users request their client configuration. No manual token management is required for normal usage.
+
 ## Swagger UI with Authentication
 
 The API includes interactive Swagger documentation that requires authentication for protected endpoints.

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -107,14 +108,15 @@ func parseTrentoConfig(config string) (trentoURL, token string, err error) {
 }
 
 // generateClientConfig creates the client-specific configuration for a given adapter
-func (h *AdapterHandler) generateClientConfig(adapter *models.AdapterResource, includeSecrets bool) map[string]interface{} {
+// userID is required for per-user token generation
+func (h *AdapterHandler) generateClientConfig(adapter *models.AdapterResource, userID string, includeSecrets bool) map[string]interface{} {
 	clientConfig := make(map[string]interface{})
 
 	// Retrieve the stored MCPClientConfig from the adapter resource
 	// This contains the internal representation with real URLs and tokens
 	internalMCPClientConfig := adapter.MCPClientConfig
 
-	logging.AdapterLogger.Info("generateClientConfig: adapter=%s, includeSecrets=%v, servers=%d", adapter.Name, includeSecrets, len(internalMCPClientConfig.MCPServers))
+	logging.AdapterLogger.Info("generateClientConfig: adapter=%s, user=%s, includeSecrets=%v, servers=%d", adapter.Name, userID, includeSecrets, len(internalMCPClientConfig.MCPServers))
 
 	// Assuming a single server entry per adapter for simplicity in current structure
 	var serverConfig models.MCPServerConfig
@@ -138,14 +140,29 @@ func (h *AdapterHandler) generateClientConfig(adapter *models.AdapterResource, i
 
 	// Prepare headers
 	headers := make(map[string]string)
+
 	if includeSecrets {
-		// Use real headers from stored config
-		for k, v := range serverConfig.Headers {
-			headers[k] = v
+		// Generate or retrieve per-user token
+		userToken, err := h.adapterService.GetOrCreateUserAdapterToken(context.Background(), userID, adapter.ID)
+		if err != nil {
+			logging.AdapterLogger.Error("Failed to generate user adapter token for user %s, adapter %s: %v", userID, adapter.ID, err)
+			// Fallback to adapter's static token
+			if adapter.Authentication != nil && adapter.Authentication.BearerToken != nil {
+				headers["Authorization"] = fmt.Sprintf("Bearer %s", adapter.Authentication.BearerToken.Token)
+			} else {
+				headers["Authorization"] = "Bearer adapter-session-token"
+			}
+		} else {
+			headers["Authorization"] = fmt.Sprintf("Bearer %s", userToken)
+			logging.AdapterLogger.Info("Generated per-user token for user %s, adapter %s", userID, adapter.ID)
 		}
+
+		// Always include X-User-ID header
+		headers["X-User-ID"] = userID
 	} else {
-		// Use placeholder for security
+		// Use placeholder for security (when listing without secrets)
 		headers["Authorization"] = "Bearer adapter-session-token"
+		headers["X-User-ID"] = userID
 	}
 
 	// Gemini Configuration
@@ -279,7 +296,8 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 
 	// Generate MCP client configurations for different client types
 	// Use includeSecrets=false to return placeholder tokens for creation response
-	adapterClientConfig := h.generateClientConfig(adapter, false)
+	// userID is already set above from request header
+	adapterClientConfig := h.generateClientConfig(adapter, userID, false)
 
 	response := CreateAdapterResponse{
 		ID:              adapter.ID,
@@ -329,7 +347,8 @@ func (h *AdapterHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
 	for i, adapter := range adapters {
 		// Generate MCP client configurations for different client types
 		// Use includeSecrets=false to return placeholder tokens for list view
-		adapterClientConfig := h.generateClientConfig(&adapter, false)
+		// userID is already set above from request header
+		adapterClientConfig := h.generateClientConfig(&adapter, userID, false)
 
 		adapterMap := map[string]interface{}{
 			"id":              adapter.ID,
@@ -1143,7 +1162,8 @@ func (h *AdapterHandler) GetClientConfig(w http.ResponseWriter, r *http.Request)
 
 	for _, adapter := range adapters {
 		// Generate client config for this adapter, including real tokens
-		adapterClientConfig := h.generateClientConfig(&adapter, true)
+		// userID is already set above from request header
+		adapterClientConfig := h.generateClientConfig(&adapter, userID, true)
 
 		logging.AdapterLogger.Info("GetClientConfig: generated config for adapter %s: %+v", adapter.Name, adapterClientConfig)
 
