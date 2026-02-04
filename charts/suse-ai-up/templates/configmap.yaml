@@ -10,7 +10,7 @@ data:
   swagger.yaml: |
 {{ .Files.Get "docs/swagger.yaml" | indent 4 }}
 ---
-{{- if .Values.registry.enabled }}
+{{- if and .Values.registry.enabled (not .Values.registry.url) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,16 +20,4 @@ metadata:
 data:
   mcp_registry.yaml: |
 {{ .Values.registry.servers | indent 4 }}
-{{- end }}
----
-{{- if .Values.registry.customSources }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "suse-ai-up.fullname" . }}-custom-registry-sources
-  labels:
-    {{- include "suse-ai-up.labels" . | nindent 4 }}
-data:
-  custom_registry_sources.json: |
-{{ toPrettyJson .Values.registry.customSources | indent 4 }}
 {{- end }}

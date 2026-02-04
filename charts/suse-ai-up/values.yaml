@@ -343,19 +343,6 @@ registry:
 
   # List of custom registry sources to sync from (can include authenticated Git repositories)
   # Each source can specify a URL and optional authentication details.
-  customSources:
-    # - url: "https://my-private-git.com/raw/registry.json"
-    #   auth:
-    #     secretName: "my-registry-secret"
-    #     secretKey: "token"
-    #     type: "bearer" # or "basic"
-
-    # Example of a public source
-    - url: "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/index.json"
-    - url: "https://mcpservers.org/remote-mcp-servers.json"
-    - url: "https://raw.githubusercontent.com/modelcontextprotocol/examples/main/README.md"
-    # Add your custom sources here
-
   # MCP servers configuration (will be loaded into ConfigMap)
   servers: |
     - name: uyuni
@@ -492,6 +479,7 @@ registry:
             name: trento-mcp-server.port
             type: text
             templated: true
+  url: ""
 # Sidecar Configuration for MCP servers
 sidecar:
   enabled: true
