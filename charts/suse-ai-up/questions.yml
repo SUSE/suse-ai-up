@@ -427,15 +427,14 @@ questions:
   description: "Enable persistent storage for service data"
   type: boolean
   default: false
-  group: "Advanced Options"
-  show_if: "installType=custom"
+  group: "Basic Configuration"
   show_subquestion_if: true
   subquestions:
   - variable: persistence.size
     label: "Storage Size"
     description: "Storage size for persistent volumes"
     type: string
-    default: "10Gi"
+    default: "2Gi"
 
 - variable: registry.url
   label: "External Registry URL"

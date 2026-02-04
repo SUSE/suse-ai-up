@@ -254,7 +254,7 @@ networkPolicy:
 persistence:
   enabled: true
   accessMode: ReadWriteOnce
-  size: 10Gi
+  size: 2Gi
   storageClass: ""
   # Optional: Encryption key for storage encryption (minimum 16 characters)
   # If not provided, data will be stored unencrypted
