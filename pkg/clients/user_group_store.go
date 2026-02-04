@@ -41,13 +41,15 @@ type FileUserStore struct {
 	filePath string
 	users    map[string]models.User
 	mu       sync.RWMutex
+	crypto   *StorageCrypto
 }
 
 // NewFileUserStore creates a new file-based user store
-func NewFileUserStore(filePath string) *FileUserStore {
+func NewFileUserStore(filePath string, crypto *StorageCrypto) *FileUserStore {
 	store := &FileUserStore{
 		filePath: filePath,
 		users:    make(map[string]models.User),
+		crypto:   crypto,
 	}
 
 	// Load existing users from file
@@ -199,6 +201,15 @@ func (s *FileUserStore) loadFromFile() error {
 		return nil // Empty file, start with empty store
 	}
 
+	// Decrypt if crypto is enabled
+	if s.crypto != nil {
+		decrypted, err := s.crypto.Decrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt user file: %w", err)
+		}
+		data = decrypted
+	}
+
 	var users []models.User
 	if err := json.Unmarshal(data, &users); err != nil {
 		return fmt.Errorf("failed to parse user file: %w", err)
@@ -231,6 +242,15 @@ func (s *FileUserStore) saveToFile() error {
 		return fmt.Errorf("failed to marshal users: %w", err)
 	}
 
+	// Encrypt if crypto is enabled
+	if s.crypto != nil {
+		encrypted, err := s.crypto.Encrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt user file: %w", err)
+		}
+		data = encrypted
+	}
+
 	// Write to temporary file first, then rename for atomicity
 	tempFile := s.filePath + ".tmp"
 	if err := os.WriteFile(tempFile, data, 0644); err != nil {
@@ -249,13 +269,15 @@ type FileGroupStore struct {
 	filePath string
 	groups   map[string]models.Group
 	mu       sync.RWMutex
+	crypto   *StorageCrypto
 }
 
 // NewFileGroupStore creates a new file-based group store
-func NewFileGroupStore(filePath string) *FileGroupStore {
+func NewFileGroupStore(filePath string, crypto *StorageCrypto) *FileGroupStore {
 	store := &FileGroupStore{
 		filePath: filePath,
 		groups:   make(map[string]models.Group),
+		crypto:   crypto,
 	}
 
 	// Load existing groups from file
@@ -396,6 +418,15 @@ func (s *FileGroupStore) loadFromFile() error {
 		return nil // Empty file, start with empty store
 	}
 
+	// Decrypt if crypto is enabled
+	if s.crypto != nil {
+		decrypted, err := s.crypto.Decrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt group file: %w", err)
+		}
+		data = decrypted
+	}
+
 	var groups []models.Group
 	if err := json.Unmarshal(data, &groups); err != nil {
 		return fmt.Errorf("failed to parse group file: %w", err)
@@ -426,6 +457,15 @@ func (s *FileGroupStore) saveToFile() error {
 	data, err := json.MarshalIndent(groups, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal groups: %w", err)
+	}
+
+	// Encrypt if crypto is enabled
+	if s.crypto != nil {
+		encrypted, err := s.crypto.Encrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt group file: %w", err)
+		}
+		data = encrypted
 	}
 
 	// Write to temporary file first, then rename for atomicity

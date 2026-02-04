@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -441,17 +442,37 @@ func RunUniproxy() {
 	}
 
 	// Initialize stores
-	// Use file-based adapter store for persistence
-	adapterStore := clients.NewFileAdapterStore("/tmp/adapters.json")
-	adapterGroupAssignmentStore := clients.NewFileAdapterGroupAssignmentStore("/tmp/adapter_assignments.json")
+	// Initialize crypto for storage encryption
+	crypto, err := clients.NewStorageCrypto(cfg.StorageEncryptionKey)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize storage encryption: %v. Data will be stored unencrypted.", err)
+	} else if cfg.StorageEncryptionKey != "" {
+		log.Printf("Storage encryption enabled")
+	}
+
+	// Ensure data directory exists
+	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
+		log.Fatalf("Failed to create data directory %s: %v", cfg.DataDir, err)
+	}
+
+	// Use file-based stores for persistence
+	adapterStorePath := filepath.Join(cfg.DataDir, "adapters.json")
+	adapterGroupAssignmentStorePath := filepath.Join(cfg.DataDir, "adapter_assignments.json")
+	userStorePath := filepath.Join(cfg.DataDir, "users.json")
+	groupStorePath := filepath.Join(cfg.DataDir, "groups.json")
+	mcpServerStorePath := filepath.Join(cfg.DataDir, "mcp_servers.json")
+
+	adapterStore := clients.NewFileAdapterStore(adapterStorePath, crypto)
+	adapterGroupAssignmentStore := clients.NewFileAdapterGroupAssignmentStore(adapterGroupAssignmentStorePath, crypto)
+
 	tokenManager, err := auth.NewTokenManager("mcp-gateway")
 	if err != nil {
 		log.Fatalf("Failed to create token manager: %v", err)
 	}
 
-	// Initialize user/group system with admin defaults
-	userStore := clients.NewInMemoryUserStore()
-	groupStore := clients.NewInMemoryGroupStore()
+	// Initialize user/group system with file storage
+	userStore := clients.NewFileUserStore(userStorePath, crypto)
+	groupStore := clients.NewFileGroupStore(groupStorePath, crypto)
 	userGroupService := services.NewUserGroupService(userStore, groupStore)
 
 	// Create user auth configuration
@@ -603,7 +624,7 @@ func RunUniproxy() {
 	mcpAuthHandler := handlers.NewMCPAuthHandler(adapterStore, nil)
 
 	// Initialize missing handlers
-	registryStore := clients.NewInMemoryMCPServerStore()
+	registryStore := clients.NewFileMCPServerStore(mcpServerStorePath, crypto)
 	registryManager := handlers.NewDefaultRegistryManager(registryStore)
 
 	// Initialize AdapterService with SidecarManager

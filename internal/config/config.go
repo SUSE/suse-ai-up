@@ -78,6 +78,10 @@ type Config struct {
 	CreateInitialGroups bool           `json:"create_initial_groups"`
 	InitialGroups       []InitialGroup `json:"initial_groups"`
 
+	// Storage configuration
+	DataDir              string `json:"data_dir"`
+	StorageEncryptionKey string `json:"storage_encryption_key"`
+
 	// OpenTelemetry configuration
 	OtelEnabled  bool   `json:"otel_enabled"`
 	OtelEndpoint string `json:"otel_endpoint"`
@@ -188,6 +192,10 @@ func LoadConfig() *Config {
 		InitialUsers:        parseInitialUsers(getEnv("INITIAL_USERS", "")),
 		CreateInitialGroups: getEnvBool("CREATE_INITIAL_GROUPS", true),
 		InitialGroups:       parseInitialGroups(getEnv("INITIAL_GROUPS", "")),
+
+		// Storage configuration
+		DataDir:              getEnv("DATA_DIR", "/data"),
+		StorageEncryptionKey: getEnv("STORAGE_ENCRYPTION_KEY", ""),
 
 		// OpenTelemetry configuration
 		OtelEnabled:  getEnvBool("OTEL_ENABLED", false),

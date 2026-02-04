@@ -90,7 +90,21 @@ spec:
               value: "{{ .Values.initialGroups.enabled }}"
             - name: INITIAL_GROUPS
               value: {{ .Values.initialGroups.groups | toJson | quote }}
+            # Storage Configuration
+            - name: DATA_DIR
+              value: "/data"
+            {{- if .Values.persistence.encryptionKey }}
+            - name: STORAGE_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "suse-ai-up.fullname" . }}-storage
+                  key: encryption-key
+            {{- end }}
           volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /data
+            {{- end }}
             {{- if .Values.registry.enabled }}
             - name: registry-config
               mountPath: /home/mcpuser/config
@@ -99,12 +113,17 @@ spec:
             - name: docs-config
               mountPath: /home/mcpuser/docs
               readOnly: true
-            - name: custom-registry-sources-config # New volume mount
+            - name: custom-registry-sources-config
               mountPath: /etc/config
               readOnly: true
           resources:
             {{- toYaml .Values.services.proxy.resources | nindent 12 }}
       volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "suse-ai-up.fullname" . }}-data
+        {{- end }}
         {{- if .Values.registry.enabled }}
         - name: registry-config
           configMap:
@@ -113,7 +132,7 @@ spec:
         - name: docs-config
           configMap:
             name: {{ include "suse-ai-up.fullname" . }}-docs
-        - name: custom-registry-sources-config # New volume
+        - name: custom-registry-sources-config
           configMap:
             name: {{ include "suse-ai-up.fullname" . }}-custom-registry-sources
             items:

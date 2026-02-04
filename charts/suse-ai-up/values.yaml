@@ -256,6 +256,10 @@ persistence:
   accessMode: ReadWriteOnce
   size: 10Gi
   storageClass: ""
+  # Optional: Encryption key for storage encryption (minimum 16 characters)
+  # If not provided, data will be stored unencrypted
+  # It is recommended to provide this via a Secret in production
+  encryptionKey: ""
 
 # Logging Configuration
 logging:

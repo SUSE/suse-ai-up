@@ -16,13 +16,15 @@ type FileAdapterGroupAssignmentStore struct {
 	filePath    string
 	assignments map[string]models.AdapterGroupAssignment // key: adapterID:groupID
 	mu          sync.RWMutex
+	crypto      *StorageCrypto
 }
 
 // NewFileAdapterGroupAssignmentStore creates a new file-based adapter group assignment store
-func NewFileAdapterGroupAssignmentStore(filePath string) *FileAdapterGroupAssignmentStore {
+func NewFileAdapterGroupAssignmentStore(filePath string, crypto *StorageCrypto) *FileAdapterGroupAssignmentStore {
 	store := &FileAdapterGroupAssignmentStore{
 		filePath:    filePath,
 		assignments: make(map[string]models.AdapterGroupAssignment),
+		crypto:      crypto,
 	}
 
 	// Load existing assignments from file
@@ -172,6 +174,15 @@ func (s *FileAdapterGroupAssignmentStore) loadFromFile() error {
 		return nil
 	}
 
+	// Decrypt if crypto is enabled
+	if s.crypto != nil {
+		decrypted, err := s.crypto.Decrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt adapter group assignment file: %w", err)
+		}
+		data = decrypted
+	}
+
 	var assignments []models.AdapterGroupAssignment
 	if err := json.Unmarshal(data, &assignments); err != nil {
 		return fmt.Errorf("failed to parse adapter group assignment file: %w", err)
@@ -203,6 +214,15 @@ func (s *FileAdapterGroupAssignmentStore) saveToFile() error {
 	data, err := json.MarshalIndent(assignments, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal adapter group assignments: %w", err)
+	}
+
+	// Encrypt if crypto is enabled
+	if s.crypto != nil {
+		encrypted, err := s.crypto.Encrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt adapter group assignment file: %w", err)
+		}
+		data = encrypted
 	}
 
 	// Write to temporary file first, then rename for atomicity
