@@ -122,7 +122,7 @@ spec:
         {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "suse-ai-up.fullname" . }}-data
+            claimName: suse-ai-up-data
         {{- end }}
         {{- if .Values.registry.enabled }}
         - name: registry-config
