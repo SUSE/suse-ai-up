@@ -22,6 +22,7 @@
   source:
     commit: 9635a2e04eddab77b31918acad8f49e23e5ee551
     project: https://github.com/uyuni-project/mcp-server-uyuni
+    tag: v0.5.0
   config:
     description: Configure Uyuni server connection
     secrets:
@@ -30,26 +31,31 @@
       name: uyuni.server
       templated: true
       type: text
+      mandatory: true
     - env: UYUNI_USER
       example: admin
       name: uyuni.user
       templated: true
       type: text
+      mandatory: false
     - env: UYUNI_PASS
       example: your_password_here
       name: uyuni.pass
       templated: true
       type: secret
+      mandatory: false
     - env: UYUNI_MCP_SSL_VERIFY
       example: 'true'
       name: uyuni.ssl_verify
       templated: false
       type: bool
+      mandatory: false
     - env: UYUNI_MCP_WRITE_TOOLS_ENABLED
       example: 'false'
       name: uyuni.write_tools_enabled
       templated: false
       type: bool
+      mandatory: false
     - env: UYUNI_SSH_PRIV_KEY
       example: '-----BEGIN OPENSSH PRIVATE KEY-----
 
@@ -57,11 +63,13 @@
       name: uyuni.ssh_priv_key
       templated: false
       type: text
+      mandatory: false
     - env: UYUNI_SSH_PRIV_KEY_PASS
       example: your_key_passphrase
       name: uyuni.ssh_priv_key_pass
       templated: false
       type: text
+      mandatory: false
 - name: bugzilla
   image: none
   type: server
@@ -69,7 +77,11 @@
     category: issue-tracking
     sidecarConfig:
       commandType: python
-      command: uv run mcp-bugzilla --host 0.0.0.0 --port 8000 --bugzilla-server {{bugzilla.server}} --api-key-header ApiKey
+      command: |
+        export BUGZILLA_SERVER={{bugzilla.server}} && export MCP_HOST=0.0.0.0 && 
+        export MCP_PORT=8000 && export MCP_API_KEY_HEADER={{bugzilla.apikey}} &&
+        export LOG_LEVEL=INFO && 
+        uv run mcp-bugzilla
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'
@@ -85,6 +97,7 @@
   source:
     commit: 040bc4b80f18e4a60deae1aa9f0dcf5c5b0bb0bf
     project: https://github.com/openSUSE/mcp-bugzilla
+    tag: v0.8.0
   config:
     description: Configure Bugzilla server connection
     secrets:
@@ -93,6 +106,13 @@
       name: bugzilla.server
       type: text
       templated: true
+      mandatory: true
+    - env: MCP_API_KEY_HEADER
+      example: ApiKey
+      name: bugzilla.apikey
+      type: text
+      templated: true
+      mandatory: false
 - name: trento
   image: registry.opensuse.org/devel/sap/trento/factory/containers/trento/mcp-server-trento:latest  # Required for docker type, optional for others
   type: server
@@ -114,6 +134,7 @@
   source:
     commit: none
     project: https://github.com/trento-project/mcp-server  # Required for python type
+    tag: v1.0.0
   config:
     description: Configure Treno server connection
     secrets:
@@ -122,16 +143,19 @@
         name: trento-mcp-server.serverurl
         type: text
         templated: true
+        mandatory: true  
       - env: TRENTO_MCP_TAG_FILTER
         example: MCP
         name: trento-mcp-server.mcp_tag_filter
         type: text
         templated: true
+        mandatory: false  
       - env: TRENTO_MCP_PORT
         example: "8000"
         name: trento-mcp-server.port
         type: text
         templated: true
+        mandatory: false  
 - name: gitea
   image: none
   type: server
@@ -153,6 +177,7 @@
     commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
     project: https://gitea.com/gitea/gitea-mcp
     release: https://gitea.com/gitea/gitea-mcp/releases/tag/v0.7.0
+    tag: v0.7.0
   config:
     description: ""
     secrets:
@@ -161,11 +186,13 @@
       name: gitea.host
       templated: true
       type: text
+      mandatory: true  
     - env: GITEA_ACCESS_TOKEN
       example: "<your personal access token>"
       name: gitea.pat
       templated: true
       type: secret
+      mandatory: false  
 - name: confluence
   image: ghcr.io/sooperset/mcp-atlassian:latest
   type: server
@@ -190,6 +217,7 @@
     branch: v0.11.9
     commit: 3b07fd3d05f88cd18c37a1739d4e0a1f37fa9aa5
     project: https://github.com/sooperset/mcp-atlassian
+    tag: v0.13.0
   config:
     description: The MCP server is allowed to access these paths
     secrets:
@@ -198,20 +226,24 @@
       name: atlassian.confluence.url
       templated: true
       type: text
+      mandatory: true  
     - env: CONFLUENCE_USERNAME
       example: "your.email@company.com"
       name: atlassian.confluence.username
       type: text
+      mandatory: false
     - env: CONFLUENCE_API_TOKEN
       example: your_api_token
       name: atlassian.confluence.api_token
       templated: true
       type: secret
+      mandatory: false  
     - env: CONFLUENCE_PERSONAL_TOKEN
       example: your_api_token
       templated: true
       type: secret
       name: atlassian.confluence.personal_token
+      mandatory: false  
 - name: jira
   image: ghcr.io/sooperset/mcp-atlassian:latest
   type: server
@@ -236,6 +268,7 @@
     branch: v0.11.9
     commit: 3b07fd3d05f88cd18c37a1739d4e0a1f37fa9aa5
     project: https://github.com/sooperset/mcp-atlassian
+    tag: v0.13.0
   config:
     description: The MCP server is allowed to access these paths
     secrets:
@@ -243,20 +276,24 @@
       example: "http://server.demo.com"
       name: atlassian.jira.url
       type: text
+      mandatory: true  
     - env: JIRA_USERNAME
       example: "your.email@company.com"
       name: atlassian.jira.username
       type: text
+      mandatory: false
     - env: JIRA_API_TOKEN
       example: your_api_token
       name: atlassian.jira.api_token
       templated: true
+      mandatory: false  
       type: secret
     - env: JIRA_PERSONAL_TOKEN
       example: your_api_token
       name: atlassian.jira.personal_token
       templated: true
       type: secret
+      mandatory: false  
 - name: github-official
   image: ghcr.io/github/github-mcp-server
   type: remote
@@ -279,6 +316,7 @@
   source:
     commit: 23fa0dd1a821d1346c1de2abafe7327d26981606
     project: https://github.com/github/github-mcp-server
+    tag: v0.30.2
   config:
     description: You can create a GitHub personal access token [on GitHub](https://github.com/settings/personal-access-tokens/new)
     secrets:
@@ -287,5 +325,135 @@
       name: github.personal_access_token
       templated: true
       type: text
-
-
+      mandatory: true  
+- name: dynatrace
+  image: none  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: infrastructure
+    tags:
+    - mcp
+    - infrastructure
+    - monitoring
+    sidecarConfig:
+      commandType: npx
+      command: npx -y @dynatrace-oss/dynatrace-mcp-server@latest --server -p 8000 {{dynatrace.dt_env}}
+    port: 8000
+    source: https://github.com/elastic/mcp-server-elasticsearch
+    tag: v0.4.6
+    lastUpdated: 
+  about:
+    icon: https://avatars.githubusercontent.com/u/58178984
+    title: "Dynatrace"
+    description: "The Dynatrace MCP server allows AI Assistants to interact with the Dynatrace observability platform, bringing real-time observability data directly into your development workflow."
+  source:
+    commit: 
+    project: https://github.com/elastic/mcp-server-elasticsearch  # Required for python and go types
+    release:      # Optional for go type (enables pre-built binary downloads)
+  config:
+    description: Insert your DT Environment URL to use this MCP
+    secrets:
+    - env: DT_ENVIRONMENT
+      example: "https://abc12345.apps.dynatrace.com"
+      name: dynatrace.dt_env
+      templated: true
+      type: text
+      mandatory: true  
+- name: gitlab
+  image: none  # Required for docker type, optional for others
+  type: remote
+  meta:
+    category: infrastructure
+    tags:
+    - developers
+    - infrastructure
+    - devops
+    sidecarConfig:
+      commandType: http
+      command: https://{{gitlab.host}}/api/v4/mcp
+    port: 8000
+    source: https://gitlab.com/gitlab-org/gitlab
+    tag: v0.0.0
+    lastUpdated: 
+  about:
+    icon: https://avatars.githubusercontent.com/u/1086321
+    title: "Gitlab"
+    description: | 
+      "With the GitLab Model Context Protocol (MCP) server, you can securely connect AI tools and applications 
+      to your GitLab instance. AI assistants like Claude Desktop, Claude Code, Cursor, and other MCP-compatible 
+      tools can then access your GitLab data and perform actions on your behalf."
+    commit: 
+    project: https://gitlab.com/gitlab-org/gitlab  # Required for python and go types
+    release:      # Optional for go type (enables pre-built binary downloads)
+  config:
+    description: Insert your DT Environment URL to use this MCP
+    secrets:
+    - env: GITLAB_URL
+      example: "https://gitlab.com"
+      name: gitlab.host
+      templated: false
+      type: text
+      mandatory: true
+    - env: GITLAB_TOKEN
+      example: "git_1234..."
+      name: gitlab.token
+      templated: false
+      type: text
+      mandatory: true  
+- name: qdrant
+  image: none  # Required for docker type, optional for others
+  type: server
+  meta:
+    category: infrastructure
+    tags:
+    - infrastructure
+    - database
+    sidecarConfig:
+      commandType: python
+      command: export={{qdrant.url}} export={{qdrant.apikey}} export={{qdrant.collection}} export={{qdrant.embedprovider}} export={{qdrant.embedmodel}} uvx mcp-server-qdrant --transport streamable-http 
+    port: 8000
+    source: https://github.com/qdrant/mcp-server-qdrant
+    lastUpdated: 
+  about:
+    icon: https://avatars.githubusercontent.com/u/73504361
+    title: "Qdrant"
+    description: | 
+      "An official Model Context Protocol server for keeping and retrieving memories in the Qdrant vector search engine. 
+      It acts as a semantic memory layer on top of the Qdrant database."
+    commit: 
+    project: https://github.com/qdrant/mcp-server-qdrant  # Required for python and go types
+    release:      # Optional for go type (enables pre-built binary downloads)
+    tag: v0.8.1
+  config:
+    description: Insert your DT Environment URL to use this MCP
+    secrets:
+    - env: QDRANT_URL
+      example: "https://youserver.domain.com"
+      name: qdrant.url
+      templated: true
+      type: text
+      mandatory: true  
+    - env: QDRANT_API_KEY
+      example: "1234..."
+      name: qdrant.apikey
+      templated: true
+      type: text
+      mandatory: false
+    - env: COLLECTION_NAME
+      example: "my collection"
+      name: qdrant.collection
+      templated: true
+      type: text
+      mandatory: false  
+    - env: EMBEDDING_PROVIDER
+      example: "fastembed"
+      name: qdrant.embedprovider
+      templated: false
+      type: text
+      mandatory: false  
+    - env: EMBEDDING_MODEL
+      example: "sentence-transformers/all-MiniLM-L6-v2"
+      name: qdrant.embedmodel
+      templated: true
+      type: text
+      mandatory: false  

@@ -245,6 +245,24 @@ mcpinspector "http://{IP ADDRESS}:8911/api/v1/adapters/uyuni-adapter/mcp" \
   --header "X-User-ID: developer"
 ```
 
+
+### Note
+Gemini has currently a bug when it try to use remote servers like Github that require Oauth flow using browser.
+Problem has been fixed via google-gemini/gemini-cli#5397 (comment)
+
+```JSON
+  "mcpServers": {
+    "github-remote-adapter": {
+      "httpUrl": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "enabled": true,
+        "clientId": "your-own-github-client-ID",
+        "clientSecret": "your-github-client-Secret"
+      },
+    }
+```
+
+  
 ## Next Steps
 
 - Explore full [EXAMPLES.md](examples/EXAMPLES.md) for advanced usage

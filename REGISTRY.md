@@ -154,6 +154,7 @@ For traditional Docker container deployments with support for variable templatin
 - Use `{{variable.name}}` syntax to reference templated secrets
 - Only secrets with `templated: true` can be used in templates
 - Templates are resolved to `-e ENV_VAR=$ENV_VAR` format
+- Sometimes we may want to use a custom image in replacement of the original/upstream one. In this case all is needed is to replace the docker image in the sidecarCommand section. Remeber that in this case you should also update the documentation section to highlight that you are using a custom image and not the upstream.
 
 ### Python Command Type
 
