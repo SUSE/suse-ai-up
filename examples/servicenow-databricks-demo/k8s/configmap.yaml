@@ -1,0 +1,21 @@
+# ConfigMap for demo configuration
+# Controls mock vs real mode for the MCP servers
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: servicenow-databricks-demo
+  labels:
+    app.kubernetes.io/name: servicenow-databricks-demo
+data:
+  # Set to "false" to use real ServiceNow/Databricks APIs
+  SERVICENOW_MOCK_MODE: "true"
+  DATABRICKS_MOCK_MODE: "true"
+
+  # ServiceNow auth method: "oauth" (recommended), "pat", or "basic"
+  SERVICENOW_AUTH_METHOD: "oauth"
+
+  # MCP server configuration
+  MCP_HOST: "0.0.0.0"
+  SERVICENOW_MCP_PORT: "8000"
+  DATABRICKS_MCP_PORT: "8001"

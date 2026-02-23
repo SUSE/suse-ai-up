@@ -1,0 +1,124 @@
+# ServiceNow MCP Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: servicenow-mcp
+  namespace: servicenow-databricks-demo
+  labels:
+    app: servicenow-mcp
+    app.kubernetes.io/name: servicenow-mcp
+    app.kubernetes.io/part-of: servicenow-databricks-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: servicenow-mcp
+  template:
+    metadata:
+      labels:
+        app: servicenow-mcp
+    spec:
+      containers:
+        - name: servicenow-mcp
+          image: servicenow-mcp:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: MCP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: MCP_HOST
+            - name: MCP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: SERVICENOW_MCP_PORT
+            - name: SERVICENOW_MOCK_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: SERVICENOW_MOCK_MODE
+            - name: SERVICENOW_AUTH_METHOD
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: SERVICENOW_AUTH_METHOD
+            # ServiceNow instance URL (required for real mode)
+            - name: SERVICENOW_INSTANCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_INSTANCE_URL
+                  optional: true
+            # OAuth 2.0 credentials (recommended)
+            - name: SERVICENOW_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_CLIENT_ID
+                  optional: true
+            - name: SERVICENOW_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_CLIENT_SECRET
+                  optional: true
+            # Personal Access Token
+            - name: SERVICENOW_PAT
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_PAT
+                  optional: true
+            # Basic Auth (legacy)
+            - name: SERVICENOW_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_USERNAME
+                  optional: true
+            - name: SERVICENOW_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: servicenow-credentials
+                  key: SERVICENOW_PASSWORD
+                  optional: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: servicenow-mcp
+  namespace: servicenow-databricks-demo
+  labels:
+    app: servicenow-mcp
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: servicenow-mcp

@@ -1,0 +1,26 @@
+# Kustomization for ServiceNow + Databricks Demo
+# Usage: kubectl apply -k k8s/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: servicenow-databricks-demo
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - proxy-deployment.yaml
+  - servicenow-deployment.yaml
+  - databricks-deployment.yaml
+
+# Uncomment to include secrets (copy secrets.yaml.template to secrets.yaml first)
+# - secrets.yaml
+
+# Note: Don't use commonLabels as it modifies selectors which are immutable
+labels:
+  - pairs:
+      demo: servicenow-databricks
+      managed-by: suse-ai-up
+    includeSelectors: false
+
+# For RKE2 or production deployments, you can add overlays
+# See k8s/overlays/ for examples

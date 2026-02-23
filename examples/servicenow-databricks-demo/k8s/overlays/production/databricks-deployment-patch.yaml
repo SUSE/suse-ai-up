@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: databricks-mcp
+  namespace: servicenow-databricks-demo
+spec:
+  template:
+    spec:
+      containers:
+        - name: databricks-mcp
+          env:
+            - name: MCP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: MCP_HOST
+            - name: MCP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: DATABRICKS_MCP_PORT
+            - name: DATABRICKS_MOCK_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: DATABRICKS_MOCK_MODE
+            - name: DATABRICKS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_HOST
+            - name: DATABRICKS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_TOKEN
+            - name: DATABRICKS_WAREHOUSE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_WAREHOUSE_ID
+            - name: DATABRICKS_CATALOG
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_CATALOG
+            - name: DATABRICKS_SCHEMA
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_SCHEMA

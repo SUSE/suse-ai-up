@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: servicenow-databricks-demo
+data:
+  # Production mode - use real APIs
+  SERVICENOW_MOCK_MODE: "false"
+  DATABRICKS_MOCK_MODE: "false"
+
+  # ServiceNow auth method
+  SERVICENOW_AUTH_METHOD: "basic"
+
+  # MCP server configuration
+  MCP_HOST: "0.0.0.0"
+  SERVICENOW_MCP_PORT: "8000"
+  DATABRICKS_MCP_PORT: "8001"

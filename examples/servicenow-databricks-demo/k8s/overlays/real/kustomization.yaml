@@ -1,0 +1,22 @@
+# Real mode overlay - connects to actual ServiceNow and Databricks APIs
+# Usage:
+#   1. Copy secrets.yaml.template to this directory as secrets.yaml
+#   2. Fill in your credentials (base64 encoded)
+#   3. kubectl apply -k k8s/overlays/real/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../
+  - secrets.yaml
+
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: demo-config
+        namespace: servicenow-databricks-demo
+      data:
+        SERVICENOW_MOCK_MODE: "false"
+        DATABRICKS_MOCK_MODE: "false"

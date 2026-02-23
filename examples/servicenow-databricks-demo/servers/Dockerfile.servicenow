@@ -1,0 +1,21 @@
+# Dockerfile for ServiceNow MCP Server
+
+FROM registry.suse.com/bci/python:3.11
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir flask requests
+
+# Copy the server
+COPY servicenow_mcp_server.py /app/
+
+# Expose port
+EXPOSE 8000
+
+# Health check (using Python since BCI base image is minimal)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# Run server
+CMD ["python3", "servicenow_mcp_server.py"]
