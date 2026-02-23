@@ -635,6 +635,10 @@ func RunUniproxy() {
 	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
 	logging.ProxyLogger.Success("AdapterService and AdapterHandler initialized")
 
+	// Initialize UnifiedMCPHandler for aggregated MCP endpoint
+	unifiedMCPHandler := handlers.NewUnifiedMCPHandler(adapterService, userGroupService)
+	logging.ProxyLogger.Info("UnifiedMCPHandler created: %v", unifiedMCPHandler != nil)
+
 	// Adapter handlers are now used directly in Gin routes
 
 	// Helper function to convert Gin context to standard HTTP handler
@@ -797,6 +801,10 @@ func RunUniproxy() {
 				handleMCPPromptGet(c, adapterStore, stdioToHTTPAdapter, remoteHTTPPlugin, sessionStore)
 			})
 		}
+
+		// Unified MCP endpoint - aggregates all adapters into a single MCP interface
+		logging.ProxyLogger.Info("Setting up unified MCP endpoint")
+		v1.Any("/mcp", ginToHTTPHandler(unifiedMCPHandler.HandleUnifiedMCP))
 
 		// Registry routes
 		registry := v1.Group("/registry")

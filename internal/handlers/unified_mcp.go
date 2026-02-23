@@ -1,0 +1,744 @@
+package handlers
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"suse-ai-up/pkg/logging"
+	"suse-ai-up/pkg/models"
+	"suse-ai-up/pkg/services"
+	adaptersvc "suse-ai-up/pkg/services/adapters"
+)
+
+// UnifiedMCPHandler handles unified MCP protocol requests that aggregate
+// tools, resources, and prompts from all registered adapters
+type UnifiedMCPHandler struct {
+	adapterService   *adaptersvc.AdapterService
+	userGroupService *services.UserGroupService
+	httpClient       *http.Client
+}
+
+// NewUnifiedMCPHandler creates a new unified MCP handler
+func NewUnifiedMCPHandler(adapterService *adaptersvc.AdapterService, userGroupService *services.UserGroupService) *UnifiedMCPHandler {
+	return &UnifiedMCPHandler{
+		adapterService:   adapterService,
+		userGroupService: userGroupService,
+		httpClient: &http.Client{
+			Timeout: 120 * time.Second, // Increased for slow SQL queries
+		},
+	}
+}
+
+// MCPRequest represents an incoming MCP JSON-RPC request
+type MCPRequest struct {
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
+}
+
+// MCPResponse represents an MCP JSON-RPC response
+type MCPResponse struct {
+	JSONRPC string        `json:"jsonrpc"`
+	ID      interface{}   `json:"id,omitempty"`
+	Result  interface{}   `json:"result,omitempty"`
+	Error   *MCPRPCError  `json:"error,omitempty"`
+}
+
+// MCPRPCError represents a JSON-RPC error
+type MCPRPCError struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// Tool represents an MCP tool
+type Tool struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description,omitempty"`
+	InputSchema interface{} `json:"inputSchema,omitempty"`
+}
+
+// Resource represents an MCP resource
+type Resource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
+
+// Prompt represents an MCP prompt
+type Prompt struct {
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	Arguments   []interface{} `json:"arguments,omitempty"`
+}
+
+// ToolsListResult represents the result of tools/list
+type ToolsListResult struct {
+	Tools []Tool `json:"tools"`
+}
+
+// ResourcesListResult represents the result of resources/list
+type ResourcesListResult struct {
+	Resources []Resource `json:"resources"`
+}
+
+// PromptsListResult represents the result of prompts/list
+type PromptsListResult struct {
+	Prompts []Prompt `json:"prompts"`
+}
+
+// ToolCallParams represents parameters for tools/call
+type ToolCallParams struct {
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments,omitempty"`
+}
+
+// HandleUnifiedMCP handles the unified MCP endpoint
+// @Summary Unified MCP endpoint
+// @Description Aggregates tools, resources, and prompts from all adapters
+// @Tags mcp
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Success 200 {object} MCPResponse "MCP response"
+// @Failure 400 {object} ErrorResponse "Invalid request"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/mcp [post]
+func (h *UnifiedMCPHandler) HandleUnifiedMCP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.sendError(w, nil, -32600, "Only POST method is supported")
+		return
+	}
+
+	// Parse the incoming request
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.sendError(w, nil, -32700, "Failed to read request body")
+		return
+	}
+	defer r.Body.Close()
+
+	var req MCPRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		h.sendError(w, nil, -32700, "Invalid JSON: "+err.Error())
+		return
+	}
+
+	// Get user ID from header
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		userID = "default-user"
+	}
+
+	logging.ProxyLogger.Info("UnifiedMCP: Handling method %s for user %s", req.Method, userID)
+
+	var response *MCPResponse
+
+	switch req.Method {
+	case "initialize":
+		response = h.handleInitialize(r.Context(), &req)
+	case "initialized":
+		// No response needed for initialized notification
+		w.WriteHeader(http.StatusOK)
+		return
+	case "tools/list":
+		response = h.handleToolsList(r.Context(), &req, userID)
+	case "tools/call":
+		response = h.handleToolsCall(r.Context(), &req, userID, r.Header)
+	case "resources/list":
+		response = h.handleResourcesList(r.Context(), &req, userID)
+	case "resources/read":
+		response = h.handleResourcesRead(r.Context(), &req, userID, r.Header)
+	case "prompts/list":
+		response = h.handlePromptsList(r.Context(), &req, userID)
+	case "prompts/get":
+		response = h.handlePromptsGet(r.Context(), &req, userID, r.Header)
+	default:
+		response = &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32601, Message: fmt.Sprintf("Method not found: %s", req.Method)},
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("MCP-Protocol-Version", "2025-06-18")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleInitialize handles the initialize method
+func (h *UnifiedMCPHandler) handleInitialize(ctx context.Context, req *MCPRequest) *MCPResponse {
+	return &MCPResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result: map[string]interface{}{
+			"protocolVersion": "2025-06-18",
+			"serverInfo": map[string]interface{}{
+				"name":    "suse-ai-unified-proxy",
+				"version": "1.0.0",
+			},
+			"capabilities": map[string]interface{}{
+				"tools":     map[string]interface{}{"listChanged": false},
+				"resources": map[string]interface{}{"listChanged": false},
+				"prompts":   map[string]interface{}{"listChanged": false},
+			},
+		},
+	}
+}
+
+// handleToolsList aggregates tools from all adapters
+func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
+	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
+		}
+	}
+
+	var allTools []Tool
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, adapter := range adapters {
+		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(adapter models.AdapterResource) {
+			defer wg.Done()
+
+			tools, err := h.fetchToolsFromAdapter(ctx, adapter)
+			if err != nil {
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s: %v", adapter.Name, err)
+				return
+			}
+
+			// Prefix tool names with adapter name
+			mu.Lock()
+			for _, tool := range tools {
+				prefixedTool := Tool{
+					Name:        adapter.Name + "__" + tool.Name,
+					Description: fmt.Sprintf("[%s] %s", adapter.Name, tool.Description),
+					InputSchema: tool.InputSchema,
+				}
+				allTools = append(allTools, prefixedTool)
+			}
+			mu.Unlock()
+		}(adapter)
+	}
+
+	wg.Wait()
+
+	return &MCPResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  ToolsListResult{Tools: allTools},
+	}
+}
+
+// handleToolsCall routes a tool call to the appropriate adapter
+func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+	// Parse params
+	paramsJSON, err := json.Marshal(req.Params)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params"},
+		}
+	}
+
+	var params ToolCallParams
+	if err := json.Unmarshal(paramsJSON, &params); err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params: " + err.Error()},
+		}
+	}
+
+	// Extract adapter prefix from tool name (format: adapter__toolname)
+	parts := strings.SplitN(params.Name, "__", 2)
+	if len(parts) != 2 {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Tool name must be prefixed with adapter name (e.g., servicenow__get_incident)"},
+		}
+	}
+
+	adapterName := parts[0]
+	toolName := parts[1]
+
+	// Get the adapter
+	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+		}
+	}
+
+	if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter does not support remote MCP"},
+		}
+	}
+
+	// Forward the request with unprefixed tool name
+	unprefixedReq := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Method:  "tools/call",
+		Params: map[string]interface{}{
+			"name":      toolName,
+			"arguments": params.Arguments,
+		},
+	}
+
+	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+}
+
+// handleResourcesList aggregates resources from all adapters
+func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
+	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
+		}
+	}
+
+	var allResources []Resource
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, adapter := range adapters {
+		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(adapter models.AdapterResource) {
+			defer wg.Done()
+
+			resources, err := h.fetchResourcesFromAdapter(ctx, adapter)
+			if err != nil {
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch resources from %s: %v", adapter.Name, err)
+				return
+			}
+
+			// Prefix resource URIs with adapter name
+			mu.Lock()
+			for _, resource := range resources {
+				prefixedResource := Resource{
+					URI:         adapter.Name + "://" + resource.URI,
+					Name:        fmt.Sprintf("[%s] %s", adapter.Name, resource.Name),
+					Description: resource.Description,
+					MimeType:    resource.MimeType,
+				}
+				allResources = append(allResources, prefixedResource)
+			}
+			mu.Unlock()
+		}(adapter)
+	}
+
+	wg.Wait()
+
+	return &MCPResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  ResourcesListResult{Resources: allResources},
+	}
+}
+
+// handleResourcesRead routes a resource read to the appropriate adapter
+func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+	// Parse params to get URI
+	paramsJSON, err := json.Marshal(req.Params)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params"},
+		}
+	}
+
+	var params struct {
+		URI string `json:"uri"`
+	}
+	if err := json.Unmarshal(paramsJSON, &params); err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params: " + err.Error()},
+		}
+	}
+
+	// Extract adapter prefix from URI (format: adapter://original_uri)
+	parts := strings.SplitN(params.URI, "://", 2)
+	if len(parts) != 2 {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Resource URI must be prefixed with adapter name"},
+		}
+	}
+
+	adapterName := parts[0]
+	originalURI := parts[1]
+
+	// Get the adapter
+	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+		}
+	}
+
+	// Forward the request with unprefixed URI
+	unprefixedReq := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Method:  "resources/read",
+		Params:  map[string]interface{}{"uri": originalURI},
+	}
+
+	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+}
+
+// handlePromptsList aggregates prompts from all adapters
+func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
+	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
+		}
+	}
+
+	var allPrompts []Prompt
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, adapter := range adapters {
+		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(adapter models.AdapterResource) {
+			defer wg.Done()
+
+			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter)
+			if err != nil {
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch prompts from %s: %v", adapter.Name, err)
+				return
+			}
+
+			// Prefix prompt names with adapter name
+			mu.Lock()
+			for _, prompt := range prompts {
+				prefixedPrompt := Prompt{
+					Name:        adapter.Name + "__" + prompt.Name,
+					Description: fmt.Sprintf("[%s] %s", adapter.Name, prompt.Description),
+					Arguments:   prompt.Arguments,
+				}
+				allPrompts = append(allPrompts, prefixedPrompt)
+			}
+			mu.Unlock()
+		}(adapter)
+	}
+
+	wg.Wait()
+
+	return &MCPResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  PromptsListResult{Prompts: allPrompts},
+	}
+}
+
+// handlePromptsGet routes a prompt get to the appropriate adapter
+func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+	// Parse params to get prompt name
+	paramsJSON, err := json.Marshal(req.Params)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params"},
+		}
+	}
+
+	var params struct {
+		Name      string                 `json:"name"`
+		Arguments map[string]interface{} `json:"arguments,omitempty"`
+	}
+	if err := json.Unmarshal(paramsJSON, &params); err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Invalid params: " + err.Error()},
+		}
+	}
+
+	// Extract adapter prefix from prompt name (format: adapter__promptname)
+	parts := strings.SplitN(params.Name, "__", 2)
+	if len(parts) != 2 {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Prompt name must be prefixed with adapter name"},
+		}
+	}
+
+	adapterName := parts[0]
+	promptName := parts[1]
+
+	// Get the adapter
+	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+		}
+	}
+
+	// Forward the request with unprefixed prompt name
+	unprefixedReq := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Method:  "prompts/get",
+		Params: map[string]interface{}{
+			"name":      promptName,
+			"arguments": params.Arguments,
+		},
+	}
+
+	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+}
+
+// fetchToolsFromAdapter fetches tools from a single adapter
+func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Tool, error) {
+	req := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/list",
+		Params:  map[string]interface{}{},
+	}
+
+	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("adapter error: %s", resp.Error.Message)
+	}
+
+	// Parse result
+	resultJSON, err := json.Marshal(resp.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ToolsListResult
+	if err := json.Unmarshal(resultJSON, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Tools, nil
+}
+
+// fetchResourcesFromAdapter fetches resources from a single adapter
+func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Resource, error) {
+	req := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "resources/list",
+		Params:  map[string]interface{}{},
+	}
+
+	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("adapter error: %s", resp.Error.Message)
+	}
+
+	// Parse result
+	resultJSON, err := json.Marshal(resp.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ResourcesListResult
+	if err := json.Unmarshal(resultJSON, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Resources, nil
+}
+
+// fetchPromptsFromAdapter fetches prompts from a single adapter
+func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Prompt, error) {
+	req := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "prompts/list",
+		Params:  map[string]interface{}{},
+	}
+
+	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("adapter error: %s", resp.Error.Message)
+	}
+
+	// Parse result
+	resultJSON, err := json.Marshal(resp.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var result PromptsListResult
+	if err := json.Unmarshal(resultJSON, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Prompts, nil
+}
+
+// makeAdapterRequest makes an HTTP request to an adapter
+func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url string, req *MCPRequest) (*MCPResponse, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := h.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var mcpResp MCPResponse
+	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
+		return nil, err
+	}
+
+	return &mcpResp, nil
+}
+
+// forwardToAdapter forwards a request to a specific adapter
+func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, req *MCPRequest, headers http.Header) *MCPResponse {
+	if adapter.RemoteUrl == "" {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter has no remote URL"},
+		}
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to marshal request"},
+		}
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, adapter.RemoteUrl, bytes.NewReader(body))
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to create request"},
+		}
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	// Forward relevant headers
+	if userID := headers.Get("X-User-ID"); userID != "" {
+		httpReq.Header.Set("X-User-ID", userID)
+	}
+
+	resp, err := h.httpClient.Do(httpReq)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to contact adapter: " + err.Error()},
+		}
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Failed to read response"},
+		}
+	}
+
+	var mcpResp MCPResponse
+	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32603, Message: "Invalid response from adapter"},
+		}
+	}
+
+	return &mcpResp
+}
+
+// sendError sends an error response
+func (h *UnifiedMCPHandler) sendError(w http.ResponseWriter, id interface{}, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(MCPResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error:   &MCPRPCError{Code: code, Message: message},
+	})
+}
