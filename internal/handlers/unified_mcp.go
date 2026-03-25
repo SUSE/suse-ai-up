@@ -539,7 +539,9 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
 }
 
-// fetchToolsFromAdapter fetches tools from a single adapter
+// fetchToolsFromAdapter fetches the list of available tools from a single remote MCP adapter.
+// It sends a tools/list JSON-RPC request to the adapter's remote URL and parses the response.
+// Returns the list of tools or an error if the request fails or the adapter returns an error.
 func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Tool, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
@@ -571,7 +573,9 @@ func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter m
 	return result.Tools, nil
 }
 
-// fetchResourcesFromAdapter fetches resources from a single adapter
+// fetchResourcesFromAdapter fetches the list of available resources from a single remote MCP adapter.
+// It sends a resources/list JSON-RPC request to the adapter's remote URL and parses the response.
+// Returns the list of resources or an error if the request fails or the adapter returns an error.
 func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Resource, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
@@ -603,7 +607,9 @@ func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapt
 	return result.Resources, nil
 }
 
-// fetchPromptsFromAdapter fetches prompts from a single adapter
+// fetchPromptsFromAdapter fetches the list of available prompts from a single remote MCP adapter.
+// It sends a prompts/list JSON-RPC request to the adapter's remote URL and parses the response.
+// Returns the list of prompts or an error if the request fails or the adapter returns an error.
 func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Prompt, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
@@ -635,7 +641,10 @@ func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter
 	return result.Prompts, nil
 }
 
-// makeAdapterRequest makes an HTTP request to an adapter
+// makeAdapterRequest makes a JSON-RPC HTTP POST request to a remote MCP adapter.
+// It marshals the request to JSON, sends it to the specified URL, and parses the response.
+// The request is made with the context for cancellation and timeout support.
+// Returns the parsed MCP response or an error if the HTTP request or JSON parsing fails.
 func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url string, req *MCPRequest) (*MCPResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -668,7 +677,10 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url string, 
 	return &mcpResp, nil
 }
 
-// forwardToAdapter forwards a request to a specific adapter
+// forwardToAdapter forwards a JSON-RPC request to a specific remote MCP adapter and returns the response.
+// It handles the HTTP communication, including forwarding relevant headers (like X-User-ID) to the adapter.
+// If the adapter has no remote URL or communication fails, it returns an appropriate error response.
+// This is used by tools/call, resources/read, and prompts/get to route requests to the correct adapter.
 func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, req *MCPRequest, headers http.Header) *MCPResponse {
 	if adapter.RemoteUrl == "" {
 		return &MCPResponse{
@@ -733,7 +745,11 @@ func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *model
 	return &mcpResp
 }
 
-// sendError sends an error response
+// sendError writes a JSON-RPC error response to the HTTP response writer.
+// It sets the Content-Type header to application/json and encodes an MCPResponse
+// with the specified error code and message. Standard JSON-RPC error codes include:
+// -32700 (Parse error), -32600 (Invalid request), -32601 (Method not found),
+// -32602 (Invalid params), -32603 (Internal error).
 func (h *UnifiedMCPHandler) sendError(w http.ResponseWriter, id interface{}, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(MCPResponse{
