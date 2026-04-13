@@ -1,0 +1,82 @@
+# SUSE AI Universal Proxy Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suse-ai-proxy
+  namespace: servicenow-databricks-demo
+  labels:
+    app: suse-ai-proxy
+    app.kubernetes.io/name: suse-ai-proxy
+    app.kubernetes.io/part-of: servicenow-databricks-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suse-ai-proxy
+  template:
+    metadata:
+      labels:
+        app: suse-ai-proxy
+    spec:
+      containers:
+        - name: suse-ai-proxy
+          image: suse-ai-up:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8911
+              name: http
+          env:
+            - name: AUTH_MODE
+              value: "dev"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DATA_DIR
+              value: "/tmp/data"
+            - name: HOME
+              value: "/tmp"
+          volumeMounts:
+            - name: data-volume
+              mountPath: /tmp/data
+            - name: cache-volume
+              mountPath: /tmp/.cache
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8911
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8911
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data-volume
+          emptyDir: {}
+        - name: cache-volume
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suse-ai-proxy
+  namespace: servicenow-databricks-demo
+  labels:
+    app: suse-ai-proxy
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8911
+      targetPort: 8911
+      protocol: TCP
+      name: http
+  selector:
+    app: suse-ai-proxy

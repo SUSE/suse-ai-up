@@ -1,0 +1,27 @@
+# Demo script (contains customer-specific content)
+DEMO_SCRIPT.md
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Don't ignore the example
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

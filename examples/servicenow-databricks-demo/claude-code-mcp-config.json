@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "suse-ai-proxy": {
+      "type": "http",
+      "url": "http://localhost:8911/api/v1/mcp",
+      "headers": {
+        "X-User-ID": "admin",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}

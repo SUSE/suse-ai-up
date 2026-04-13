@@ -1,0 +1,8 @@
+# Namespace for the ServiceNow + Databricks demo
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: servicenow-databricks-demo
+  labels:
+    app.kubernetes.io/name: servicenow-databricks-demo
+    app.kubernetes.io/part-of: suse-ai-up

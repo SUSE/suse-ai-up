@@ -1,0 +1,102 @@
+# Docker Compose for ServiceNow + Databricks Demo
+#
+# Alternative to Kubernetes deployment - runs everything in Docker containers.
+#
+# This sets up:
+# 1. SUSE AI Universal Proxy
+# 2. ServiceNow MCP Server (mock or real mode)
+# 3. Databricks MCP Server (mock or real mode)
+#
+# Usage:
+#   # Build local images first
+#   docker build -t suse-ai-up:local ../../
+#   docker build -t servicenow-mcp:local -f servers/Dockerfile.servicenow servers/
+#   docker build -t databricks-mcp:local -f servers/Dockerfile.databricks servers/
+#
+#   # Start services (mock mode - uses demo data)
+#   docker-compose up
+#
+#   # Real mode - create .env file with credentials, then:
+#   docker-compose up
+#
+#   # After startup, register adapters:
+#   ./scripts/register-adapters.sh --local
+#
+# Access:
+#   - Unified MCP endpoint: http://localhost:8911/api/v1/mcp
+#   - Proxy health: http://localhost:8911/health
+
+version: '3.8'
+
+services:
+  # SUSE AI Universal Proxy
+  proxy:
+    image: suse-ai-up:local
+    container_name: suse-ai-proxy
+    ports:
+      - "8911:8911"
+    environment:
+      - AUTH_MODE=dev
+      - LOG_LEVEL=info
+      - DATA_DIR=/tmp/data
+      - HOME=/tmp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8911/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - demo-network
+
+  # ServiceNow MCP Server
+  servicenow-mcp:
+    image: servicenow-mcp:local
+    container_name: servicenow-mcp
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVICENOW_MOCK_MODE=${SERVICENOW_MOCK_MODE:-true}
+      - SERVICENOW_INSTANCE_URL=${SERVICENOW_INSTANCE_URL:-}
+      - SERVICENOW_AUTH_METHOD=${SERVICENOW_AUTH_METHOD:-basic}
+      # OAuth 2.0 (recommended for production)
+      - SERVICENOW_CLIENT_ID=${SERVICENOW_CLIENT_ID:-}
+      - SERVICENOW_CLIENT_SECRET=${SERVICENOW_CLIENT_SECRET:-}
+      # Personal Access Token
+      - SERVICENOW_PAT=${SERVICENOW_PAT:-}
+      # Basic Auth (legacy)
+      - SERVICENOW_USERNAME=${SERVICENOW_USERNAME:-}
+      - SERVICENOW_PASSWORD=${SERVICENOW_PASSWORD:-}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - demo-network
+
+  # Databricks MCP Server
+  databricks-mcp:
+    image: databricks-mcp:local
+    container_name: databricks-mcp
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABRICKS_MOCK_MODE=${DATABRICKS_MOCK_MODE:-true}
+      - DATABRICKS_HOST=${DATABRICKS_HOST:-}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN:-}
+      - DATABRICKS_WAREHOUSE_ID=${DATABRICKS_WAREHOUSE_ID:-}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - demo-network
+
+networks:
+  demo-network:
+    driver: bridge

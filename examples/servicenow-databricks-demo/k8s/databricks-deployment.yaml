@@ -1,0 +1,92 @@
+# Databricks MCP Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: databricks-mcp
+  namespace: servicenow-databricks-demo
+  labels:
+    app: databricks-mcp
+    app.kubernetes.io/name: databricks-mcp
+    app.kubernetes.io/part-of: servicenow-databricks-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: databricks-mcp
+  template:
+    metadata:
+      labels:
+        app: databricks-mcp
+    spec:
+      containers:
+        - name: databricks-mcp
+          image: databricks-mcp:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: MCP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: MCP_HOST
+            - name: MCP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: DATABRICKS_MCP_PORT
+            - name: DATABRICKS_MOCK_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: DATABRICKS_MOCK_MODE
+            # Optional: Real credentials (only used when MOCK_MODE=false)
+            - name: DATABRICKS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_HOST
+                  optional: true
+            - name: DATABRICKS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: databricks-credentials
+                  key: DATABRICKS_TOKEN
+                  optional: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: databricks-mcp
+  namespace: servicenow-databricks-demo
+  labels:
+    app: databricks-mcp
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8001
+      targetPort: 8001
+      protocol: TCP
+      name: http
+  selector:
+    app: databricks-mcp
