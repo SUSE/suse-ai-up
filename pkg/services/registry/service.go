@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/middleware"
@@ -28,6 +29,7 @@ import (
 // Service represents the registry service
 type Service struct {
 	config                      *Config
+	globalConfig                *config.Config
 	server                      *http.Server
 	store                       clients.MCPServerStore
 	adapterStore                clients.AdapterResourceStore
@@ -65,7 +67,7 @@ func (s *Service) UpdateMCPServer(id string, updated *models.MCPServer) error {
 }
 
 // NewService creates a new registry service
-func NewService(config *Config) *Service {
+func NewService(config *Config, globalConfig *config.Config) *Service {
 	// Initialize Kubernetes client and SidecarManager
 	var sidecarManager *proxy.SidecarManager
 	log.Printf("Initializing SidecarManager...")
@@ -102,6 +104,7 @@ func NewService(config *Config) *Service {
 
 	service := &Service{
 		config:                      config,
+		globalConfig:                globalConfig,
 		store:                       clients.NewInMemoryMCPServerStore(),
 		adapterStore:                clients.NewInMemoryAdapterStore(),
 		adapterGroupAssignmentStore: clients.NewInMemoryAdapterGroupAssignmentStore(),
@@ -115,7 +118,7 @@ func NewService(config *Config) *Service {
 	service.userGroupService = services.NewUserGroupService(service.userStore, service.groupStore)
 
 	// Initialize adapter service (sidecar manager will be set later if available)
-	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.adapterGroupAssignmentStore, service.store, service.sidecarManager)
+	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.adapterGroupAssignmentStore, service.store, service.sidecarManager, globalConfig)
 
 	// Initialize handlers
 	service.userGroupHandler = handlers.NewUserGroupHandler(service.userGroupService, service.adapterService)

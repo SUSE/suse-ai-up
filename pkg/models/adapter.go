@@ -13,6 +13,7 @@ const (
 	ConnectionTypeRemoteHttp     ConnectionType = "RemoteHttp"
 	ConnectionTypeLocalStdio     ConnectionType = "LocalStdio"
 	ConnectionTypeSidecarStdio   ConnectionType = "SidecarStdio"
+	ConnectionTypeVirtual        ConnectionType = "Virtual"
 )
 
 // ServerProtocol represents the protocol used by the adapter
@@ -84,6 +85,8 @@ type AdapterData struct {
 	MCPFunctionality *MCPFunctionality `json:"mcpFunctionality,omitempty"`
 	// For sidecar stdio deployment
 	SidecarConfig *SidecarConfig `json:"sidecarConfig,omitempty"`
+	// For Virtual aggregation
+	SourceAdapters []string `json:"sourceAdapters,omitempty"`
 }
 
 // NewAdapterData creates a new AdapterData with defaults
@@ -103,6 +106,7 @@ func NewAdapterData(name, imageName, imageVersion string) *AdapterData {
 		Command:              "",
 		Args:                 []string{},
 		SidecarConfig:        nil,
+		SourceAdapters:       []string{},
 	}
 }
 

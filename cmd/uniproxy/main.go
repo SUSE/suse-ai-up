@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"suse-ai-up/docs"
 	_ "suse-ai-up/docs"
 	"suse-ai-up/internal/config"
 	"suse-ai-up/internal/handlers"
@@ -629,7 +630,7 @@ func RunUniproxy() {
 
 	// Initialize AdapterService with SidecarManager
 	logging.ProxyLogger.Info("Initializing AdapterService with SidecarManager")
-	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, registryStore, sidecarManager)
+	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, registryStore, sidecarManager, cfg)
 	logging.ProxyLogger.Info("AdapterService created: %v", adapterService != nil)
 	adapterHandler := handlers.NewAdapterHandler(adapterService, userGroupService)
 	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
@@ -709,7 +710,26 @@ func RunUniproxy() {
 	})
 
 	// Swagger UI - use relative URL for deployment compatibility
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/docs/doc.json")))
+	// Set up multiple servers for Swagger UI dropdown
+	urls := cfg.GetServerURLs()
+	if len(urls) > 0 {
+		// Swagger 2.0 (standard in swag) doesn't support multiple servers in a dropdown easily
+		// but OpenAPI 3.0 does. However, we can at least make sure the host is set correctly.
+		// For the dropdown effect in Swagger UI, we'd need to use OpenAPI 3.0.
+		// For now, we'll set the host to the primary detected host.
+		primaryURL := urls[0]
+		if strings.HasPrefix(primaryURL, "http://") {
+			primaryURL = strings.TrimPrefix(primaryURL, "http://")
+		} else if strings.HasPrefix(primaryURL, "https://") {
+			primaryURL = strings.TrimPrefix(primaryURL, "https://")
+		}
+		// Set base documentation host
+		docs.SwaggerInfo.Host = primaryURL
+	}
+
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
+		ginSwagger.URL("/docs/doc.json"),
+		ginSwagger.DefaultModelsExpandDepth(-1)))
 
 	// API v1 routes
 	logging.ProxyLogger.Info("Setting up API v1 routes")
@@ -805,6 +825,7 @@ func RunUniproxy() {
 		// Unified MCP endpoint - aggregates all adapters into a single MCP interface
 		logging.ProxyLogger.Info("Setting up unified MCP endpoint")
 		v1.Any("/mcp", ginToHTTPHandler(unifiedMCPHandler.HandleUnifiedMCP))
+		v1.Any("/mcp/:name", ginToHTTPHandler(unifiedMCPHandler.HandleVirtualMCP))
 
 		// Registry routes
 		registry := v1.Group("/registry")

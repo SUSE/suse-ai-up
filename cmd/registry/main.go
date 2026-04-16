@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/services/registry"
 )
 
 func main() {
+	cfg := config.LoadConfig()
 	port := 8913     // Default port
 	tlsPort := 38913 // Default TLS port
 
@@ -30,7 +32,7 @@ func main() {
 		AutoTLS:           true, // Enable auto-generated TLS certificates
 	}
 
-	service := registry.NewService(config)
+	service := registry.NewService(config, cfg)
 	if err := service.Start(); err != nil {
 		fmt.Printf("Failed to start registry service: %v\n", err)
 		os.Exit(1)

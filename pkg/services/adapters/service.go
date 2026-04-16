@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"suse-ai-up/internal/config"
 	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/logging"
 	"suse-ai-up/pkg/mcp"
@@ -26,10 +27,11 @@ type AdapterService struct {
 	userAdapterTokenStore       clients.UserAdapterTokenStore
 	capabilityDiscovery         *mcp.CapabilityDiscoveryService
 	sidecarManager              *proxy.SidecarManager
+	cfg                         *config.Config
 }
 
 // NewAdapterService creates a new adapter service
-func NewAdapterService(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager) *AdapterService {
+func NewAdapterService(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager, cfg *config.Config) *AdapterService {
 	return &AdapterService{
 		store:                       store,
 		adapterGroupAssignmentStore: adapterGroupAssignmentStore,
@@ -37,11 +39,12 @@ func NewAdapterService(store clients.AdapterResourceStore, adapterGroupAssignmen
 		userAdapterTokenStore:       nil, // Will be set separately if needed
 		capabilityDiscovery:         mcp.NewCapabilityDiscoveryService(),
 		sidecarManager:              sidecarManager,
+		cfg:                         cfg,
 	}
 }
 
 // NewAdapterServiceWithTokenStore creates a new adapter service with token store
-func NewAdapterServiceWithTokenStore(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager, tokenStore clients.UserAdapterTokenStore) *AdapterService {
+func NewAdapterServiceWithTokenStore(store clients.AdapterResourceStore, adapterGroupAssignmentStore clients.AdapterGroupAssignmentStore, registryStore clients.MCPServerStore, sidecarManager *proxy.SidecarManager, tokenStore clients.UserAdapterTokenStore, cfg *config.Config) *AdapterService {
 	return &AdapterService{
 		store:                       store,
 		adapterGroupAssignmentStore: adapterGroupAssignmentStore,
@@ -49,12 +52,108 @@ func NewAdapterServiceWithTokenStore(store clients.AdapterResourceStore, adapter
 		userAdapterTokenStore:       tokenStore,
 		capabilityDiscovery:         mcp.NewCapabilityDiscoveryService(),
 		sidecarManager:              sidecarManager,
+		cfg:                         cfg,
 	}
 }
 
 // SetUserAdapterTokenStore sets the user adapter token store (for late initialization)
 func (as *AdapterService) SetUserAdapterTokenStore(store clients.UserAdapterTokenStore) {
 	as.userAdapterTokenStore = store
+}
+
+// CreateVirtualAdapter creates a new virtual adapter that aggregates other adapters
+func (as *AdapterService) CreateVirtualAdapter(ctx context.Context, userID, name string, sourceAdapters []string, userGroupService *services.UserGroupService) (*models.AdapterResource, error) {
+	logging.AdapterLogger.Info("ADAPTER_SERVICE: CreateVirtualAdapter started for name %s (user: %s)", name, userID)
+
+	// Generate a secure token for the virtual adapter
+	token := as.generateSecureToken()
+
+	host := "localhost"
+	port := "8911"
+	if as.cfg != nil {
+		host = as.cfg.Host
+		port = as.cfg.Port
+	}
+
+	// Create adapter data
+	adapterData := &models.AdapterData{
+		Name:           name,
+		ConnectionType: models.ConnectionTypeVirtual,
+		Status:         models.AdapterLifecycleStatusReady,
+		URL:            fmt.Sprintf("http://%s:%s/api/v1/mcp/%s", host, port, name),
+		SourceAdapters: sourceAdapters,
+	}
+
+	// Set up MCP client configuration
+	adapterData.MCPClientConfig = models.MCPClientConfig{
+		MCPServers: map[string]models.MCPServerConfig{
+			name: {
+				URL: fmt.Sprintf("http://%s:%s/api/v1/mcp/%s", host, port, name),
+				Headers: map[string]string{
+					"Authorization": fmt.Sprintf("Bearer %s", token),
+				},
+			},
+		},
+	}
+
+	// Set up authentication configuration
+	adapterData.Authentication = &models.AdapterAuthConfig{
+		Required: true,
+		Type:     "bearer",
+		BearerToken: &models.BearerTokenConfig{
+			Token:   token,
+			Dynamic: false,
+		},
+	}
+
+	// Create adapter resource
+	adapter := &models.AdapterResource{}
+	adapter.Create(*adapterData, userID, time.Now())
+
+	// Store adapter
+	if err := as.store.Create(ctx, *adapter); err != nil {
+		return nil, fmt.Errorf("failed to store virtual adapter: %w", err)
+	}
+
+	// Assign to admin groups
+	as.assignToAdminGroups(ctx, adapter, userGroupService)
+
+	logging.AdapterLogger.Success("CreateVirtualAdapter completed successfully for adapter %s", adapter.ID)
+	return adapter, nil
+}
+
+// assignToAdminGroups assigns an adapter to all groups with admin-level adapter permissions
+func (as *AdapterService) assignToAdminGroups(ctx context.Context, adapter *models.AdapterResource, userGroupService *services.UserGroupService) {
+	if userGroupService == nil {
+		return
+	}
+
+	groups, err := userGroupService.ListGroups(ctx)
+	if err != nil {
+		return
+	}
+
+	for _, group := range groups {
+		hasPermission := false
+		for _, perm := range group.Permissions {
+			if perm == "adapter:assign" || perm == "adapter:*" || perm == "*" {
+				hasPermission = true
+				break
+			}
+		}
+
+		if hasPermission {
+			assignment := models.AdapterGroupAssignment{
+				AdapterID:  adapter.ID,
+				GroupID:    group.ID,
+				Permission: "read",
+				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
+				CreatedBy:  "system",
+			}
+			as.adapterGroupAssignmentStore.CreateAssignment(ctx, assignment)
+		}
+	}
 }
 
 // CreateAdapter creates a new adapter from a registry server
@@ -168,13 +267,20 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 	}
 
 	// Create adapter data
+	host := "localhost"
+	port := "8911"
+	if as.cfg != nil {
+		host = as.cfg.Host
+		port = as.cfg.Port
+	}
+
 	adapterData := &models.AdapterData{
 		Name:                 name,
 		ConnectionType:       connectionType,
 		Status:               initialStatus,
 		EnvironmentVariables: envVars,   // Use the provided environment variables
 		RemoteUrl:            remoteUrl, // Use appropriate remote URL
-		URL:                  fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+		URL:                  fmt.Sprintf("http://%s:%s/api/v1/adapters/%s/mcp", host, port, name),
 		SidecarConfig:        sidecarConfig,
 	}
 
@@ -197,7 +303,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 		adapterData.MCPClientConfig = models.MCPClientConfig{
 			MCPServers: map[string]models.MCPServerConfig{
 				name: {
-					URL: fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+					URL: fmt.Sprintf("http://%s:%s/api/v1/adapters/%s/mcp", host, port, name),
 					Headers: map[string]string{
 						"Authorization": fmt.Sprintf("Bearer %s", token),
 					},
@@ -212,7 +318,7 @@ func (as *AdapterService) CreateAdapter(ctx context.Context, userID, mcpServerID
 					Command: "remote",
 					Args: []string{
 						name,
-						fmt.Sprintf("http://localhost:8911/api/v1/adapters/%s/mcp", name),
+						fmt.Sprintf("http://%s:%s/api/v1/adapters/%s/mcp", host, port, name),
 						"--header",
 						fmt.Sprintf("Authorization: Bearer %s", token),
 					},

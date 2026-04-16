@@ -19,6 +19,12 @@ docker-build:
 docker-run: docker-build
 	docker run -p 8911:8911 suse-ai-up:latest
 
+docker-multiarch-dev:
+	docker buildx bake multiarch
+
+swagger:
+	swag init -g cmd/uniproxy/main.go --parseDependency --parseInternal
+
 helm-install:
 	helm install suse-ai-up ./charts/suse-ai-up --namespace suse-ai-up --create-namespace
 

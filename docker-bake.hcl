@@ -14,10 +14,14 @@ variable "PLATFORMS" {
   default = ["linux/amd64", "linux/arm64"]
 }
 
+variable "TAG" {
+  default = "dev"
+}
+
 # Main target for multi-platform build
 target "multiarch" {
   platforms = "${PLATFORMS}"
-  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
+  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}"]
   context = "."
   dockerfile = "Dockerfile"
   args = {
@@ -28,7 +32,7 @@ target "multiarch" {
 # Target for building only amd64
 target "amd64" {
   platforms = ["linux/amd64"]
-  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
+  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}"]
   context = "."
   dockerfile = "Dockerfile"
 }
@@ -36,14 +40,14 @@ target "amd64" {
 # Target for building only arm64
 target "arm64" {
   platforms = ["linux/arm64"]
-  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
+  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}"]
   context = "."
   dockerfile = "Dockerfile"
 }
 
 # Development build (single platform based on host)
 target "dev" {
-  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
+  tags = ["${REGISTRY}/${REPO_NAME}:${TAG}"]
   context = "."
   dockerfile = "Dockerfile"
 }
@@ -52,7 +56,7 @@ target "dev" {
 target "release" {
   inherits = ["multiarch"]
   platforms = "${PLATFORMS}"
-  tags = ["${REGISTRY}/${REPO_NAME}:latest"]
+  tags = ["${REGISTRY}/${REPO_NAME}:latest", "${REGISTRY}/${REPO_NAME}:${TAG}"]
   labels = {
     "org.opencontainers.image.title" = "SUSE AI Universal Proxy"
     "org.opencontainers.image.description" = "MCP server proxy and registry"

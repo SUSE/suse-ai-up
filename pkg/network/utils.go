@@ -20,17 +20,18 @@ type NetworkAddress struct {
 func GetAvailableAddresses() ([]NetworkAddress, error) {
 	var addresses []NetworkAddress
 
-	// Always include localhost first (highest priority)
+	// Include 0.0.0.0 as high priority for binding
 	addresses = append(addresses, NetworkAddress{
-		IP:        "127.0.0.1",
-		Interface: "localhost",
+		IP:        "0.0.0.0",
+		Interface: "all",
 		IsPublic:  false,
-		IsLocal:   true,
+		IsLocal:   false,
 		Priority:  0,
 	})
 
+	// Always include localhost first (highest priority)
 	addresses = append(addresses, NetworkAddress{
-		IP:        "localhost",
+		IP:        "127.0.0.1",
 		Interface: "localhost",
 		IsPublic:  false,
 		IsLocal:   true,
@@ -122,11 +123,15 @@ func GetPrimaryHost() (string, error) {
 		return "localhost", err
 	}
 
-	if len(addresses) > 0 {
-		return addresses[0].IP, nil
+	// Find the first non-0.0.0.0 and non-loopback address
+	for _, addr := range addresses {
+		if addr.IP != "0.0.0.0" && addr.IP != "127.0.0.1" && addr.IP != "localhost" {
+			return addr.IP, nil
+		}
 	}
 
-	return "localhost", nil
+	// Fallback to loopback if no other address found
+	return "127.0.0.1", nil
 }
 
 // isPrivateIP checks if an IP address is in a private range

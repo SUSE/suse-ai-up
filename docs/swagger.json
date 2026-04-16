@@ -34,14 +34,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.AdapterResource"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -65,7 +65,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterData"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterData"
                         }
                     }
                 ],
@@ -73,19 +73,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -114,13 +114,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -151,7 +151,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                         }
                     }
                 ],
@@ -159,19 +159,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -201,13 +201,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -237,19 +237,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/service.ClientTokenResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_service.ClientTokenResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -287,26 +287,26 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.AdapterGroupAssignment"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterGroupAssignment"
                             }
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -344,7 +344,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.AddAdapterToGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.AddAdapterToGroupRequest"
                         }
                     }
                 ],
@@ -361,25 +361,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -425,25 +425,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -491,13 +491,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -544,13 +544,13 @@
                     "404": {
                         "description": "Adapter not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -597,19 +597,19 @@
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -663,19 +663,19 @@
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter or prompt not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -722,19 +722,19 @@
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -788,19 +788,19 @@
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter or resource not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -833,7 +833,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/service.SessionReinitializeRequest"
+                            "$ref": "#/definitions/internal_service.SessionReinitializeRequest"
                         }
                     }
                 ],
@@ -841,25 +841,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/service.SessionReinitializeResponse"
+                            "$ref": "#/definitions/internal_service.SessionReinitializeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -888,19 +888,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterStatus"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterStatus"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -945,13 +945,13 @@
                     "404": {
                         "description": "Adapter not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -991,19 +991,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1043,25 +1043,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/auth.TokenInfo"
+                            "$ref": "#/definitions/suse-ai-up_pkg_auth.TokenInfo"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1094,25 +1094,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/auth.TokenInfo"
+                            "$ref": "#/definitions/suse-ai-up_pkg_auth.TokenInfo"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1152,13 +1152,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1205,19 +1205,19 @@
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1265,7 +1265,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/mcp.MCPMessage"
+                            "$ref": "#/definitions/suse-ai-up_pkg_mcp.MCPMessage"
                         }
                     }
                 ],
@@ -1280,25 +1280,25 @@
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Adapter or tool not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/suse-ai-up_internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1332,7 +1332,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig"
                         }
                     }
                 ],
@@ -1347,7 +1347,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1373,7 +1373,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginRequest"
+                            "$ref": "#/definitions/internal_handlers.LoginRequest"
                         }
                     }
                 ],
@@ -1381,19 +1381,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginResponse"
+                            "$ref": "#/definitions/internal_handlers.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1442,7 +1442,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.OAuthCallbackRequest"
+                            "$ref": "#/definitions/internal_handlers.OAuthCallbackRequest"
                         }
                     }
                 ],
@@ -1450,19 +1450,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginResponse"
+                            "$ref": "#/definitions/internal_handlers.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1488,7 +1488,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.OAuthLoginRequest"
+                            "$ref": "#/definitions/internal_handlers.OAuthLoginRequest"
                         }
                     }
                 ],
@@ -1505,7 +1505,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1531,7 +1531,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.ChangePasswordRequest"
+                            "$ref": "#/definitions/internal_handlers.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -1548,13 +1548,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1591,19 +1591,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.AdapterResource"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -1692,7 +1692,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.ScanJob"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.ScanJob"
                             }
                         }
                     }
@@ -1717,7 +1717,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ScanConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ScanConfig"
                         }
                     }
                 ],
@@ -1732,7 +1732,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -1761,7 +1761,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/scanner.ScanJob"
+                            "$ref": "#/definitions/suse-ai-up_pkg_scanner.ScanJob"
                         }
                     },
                     "404": {
@@ -1834,13 +1834,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ScanJob"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ScanJob"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/service.ErrorResponse"
+                            "$ref": "#/definitions/internal_service.ErrorResponse"
                         }
                     }
                 }
@@ -1862,7 +1862,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.DiscoveredServer"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.DiscoveredServer"
                             }
                         }
                     }
@@ -1893,7 +1893,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.DiscoveredServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.DiscoveredServer"
                         }
                     },
                     "404": {
@@ -1922,14 +1922,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Group"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.Group"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1953,7 +1953,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.CreateGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.CreateGroupRequest"
                         }
                     }
                 ],
@@ -1961,19 +1961,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.Group"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2002,19 +2002,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.Group"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2045,7 +2045,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UpdateGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.UpdateGroupRequest"
                         }
                     }
                 ],
@@ -2053,25 +2053,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Group"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.Group"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2101,13 +2101,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2138,26 +2138,26 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.AdapterGroupAssignment"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterGroupAssignment"
                             }
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2190,7 +2190,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.AddUserToGroupRequest"
+                            "$ref": "#/definitions/internal_handlers.AddUserToGroupRequest"
                         }
                     }
                 ],
@@ -2205,19 +2205,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2260,19 +2260,114 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/mcp": {
+            "post": {
+                "description": "Aggregates tools, resources, and prompts from all accessible adapters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcp"
+                ],
+                "summary": "Global Unified MCP endpoint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MCPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/mcp/{name}": {
+            "post": {
+                "description": "Aggregates tools, resources, and prompts from a specific virtual adapter",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcp"
+                ],
+                "summary": "Virtual MCP endpoint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "default-user",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Virtual Adapter Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MCP response",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MCPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2298,7 +2393,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.RegisterServiceRequest"
+                            "$ref": "#/definitions/internal_handlers.RegisterServiceRequest"
                         }
                     }
                 ],
@@ -2306,25 +2401,25 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.RegisterServiceResponse"
+                            "$ref": "#/definitions/internal_handlers.RegisterServiceResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     }
                 }
@@ -2353,13 +2448,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     }
                 }
@@ -2381,7 +2476,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                                "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                             }
                         }
                     }
@@ -2413,14 +2508,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                                "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     }
                 }
@@ -2449,13 +2544,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2484,13 +2579,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceHealth"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceHealth"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.PluginErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.PluginErrorResponse"
                         }
                     }
                 }
@@ -2544,7 +2639,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.MCPServer"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                             }
                         }
                     }
@@ -2598,7 +2693,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     }
                 ],
@@ -2606,7 +2701,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     },
                     "400": {
@@ -2640,7 +2735,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.MCPServer"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                             }
                         }
                     }
@@ -2712,7 +2807,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     },
                     "400": {
@@ -2747,7 +2842,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     },
                     "404": {
@@ -2784,7 +2879,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     }
                 ],
@@ -2792,7 +2887,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.MCPServer"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServer"
                         }
                     },
                     "400": {
@@ -2867,7 +2962,7 @@
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2889,14 +2984,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.User"
+                                "$ref": "#/definitions/suse-ai-up_pkg_models.User"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2920,7 +3015,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.CreateUserRequest"
+                            "$ref": "#/definitions/internal_handlers.CreateUserRequest"
                         }
                     }
                 ],
@@ -2928,19 +3023,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CreateUserResponse"
+                            "$ref": "#/definitions/internal_handlers.CreateUserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2969,19 +3064,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.User"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -3012,7 +3107,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UpdateUserRequest"
+                            "$ref": "#/definitions/internal_handlers.UpdateUserRequest"
                         }
                     }
                 ],
@@ -3020,25 +3115,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -3068,13 +3163,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -3094,7 +3189,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.AuthModeResponse"
+                            "$ref": "#/definitions/internal_handlers.AuthModeResponse"
                         }
                     }
                 }
@@ -3120,7 +3215,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                         }
                     }
                 ],
@@ -3128,7 +3223,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                         }
                     },
                     "400": {
@@ -3191,7 +3286,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                                "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                             }
                         }
                     }
@@ -3223,7 +3318,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/plugins.ServiceRegistration"
+                                "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                             }
                         }
                     }
@@ -3253,7 +3348,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceRegistration"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceRegistration"
                         }
                     },
                     "404": {
@@ -3288,7 +3383,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/plugins.ServiceHealth"
+                            "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceHealth"
                         }
                     },
                     "404": {
@@ -3302,42 +3397,7 @@
         }
     },
     "definitions": {
-        "auth.TokenInfo": {
-            "type": "object",
-            "properties": {
-                "accessToken": {
-                    "type": "string"
-                },
-                "audience": {
-                    "type": "string"
-                },
-                "expiresAt": {
-                    "type": "string"
-                },
-                "issuedAt": {
-                    "type": "string"
-                },
-                "issuer": {
-                    "type": "string"
-                },
-                "refreshToken": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "tokenId": {
-                    "type": "string"
-                },
-                "tokenType": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.AddAdapterToGroupRequest": {
+        "internal_handlers.AddAdapterToGroupRequest": {
             "type": "object",
             "properties": {
                 "groupId": {
@@ -3351,7 +3411,7 @@
                 }
             }
         },
-        "handlers.AddUserToGroupRequest": {
+        "internal_handlers.AddUserToGroupRequest": {
             "type": "object",
             "properties": {
                 "userId": {
@@ -3360,7 +3420,7 @@
                 }
             }
         },
-        "handlers.AuthModeResponse": {
+        "internal_handlers.AuthModeResponse": {
             "type": "object",
             "properties": {
                 "dev_mode": {
@@ -3431,7 +3491,7 @@
                 }
             }
         },
-        "handlers.ChangePasswordRequest": {
+        "internal_handlers.ChangePasswordRequest": {
             "type": "object",
             "properties": {
                 "current_password": {
@@ -3442,11 +3502,14 @@
                 }
             }
         },
-        "handlers.CreateAdapterRequest": {
+        "internal_handlers.CreateAdapterRequest": {
             "type": "object",
             "properties": {
                 "authentication": {
-                    "$ref": "#/definitions/models.AdapterAuthConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig"
+                },
+                "connectionType": {
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.ConnectionType"
                 },
                 "deploymentMethod": {
                     "description": "\"helm\", \"docker\", \"systemd\", \"local\"",
@@ -3466,14 +3529,20 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "sourceAdapters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
-        "handlers.CreateAdapterResponse": {
+        "internal_handlers.CreateAdapterResponse": {
             "type": "object",
             "properties": {
                 "capabilities": {
-                    "$ref": "#/definitions/models.MCPFunctionality"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.MCPFunctionality"
                 },
                 "createdAt": {
                     "type": "string"
@@ -3493,7 +3562,7 @@
                 }
             }
         },
-        "handlers.CreateGroupRequest": {
+        "internal_handlers.CreateGroupRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -3519,7 +3588,7 @@
                 }
             }
         },
-        "handlers.CreateUserRequest": {
+        "internal_handlers.CreateUserRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3545,18 +3614,18 @@
                 }
             }
         },
-        "handlers.CreateUserResponse": {
+        "internal_handlers.CreateUserResponse": {
             "type": "object",
             "properties": {
                 "createdAt": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/models.User"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.User"
                 }
             }
         },
-        "handlers.ErrorResponse": {
+        "internal_handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -3564,7 +3633,7 @@
                 }
             }
         },
-        "handlers.LoginRequest": {
+        "internal_handlers.LoginRequest": {
             "type": "object",
             "properties": {
                 "password": {
@@ -3575,18 +3644,43 @@
                 }
             }
         },
-        "handlers.LoginResponse": {
+        "internal_handlers.LoginResponse": {
             "type": "object",
             "properties": {
                 "token": {
-                    "$ref": "#/definitions/models.AuthToken"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.AuthToken"
                 },
                 "user": {
-                    "$ref": "#/definitions/models.User"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.User"
                 }
             }
         },
-        "handlers.OAuthCallbackRequest": {
+        "internal_handlers.MCPRPCError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.MCPResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/internal_handlers.MCPRPCError"
+                },
+                "id": {},
+                "jsonrpc": {
+                    "type": "string"
+                },
+                "result": {}
+            }
+        },
+        "internal_handlers.OAuthCallbackRequest": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3597,7 +3691,7 @@
                 }
             }
         },
-        "handlers.OAuthLoginRequest": {
+        "internal_handlers.OAuthLoginRequest": {
             "type": "object",
             "properties": {
                 "provider": {
@@ -3606,7 +3700,7 @@
                 }
             }
         },
-        "handlers.PluginErrorResponse": {
+        "internal_handlers.PluginErrorResponse": {
             "type": "object",
             "properties": {
                 "details": {
@@ -3617,7 +3711,7 @@
                 }
             }
         },
-        "handlers.RegisterRequest": {
+        "internal_handlers.RegisterRequest": {
             "type": "object",
             "required": [
                 "discoveredServerId"
@@ -3628,11 +3722,11 @@
                 }
             }
         },
-        "handlers.RegisterResponse": {
+        "internal_handlers.RegisterResponse": {
             "type": "object",
             "properties": {
                 "adapter": {
-                    "$ref": "#/definitions/models.AdapterResource"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterResource"
                 },
                 "mcp_endpoint": {
                     "type": "string"
@@ -3644,11 +3738,11 @@
                     "type": "string"
                 },
                 "token_info": {
-                    "$ref": "#/definitions/auth.TokenInfo"
+                    "$ref": "#/definitions/suse-ai-up_pkg_auth.TokenInfo"
                 }
             }
         },
-        "handlers.RegisterServiceRequest": {
+        "internal_handlers.RegisterServiceRequest": {
             "type": "object",
             "required": [
                 "service_id",
@@ -3659,7 +3753,7 @@
                 "capabilities": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/plugins.ServiceCapability"
+                        "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceCapability"
                     }
                 },
                 "service_id": {
@@ -3676,7 +3770,7 @@
                 }
             }
         },
-        "handlers.RegisterServiceResponse": {
+        "internal_handlers.RegisterServiceResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -3687,7 +3781,7 @@
                 }
             }
         },
-        "handlers.UpdateGroupRequest": {
+        "internal_handlers.UpdateGroupRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -3704,7 +3798,7 @@
                 }
             }
         },
-        "handlers.UpdateUserRequest": {
+        "internal_handlers.UpdateUserRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3721,7 +3815,101 @@
                 }
             }
         },
-        "mcp.ErrorType": {
+        "internal_service.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_service.SessionReinitializeRequest": {
+            "type": "object",
+            "properties": {
+                "clientInfo": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "forceReinitialize": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_service.SessionReinitializeResponse": {
+            "type": "object",
+            "properties": {
+                "adapterName": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "suse-ai-up_internal_handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "suse-ai-up_internal_service.ClientTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "suse-ai-up_pkg_auth.TokenInfo": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "audience": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "issuedAt": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tokenId": {
+                    "type": "string"
+                },
+                "tokenType": {
+                    "type": "string"
+                }
+            }
+        },
+        "suse-ai-up_pkg_mcp.ErrorType": {
             "type": "string",
             "enum": [
                 "protocol",
@@ -3746,7 +3934,7 @@
                 "ErrorTypeSession"
             ]
         },
-        "mcp.MCPError": {
+        "suse-ai-up_pkg_mcp.MCPError": {
             "type": "object",
             "properties": {
                 "adapterName": {
@@ -3778,15 +3966,15 @@
                     "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/mcp.ErrorType"
+                    "$ref": "#/definitions/suse-ai-up_pkg_mcp.ErrorType"
                 }
             }
         },
-        "mcp.MCPMessage": {
+        "suse-ai-up_pkg_mcp.MCPMessage": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/mcp.MCPError"
+                    "$ref": "#/definitions/suse-ai-up_pkg_mcp.MCPError"
                 },
                 "id": {},
                 "jsonrpc": {
@@ -3799,7 +3987,7 @@
                 "result": {}
             }
         },
-        "models.APIKeyConfig": {
+        "suse-ai-up_pkg_models.APIKeyConfig": {
             "type": "object",
             "properties": {
                 "key": {
@@ -3815,20 +4003,20 @@
                 }
             }
         },
-        "models.AdapterAuthConfig": {
+        "suse-ai-up_pkg_models.AdapterAuthConfig": {
             "type": "object",
             "properties": {
                 "apiKey": {
-                    "$ref": "#/definitions/models.APIKeyConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.APIKeyConfig"
                 },
                 "basic": {
-                    "$ref": "#/definitions/models.BasicAuthConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.BasicAuthConfig"
                 },
                 "bearerToken": {
-                    "$ref": "#/definitions/models.BearerTokenConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.BearerTokenConfig"
                 },
                 "oauth": {
-                    "$ref": "#/definitions/models.OAuthConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.OAuthConfig"
                 },
                 "required": {
                     "description": "true = require auth, false = optional",
@@ -3840,7 +4028,7 @@
                 }
             }
         },
-        "models.AdapterData": {
+        "suse-ai-up_pkg_models.AdapterData": {
             "type": "object",
             "properties": {
                 "apiBaseUrl": {
@@ -3861,7 +4049,7 @@
                     "description": "Authentication configuration",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig"
                         }
                     ]
                 },
@@ -3873,7 +4061,7 @@
                 "connectionType": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ConnectionType"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ConnectionType"
                         }
                     ],
                     "example": "StreamableHttp"
@@ -3900,7 +4088,7 @@
                     "description": "For MCP client configuration (alternative to Command/Args)",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.MCPClientConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPClientConfig"
                         }
                     ]
                 },
@@ -3908,7 +4096,7 @@
                     "description": "MCP Functionality (discovered from server)",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.MCPFunctionality"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPFunctionality"
                         }
                     ]
                 },
@@ -3919,7 +4107,7 @@
                 "protocol": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ServerProtocol"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ServerProtocol"
                         }
                     ],
                     "example": "MCP"
@@ -3937,14 +4125,21 @@
                     "description": "For sidecar stdio deployment",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.SidecarConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.SidecarConfig"
                         }
                     ]
+                },
+                "sourceAdapters": {
+                    "description": "For Virtual aggregation",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "status": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.AdapterLifecycleStatus"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterLifecycleStatus"
                         }
                     ],
                     "example": "ready"
@@ -3965,7 +4160,7 @@
                 }
             }
         },
-        "models.AdapterGroupAssignment": {
+        "suse-ai-up_pkg_models.AdapterGroupAssignment": {
             "type": "object",
             "properties": {
                 "adapterId": {
@@ -3992,7 +4187,7 @@
                 }
             }
         },
-        "models.AdapterLifecycleStatus": {
+        "suse-ai-up_pkg_models.AdapterLifecycleStatus": {
             "type": "string",
             "enum": [
                 "not ready",
@@ -4005,7 +4200,7 @@
                 "AdapterLifecycleStatusError"
             ]
         },
-        "models.AdapterResource": {
+        "suse-ai-up_pkg_models.AdapterResource": {
             "type": "object",
             "properties": {
                 "apiBaseUrl": {
@@ -4026,7 +4221,7 @@
                     "description": "Authentication configuration",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.AdapterAuthConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterAuthConfig"
                         }
                     ]
                 },
@@ -4038,7 +4233,7 @@
                 "connectionType": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ConnectionType"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ConnectionType"
                         }
                     ],
                     "example": "StreamableHttp"
@@ -4079,7 +4274,7 @@
                     "description": "For MCP client configuration (alternative to Command/Args)",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.MCPClientConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPClientConfig"
                         }
                     ]
                 },
@@ -4087,7 +4282,7 @@
                     "description": "MCP Functionality (discovered from server)",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.MCPFunctionality"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.MCPFunctionality"
                         }
                     ]
                 },
@@ -4098,7 +4293,7 @@
                 "protocol": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ServerProtocol"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ServerProtocol"
                         }
                     ],
                     "example": "MCP"
@@ -4116,14 +4311,21 @@
                     "description": "For sidecar stdio deployment",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.SidecarConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.SidecarConfig"
                         }
                     ]
+                },
+                "sourceAdapters": {
+                    "description": "For Virtual aggregation",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "status": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.AdapterLifecycleStatus"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AdapterLifecycleStatus"
                         }
                     ],
                     "example": "ready"
@@ -4144,7 +4346,7 @@
                 }
             }
         },
-        "models.AdapterStatus": {
+        "suse-ai-up_pkg_models.AdapterStatus": {
             "type": "object",
             "properties": {
                 "availableReplicas": {
@@ -4169,7 +4371,7 @@
                 }
             }
         },
-        "models.AuthAnalysis": {
+        "suse-ai-up_pkg_models.AuthAnalysis": {
             "type": "object",
             "properties": {
                 "confidence": {
@@ -4197,7 +4399,7 @@
                 }
             }
         },
-        "models.AuthToken": {
+        "suse-ai-up_pkg_models.AuthToken": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -4218,7 +4420,7 @@
                 }
             }
         },
-        "models.AutoSpawnConfig": {
+        "suse-ai-up_pkg_models.AutoSpawnConfig": {
             "type": "object",
             "properties": {
                 "args": {
@@ -4236,7 +4438,7 @@
                     "description": "\"LocalStdio\" or \"StreamableHttp\"",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ConnectionType"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ConnectionType"
                         }
                     ]
                 },
@@ -4264,7 +4466,7 @@
                 }
             }
         },
-        "models.BasicAuthConfig": {
+        "suse-ai-up_pkg_models.BasicAuthConfig": {
             "type": "object",
             "properties": {
                 "password": {
@@ -4275,7 +4477,7 @@
                 }
             }
         },
-        "models.BearerTokenConfig": {
+        "suse-ai-up_pkg_models.BearerTokenConfig": {
             "type": "object",
             "properties": {
                 "dynamic": {
@@ -4291,24 +4493,26 @@
                 }
             }
         },
-        "models.ConnectionType": {
+        "suse-ai-up_pkg_models.ConnectionType": {
             "type": "string",
             "enum": [
                 "SSE",
                 "StreamableHttp",
                 "RemoteHttp",
                 "LocalStdio",
-                "SidecarStdio"
+                "SidecarStdio",
+                "Virtual"
             ],
             "x-enum-varnames": [
                 "ConnectionTypeSSE",
                 "ConnectionTypeStreamableHttp",
                 "ConnectionTypeRemoteHttp",
                 "ConnectionTypeLocalStdio",
-                "ConnectionTypeSidecarStdio"
+                "ConnectionTypeSidecarStdio",
+                "ConnectionTypeVirtual"
             ]
         },
-        "models.DiscoveredServer": {
+        "suse-ai-up_pkg_models.DiscoveredServer": {
             "type": "object",
             "properties": {
                 "address": {
@@ -4316,20 +4520,20 @@
                     "example": "http://192.168.1.100:8000"
                 },
                 "auth_info": {
-                    "$ref": "#/definitions/models.AuthAnalysis"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.AuthAnalysis"
                 },
                 "capabilities": {
                     "description": "Enhanced fields for deep interrogation",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.McpCapabilities"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.McpCapabilities"
                         }
                     ]
                 },
                 "connection": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ConnectionType"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ConnectionType"
                         }
                     ],
                     "example": "StreamableHttp"
@@ -4357,13 +4561,13 @@
                 "prompts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.McpPrompt"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.McpPrompt"
                     }
                 },
                 "protocol": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.ServerProtocol"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.ServerProtocol"
                         }
                     ],
                     "example": "MCP"
@@ -4374,13 +4578,13 @@
                 "resource_templates": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.McpResourceTemplate"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.McpResourceTemplate"
                     }
                 },
                 "resources": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.McpResource"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.McpResource"
                     }
                 },
                 "server_version": {
@@ -4393,7 +4597,7 @@
                 "tools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.McpTool"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.McpTool"
                     }
                 },
                 "vulnerability_score": {
@@ -4402,7 +4606,7 @@
                 }
             }
         },
-        "models.EnvironmentVariable": {
+        "suse-ai-up_pkg_models.EnvironmentVariable": {
             "type": "object",
             "properties": {
                 "default": {
@@ -4425,7 +4629,7 @@
                 }
             }
         },
-        "models.GitHubConfig": {
+        "suse-ai-up_pkg_models.GitHubConfig": {
             "type": "object",
             "properties": {
                 "api_endpoint": {
@@ -4446,7 +4650,7 @@
                 }
             }
         },
-        "models.Group": {
+        "suse-ai-up_pkg_models.Group": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -4489,7 +4693,7 @@
                 }
             }
         },
-        "models.MCPArgument": {
+        "suse-ai-up_pkg_models.MCPArgument": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4503,18 +4707,18 @@
                 }
             }
         },
-        "models.MCPClientConfig": {
+        "suse-ai-up_pkg_models.MCPClientConfig": {
             "type": "object",
             "properties": {
                 "mcpServers": {
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/definitions/models.MCPServerConfig"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServerConfig"
                     }
                 }
             }
         },
-        "models.MCPFunctionality": {
+        "suse-ai-up_pkg_models.MCPFunctionality": {
             "type": "object",
             "properties": {
                 "lastRefreshed": {
@@ -4523,33 +4727,33 @@
                 "prompts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.MCPPrompt"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPPrompt"
                     }
                 },
                 "resources": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.MCPResource"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPResource"
                     }
                 },
                 "serverInfo": {
-                    "$ref": "#/definitions/models.MCPServerInfo"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.MCPServerInfo"
                 },
                 "tools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.MCPTool"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPTool"
                     }
                 }
             }
         },
-        "models.MCPPrompt": {
+        "suse-ai-up_pkg_models.MCPPrompt": {
             "type": "object",
             "properties": {
                 "arguments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.MCPArgument"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPArgument"
                     }
                 },
                 "description": {
@@ -4560,7 +4764,7 @@
                 }
             }
         },
-        "models.MCPResource": {
+        "suse-ai-up_pkg_models.MCPResource": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4577,7 +4781,7 @@
                 }
             }
         },
-        "models.MCPServer": {
+        "suse-ai-up_pkg_models.MCPServer": {
             "type": "object",
             "properties": {
                 "_meta": {
@@ -4588,7 +4792,7 @@
                     "description": "Auto-spawning configuration",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.AutoSpawnConfig"
+                            "$ref": "#/definitions/suse-ai-up_pkg_models.AutoSpawnConfig"
                         }
                     ]
                 },
@@ -4599,7 +4803,7 @@
                     "type": "string"
                 },
                 "github_config": {
-                    "$ref": "#/definitions/models.GitHubConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.GitHubConfig"
                 },
                 "id": {
                     "type": "string"
@@ -4614,23 +4818,23 @@
                 "packages": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Package"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.Package"
                     }
                 },
                 "repository": {
-                    "$ref": "#/definitions/models.Repository"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.Repository"
                 },
                 "routeAssignments": {
                     "description": "User/group access control",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.RouteAssignment"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.RouteAssignment"
                     }
                 },
                 "tools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.MCPTool"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.MCPTool"
                     }
                 },
                 "url": {
@@ -4645,7 +4849,7 @@
                 }
             }
         },
-        "models.MCPServerConfig": {
+        "suse-ai-up_pkg_models.MCPServerConfig": {
             "type": "object",
             "properties": {
                 "args": {
@@ -4674,7 +4878,7 @@
                 }
             }
         },
-        "models.MCPServerInfo": {
+        "suse-ai-up_pkg_models.MCPServerInfo": {
             "type": "object",
             "properties": {
                 "capabilities": {
@@ -4692,7 +4896,7 @@
                 }
             }
         },
-        "models.MCPTool": {
+        "suse-ai-up_pkg_models.MCPTool": {
             "type": "object",
             "properties": {
                 "config": {
@@ -4716,7 +4920,7 @@
                 }
             }
         },
-        "models.McpArgument": {
+        "suse-ai-up_pkg_models.McpArgument": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4730,7 +4934,7 @@
                 }
             }
         },
-        "models.McpCapabilities": {
+        "suse-ai-up_pkg_models.McpCapabilities": {
             "type": "object",
             "properties": {
                 "completions": {
@@ -4753,13 +4957,13 @@
                 }
             }
         },
-        "models.McpPrompt": {
+        "suse-ai-up_pkg_models.McpPrompt": {
             "type": "object",
             "properties": {
                 "arguments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.McpArgument"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.McpArgument"
                     }
                 },
                 "description": {
@@ -4770,7 +4974,7 @@
                 }
             }
         },
-        "models.McpResource": {
+        "suse-ai-up_pkg_models.McpResource": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4787,7 +4991,7 @@
                 }
             }
         },
-        "models.McpResourceTemplate": {
+        "suse-ai-up_pkg_models.McpResourceTemplate": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4804,7 +5008,7 @@
                 }
             }
         },
-        "models.McpTool": {
+        "suse-ai-up_pkg_models.McpTool": {
             "type": "object",
             "properties": {
                 "description": {
@@ -4819,7 +5023,7 @@
                 }
             }
         },
-        "models.OAuthConfig": {
+        "suse-ai-up_pkg_models.OAuthConfig": {
             "type": "object",
             "properties": {
                 "authUrl": {
@@ -4845,13 +5049,13 @@
                 }
             }
         },
-        "models.Package": {
+        "suse-ai-up_pkg_models.Package": {
             "type": "object",
             "properties": {
                 "environmentVariables": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EnvironmentVariable"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.EnvironmentVariable"
                     }
                 },
                 "identifier": {
@@ -4863,11 +5067,11 @@
                     "type": "string"
                 },
                 "transport": {
-                    "$ref": "#/definitions/models.Transport"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.Transport"
                 }
             }
         },
-        "models.Repository": {
+        "suse-ai-up_pkg_models.Repository": {
             "type": "object",
             "properties": {
                 "source": {
@@ -4879,7 +5083,7 @@
                 }
             }
         },
-        "models.RouteAssignment": {
+        "suse-ai-up_pkg_models.RouteAssignment": {
             "type": "object",
             "properties": {
                 "autoSpawn": {
@@ -4925,7 +5129,7 @@
                 }
             }
         },
-        "models.ScanConfig": {
+        "suse-ai-up_pkg_models.ScanConfig": {
             "type": "object",
             "properties": {
                 "excludeAddresses": {
@@ -4971,11 +5175,11 @@
                 }
             }
         },
-        "models.ScanJob": {
+        "suse-ai-up_pkg_models.ScanJob": {
             "type": "object",
             "properties": {
                 "config": {
-                    "$ref": "#/definitions/models.ScanConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.ScanConfig"
                 },
                 "error": {
                     "type": "string"
@@ -4987,7 +5191,7 @@
                 "results": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.DiscoveredServer"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.DiscoveredServer"
                     }
                 },
                 "startTime": {
@@ -4999,7 +5203,7 @@
                 }
             }
         },
-        "models.ServerProtocol": {
+        "suse-ai-up_pkg_models.ServerProtocol": {
             "type": "string",
             "enum": [
                 "MCP"
@@ -5008,7 +5212,7 @@
                 "ServerProtocolMCP"
             ]
         },
-        "models.SidecarConfig": {
+        "suse-ai-up_pkg_models.SidecarConfig": {
             "type": "object",
             "properties": {
                 "args": {
@@ -5070,7 +5274,7 @@
                 }
             }
         },
-        "models.Transport": {
+        "suse-ai-up_pkg_models.Transport": {
             "type": "object",
             "properties": {
                 "type": {
@@ -5079,7 +5283,7 @@
                 }
             }
         },
-        "models.User": {
+        "suse-ai-up_pkg_models.User": {
             "type": "object",
             "properties": {
                 "auth_provider": {
@@ -5135,7 +5339,7 @@
                 }
             }
         },
-        "plugins.ServiceCapability": {
+        "suse-ai-up_pkg_plugins.ServiceCapability": {
             "type": "object",
             "properties": {
                 "description": {
@@ -5154,7 +5358,7 @@
                 }
             }
         },
-        "plugins.ServiceHealth": {
+        "suse-ai-up_pkg_plugins.ServiceHealth": {
             "type": "object",
             "properties": {
                 "last_checked": {
@@ -5173,13 +5377,13 @@
                 }
             }
         },
-        "plugins.ServiceRegistration": {
+        "suse-ai-up_pkg_plugins.ServiceRegistration": {
             "type": "object",
             "properties": {
                 "capabilities": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/plugins.ServiceCapability"
+                        "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceCapability"
                     }
                 },
                 "last_heartbeat": {
@@ -5192,7 +5396,7 @@
                     "type": "string"
                 },
                 "service_type": {
-                    "$ref": "#/definitions/plugins.ServiceType"
+                    "$ref": "#/definitions/suse-ai-up_pkg_plugins.ServiceType"
                 },
                 "service_url": {
                     "type": "string"
@@ -5202,7 +5406,7 @@
                 }
             }
         },
-        "plugins.ServiceType": {
+        "suse-ai-up_pkg_plugins.ServiceType": {
             "type": "string",
             "enum": [
                 "smartagents",
@@ -5215,11 +5419,11 @@
                 "ServiceTypeVirtualMCP"
             ]
         },
-        "scanner.ScanJob": {
+        "suse-ai-up_pkg_scanner.ScanJob": {
             "type": "object",
             "properties": {
                 "config": {
-                    "$ref": "#/definitions/models.ScanConfig"
+                    "$ref": "#/definitions/suse-ai-up_pkg_models.ScanConfig"
                 },
                 "endTime": {
                     "type": "string"
@@ -5241,18 +5445,18 @@
                 "results": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.DiscoveredServer"
+                        "$ref": "#/definitions/suse-ai-up_pkg_models.DiscoveredServer"
                     }
                 },
                 "startTime": {
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/scanner.ScanStatus"
+                    "$ref": "#/definitions/suse-ai-up_pkg_scanner.ScanStatus"
                 }
             }
         },
-        "scanner.ScanStatus": {
+        "suse-ai-up_pkg_scanner.ScanStatus": {
             "type": "string",
             "enum": [
                 "pending",
@@ -5268,57 +5472,6 @@
                 "ScanStatusFailed",
                 "ScanStatusCancelled"
             ]
-        },
-        "service.ClientTokenResponse": {
-            "type": "object",
-            "properties": {
-                "expiresAt": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "service.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string"
-                }
-            }
-        },
-        "service.SessionReinitializeRequest": {
-            "type": "object",
-            "properties": {
-                "clientInfo": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "forceReinitialize": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "service.SessionReinitializeResponse": {
-            "type": "object",
-            "properties": {
-                "adapterName": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "sessionId": {
-                    "type": "string"
-                }
-            }
         }
     },
     "securityDefinitions": {

@@ -221,7 +221,7 @@ func TestAdapterService_CreateAdapter_SidecarStdio(t *testing.T) {
 	}
 
 	// Create adapter service (without sidecar manager for now)
-	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil)
+	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil, nil)
 
 	// Verify server was stored
 	storedServer, err := serverStore.GetMCPServer(testServer.ID)
@@ -268,7 +268,7 @@ func TestAdapterService_PermissionChecks(t *testing.T) {
 
 	// Setup Services
 	userGroupService := core_services.NewUserGroupService(userStore, groupStore)
-	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil)
+	service := NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil, nil)
 
 	// Setup Context
 	ctx := context.Background()

@@ -42,6 +42,8 @@ type CreateAdapterRequest struct {
 	EnvironmentVariables map[string]string         `json:"environmentVariables"`
 	Authentication       *models.AdapterAuthConfig `json:"authentication"`
 	DeploymentMethod     string                    `json:"deploymentMethod,omitempty"` // "helm", "docker", "systemd", "local"
+	ConnectionType       models.ConnectionType     `json:"connectionType,omitempty"`
+	SourceAdapters       []string                  `json:"sourceAdapters,omitempty"`
 }
 
 // AddAdapterToGroupRequest represents a request to add an adapter to a group
@@ -233,13 +235,20 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.AdapterLogger.Info("Decoded request: mcpServerId=%s, name=%s", req.MCPServerID, req.Name)
+	logging.AdapterLogger.Info("Decoded request: mcpServerId=%s, name=%s, connectionType=%s", req.MCPServerID, req.Name, req.ConnectionType)
 
 	// Basic validation
-	if req.MCPServerID == "" || req.Name == "" {
+	if req.Name == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "mcpServerId and name are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name is required"})
+		return
+	}
+
+	if req.ConnectionType != models.ConnectionTypeVirtual && req.MCPServerID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "mcpServerId is required for non-virtual adapters"})
 		return
 	}
 
@@ -249,44 +258,58 @@ func (h *AdapterHandler) CreateAdapter(w http.ResponseWriter, r *http.Request) {
 		userID = "default-user" // For development
 	}
 
-	// Handle Trento-specific configuration
-	if req.MCPServerID == "suse-trento" {
-		if trentoConfig, exists := req.EnvironmentVariables["TRENTO_CONFIG"]; exists && trentoConfig != "" {
-			// Parse Trento configuration
-			trentoURL, token, err := parseTrentoConfig(trentoConfig)
-			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid TRENTO_CONFIG format: " + err.Error()})
-				return
-			}
+	var adapter *models.AdapterResource
+	var err error
 
-			// Set up proper environment variables for Trento
-			req.EnvironmentVariables["TRENTO_URL"] = trentoURL
-			delete(req.EnvironmentVariables, "TRENTO_CONFIG") // Remove the combined config
+	if req.ConnectionType == models.ConnectionTypeVirtual {
+		// Create virtual adapter
+		adapter, err = h.adapterService.CreateVirtualAdapter(
+			r.Context(),
+			userID,
+			req.Name,
+			req.SourceAdapters,
+			h.userGroupService,
+		)
+	} else {
+		// Handle Trento-specific configuration
+		if req.MCPServerID == "suse-trento" {
+			if trentoConfig, exists := req.EnvironmentVariables["TRENTO_CONFIG"]; exists && trentoConfig != "" {
+				// Parse Trento configuration
+				trentoURL, token, err := parseTrentoConfig(trentoConfig)
+				if err != nil {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusBadRequest)
+					json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid TRENTO_CONFIG format: " + err.Error()})
+					return
+				}
 
-			// Set up authentication with Trento PAT
-			if req.Authentication == nil {
-				req.Authentication = &models.AdapterAuthConfig{}
-			}
-			req.Authentication.Type = "bearer"
-			req.Authentication.BearerToken = &models.BearerTokenConfig{
-				Token:   token,
-				Dynamic: false, // Static token for Trento PAT
+				// Set up proper environment variables for Trento
+				req.EnvironmentVariables["TRENTO_URL"] = trentoURL
+				delete(req.EnvironmentVariables, "TRENTO_CONFIG") // Remove the combined config
+
+				// Set up authentication with Trento PAT
+				if req.Authentication == nil {
+					req.Authentication = &models.AdapterAuthConfig{}
+				}
+				req.Authentication.Type = "bearer"
+				req.Authentication.BearerToken = &models.BearerTokenConfig{
+					Token:   token,
+					Dynamic: false, // Static token for Trento PAT
+				}
 			}
 		}
-	}
 
-	// Create the adapter
-	adapter, err := h.adapterService.CreateAdapter(
-		r.Context(),
-		userID,
-		req.MCPServerID,
-		req.Name,
-		req.EnvironmentVariables,
-		req.Authentication,
-		h.userGroupService,
-	)
+		// Create the adapter
+		adapter, err = h.adapterService.CreateAdapter(
+			r.Context(),
+			userID,
+			req.MCPServerID,
+			req.Name,
+			req.EnvironmentVariables,
+			req.Authentication,
+			h.userGroupService,
+		)
+	}
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

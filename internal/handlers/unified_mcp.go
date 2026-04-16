@@ -46,10 +46,10 @@ type MCPRequest struct {
 
 // MCPResponse represents an MCP JSON-RPC response
 type MCPResponse struct {
-	JSONRPC string        `json:"jsonrpc"`
-	ID      interface{}   `json:"id,omitempty"`
-	Result  interface{}   `json:"result,omitempty"`
-	Error   *MCPRPCError  `json:"error,omitempty"`
+	JSONRPC string       `json:"jsonrpc"`
+	ID      interface{}  `json:"id,omitempty"`
+	Result  interface{}  `json:"result,omitempty"`
+	Error   *MCPRPCError `json:"error,omitempty"`
 }
 
 // MCPRPCError represents a JSON-RPC error
@@ -102,9 +102,9 @@ type ToolCallParams struct {
 	Arguments map[string]interface{} `json:"arguments,omitempty"`
 }
 
-// HandleUnifiedMCP handles the unified MCP endpoint
-// @Summary Unified MCP endpoint
-// @Description Aggregates tools, resources, and prompts from all adapters
+// HandleUnifiedMCP handles the global unified MCP endpoint
+// @Summary Global Unified MCP endpoint
+// @Description Aggregates tools, resources, and prompts from all accessible adapters
 // @Tags mcp
 // @Accept json
 // @Produce json
@@ -114,6 +114,26 @@ type ToolCallParams struct {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /api/v1/mcp [post]
 func (h *UnifiedMCPHandler) HandleUnifiedMCP(w http.ResponseWriter, r *http.Request) {
+	h.handleUnifiedMCPInternal(w, r)
+}
+
+// HandleVirtualMCP handles a specific virtual MCP endpoint
+// @Summary Virtual MCP endpoint
+// @Description Aggregates tools, resources, and prompts from a specific virtual adapter
+// @Tags mcp
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string false "User ID" default(default-user)
+// @Param name path string true "Virtual Adapter Name"
+// @Success 200 {object} MCPResponse "MCP response"
+// @Failure 400 {object} ErrorResponse "Invalid request"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/mcp/{name} [post]
+func (h *UnifiedMCPHandler) HandleVirtualMCP(w http.ResponseWriter, r *http.Request) {
+	h.handleUnifiedMCPInternal(w, r)
+}
+
+func (h *UnifiedMCPHandler) handleUnifiedMCPInternal(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		h.sendError(w, nil, -32600, "Only POST method is supported")
 		return
@@ -139,7 +159,49 @@ func (h *UnifiedMCPHandler) HandleUnifiedMCP(w http.ResponseWriter, r *http.Requ
 		userID = "default-user"
 	}
 
-	logging.ProxyLogger.Info("UnifiedMCP: Handling method %s for user %s", req.Method, userID)
+	// Determine if this is a request for a specific virtual adapter
+	// Path could be /api/v1/mcp or /api/v1/mcp/some-name
+	path := r.URL.Path
+	virtualAdapterName := ""
+	if strings.HasPrefix(path, "/api/v1/mcp/") {
+		virtualAdapterName = strings.TrimPrefix(path, "/api/v1/mcp/")
+	}
+
+	var adapters []models.AdapterResource
+	if virtualAdapterName != "" {
+		logging.ProxyLogger.Info("UnifiedMCP: Handling virtual adapter %s for user %s", virtualAdapterName, userID)
+		// Get the virtual adapter
+		virtualAdapter, err := h.adapterService.GetAdapter(r.Context(), userID, virtualAdapterName, h.userGroupService)
+		if err != nil {
+			h.sendError(w, req.ID, -32602, "Virtual adapter not found: "+virtualAdapterName)
+			return
+		}
+
+		if virtualAdapter.ConnectionType != models.ConnectionTypeVirtual {
+			h.sendError(w, req.ID, -32602, "Adapter is not a virtual adapter: "+virtualAdapterName)
+			return
+		}
+
+		// Load source adapters
+		for _, sourceID := range virtualAdapter.SourceAdapters {
+			adapter, err := h.adapterService.GetAdapter(r.Context(), userID, sourceID, h.userGroupService)
+			if err != nil {
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to load source adapter %s for virtual adapter %s: %v", sourceID, virtualAdapterName, err)
+				continue
+			}
+			adapters = append(adapters, *adapter)
+		}
+	} else {
+		logging.ProxyLogger.Info("UnifiedMCP: Handling global aggregation for user %s", userID)
+		var err error
+		adapters, err = h.adapterService.ListAdapters(r.Context(), userID, h.userGroupService)
+		if err != nil {
+			h.sendError(w, req.ID, -32603, "Failed to list adapters: "+err.Error())
+			return
+		}
+	}
+
+	logging.ProxyLogger.Info("UnifiedMCP: Handling method %s for user %s with %d adapters", req.Method, userID, len(adapters))
 
 	var response *MCPResponse
 
@@ -151,17 +213,17 @@ func (h *UnifiedMCPHandler) HandleUnifiedMCP(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 		return
 	case "tools/list":
-		response = h.handleToolsList(r.Context(), &req, userID)
+		response = h.handleToolsList(r.Context(), &req, userID, adapters)
 	case "tools/call":
-		response = h.handleToolsCall(r.Context(), &req, userID, r.Header)
+		response = h.handleToolsCall(r.Context(), &req, userID, r.Header, adapters)
 	case "resources/list":
-		response = h.handleResourcesList(r.Context(), &req, userID)
+		response = h.handleResourcesList(r.Context(), &req, userID, adapters)
 	case "resources/read":
-		response = h.handleResourcesRead(r.Context(), &req, userID, r.Header)
+		response = h.handleResourcesRead(r.Context(), &req, userID, r.Header, adapters)
 	case "prompts/list":
-		response = h.handlePromptsList(r.Context(), &req, userID)
+		response = h.handlePromptsList(r.Context(), &req, userID, adapters)
 	case "prompts/get":
-		response = h.handlePromptsGet(r.Context(), &req, userID, r.Header)
+		response = h.handlePromptsGet(r.Context(), &req, userID, r.Header, adapters)
 	default:
 		response = &MCPResponse{
 			JSONRPC: "2.0",
@@ -195,17 +257,8 @@ func (h *UnifiedMCPHandler) handleInitialize(ctx context.Context, req *MCPReques
 	}
 }
 
-// handleToolsList aggregates tools from all adapters
-func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
-	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
-	if err != nil {
-		return &MCPResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
-		}
-	}
-
+// handleToolsList aggregates tools from a specific set of adapters
+func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest, userID string, adapters []models.AdapterResource) *MCPResponse {
 	var allTools []Tool
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -249,7 +302,7 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 }
 
 // handleToolsCall routes a tool call to the appropriate adapter
-func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest, userID string, headers http.Header, adapters []models.AdapterResource) *MCPResponse {
 	// Parse params
 	paramsJSON, err := json.Marshal(req.Params)
 	if err != nil {
@@ -282,13 +335,20 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 	adapterName := parts[0]
 	toolName := parts[1]
 
-	// Get the adapter
-	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
-	if err != nil {
+	// Find the adapter in the provided list
+	var adapter *models.AdapterResource
+	for _, a := range adapters {
+		if a.Name == adapterName {
+			adapter = &a
+			break
+		}
+	}
+
+	if adapter == nil {
 		return &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found in this context: " + adapterName},
 		}
 	}
 
@@ -314,17 +374,8 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
 }
 
-// handleResourcesList aggregates resources from all adapters
-func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
-	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
-	if err != nil {
-		return &MCPResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
-		}
-	}
-
+// handleResourcesList aggregates resources from a specific set of adapters
+func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPRequest, userID string, adapters []models.AdapterResource) *MCPResponse {
 	var allResources []Resource
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -369,7 +420,7 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 }
 
 // handleResourcesRead routes a resource read to the appropriate adapter
-func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPRequest, userID string, headers http.Header, adapters []models.AdapterResource) *MCPResponse {
 	// Parse params to get URI
 	paramsJSON, err := json.Marshal(req.Params)
 	if err != nil {
@@ -404,13 +455,20 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 	adapterName := parts[0]
 	originalURI := parts[1]
 
-	// Get the adapter
-	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
-	if err != nil {
+	// Find the adapter in the provided list
+	var adapter *models.AdapterResource
+	for _, a := range adapters {
+		if a.Name == adapterName {
+			adapter = &a
+			break
+		}
+	}
+
+	if adapter == nil {
 		return &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found in this context: " + adapterName},
 		}
 	}
 
@@ -425,17 +483,8 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
 }
 
-// handlePromptsList aggregates prompts from all adapters
-func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPRequest, userID string) *MCPResponse {
-	adapters, err := h.adapterService.ListAdapters(ctx, userID, h.userGroupService)
-	if err != nil {
-		return &MCPResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32603, Message: "Failed to list adapters: " + err.Error()},
-		}
-	}
-
+// handlePromptsList aggregates prompts from a specific set of adapters
+func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPRequest, userID string, adapters []models.AdapterResource) *MCPResponse {
 	var allPrompts []Prompt
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -479,7 +528,7 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 }
 
 // handlePromptsGet routes a prompt get to the appropriate adapter
-func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPRequest, userID string, headers http.Header) *MCPResponse {
+func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPRequest, userID string, headers http.Header, adapters []models.AdapterResource) *MCPResponse {
 	// Parse params to get prompt name
 	paramsJSON, err := json.Marshal(req.Params)
 	if err != nil {
@@ -515,13 +564,20 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 	adapterName := parts[0]
 	promptName := parts[1]
 
-	// Get the adapter
-	adapter, err := h.adapterService.GetAdapter(ctx, userID, adapterName, h.userGroupService)
-	if err != nil {
+	// Find the adapter in the provided list
+	var adapter *models.AdapterResource
+	for _, a := range adapters {
+		if a.Name == adapterName {
+			adapter = &a
+			break
+		}
+	}
+
+	if adapter == nil {
 		return &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found: " + adapterName},
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter not found in this context: " + adapterName},
 		}
 	}
 
