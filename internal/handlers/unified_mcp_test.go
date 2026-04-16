@@ -670,18 +670,10 @@ func TestForwardToAdapter_NoRemoteURL(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user", req, http.Header{})
+	_, err := handler.makeAdapterRequest(context.Background(), adapter.RemoteUrl, "", "test-user", req)
 
-	if resp.Error == nil {
-		t.Fatal("Expected error for adapter with no remote URL")
-	}
-
-	if resp.Error.Code != -32602 {
-		t.Errorf("Expected error code -32602, got %d", resp.Error.Code)
-	}
-
-	if resp.Error.Message != "Adapter has no URL" {
-		t.Errorf("Unexpected error message: %s", resp.Error.Message)
+	if err == nil {
+		t.Fatal("Expected error for empty URL")
 	}
 }
 
@@ -720,13 +712,14 @@ func TestForwardToAdapter_HeaderForwarding(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	headers := http.Header{}
-	headers.Set("X-User-ID", "test-user-123")
+	resp, err := handler.makeAdapterRequest(context.Background(), adapter.RemoteUrl, "", "test-user-123", req)
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user-123", req, headers)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	if resp.Error != nil {
-		t.Fatalf("Unexpected error: %v", resp.Error)
+		t.Fatalf("Unexpected error in response: %v", resp.Error)
 	}
 
 	if receivedHeaders.Get("X-User-ID") != "test-user-123" {

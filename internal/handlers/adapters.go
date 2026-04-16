@@ -784,7 +784,8 @@ func (h *AdapterHandler) proxyToRemoteMCP(w http.ResponseWriter, r *http.Request
 
 	// Copy headers from the original request, but replace authorization
 	for key, values := range r.Header {
-		if strings.ToLower(key) == "authorization" {
+		lowerKey := strings.ToLower(key)
+		if lowerKey == "authorization" {
 			// For GitHub, use the personal access token from environment variables
 			if token := adapter.EnvironmentVariables["GITHUB_PERSONAL_ACCESS_TOKEN"]; token != "" {
 				remoteReq.Header.Set("Authorization", "Bearer "+token)
@@ -792,12 +793,18 @@ func (h *AdapterHandler) proxyToRemoteMCP(w http.ResponseWriter, r *http.Request
 				remoteReq.Header.Set("Authorization", "Bearer "+token)
 			}
 			// Skip the original authorization header
+		} else if lowerKey == "accept" {
+			// Skip original accept header, we'll set it explicitly below
+			continue
 		} else {
 			for _, value := range values {
 				remoteReq.Header.Add(key, value)
 			}
 		}
 	}
+
+	// Ensure Accept header includes required types for MCP compatibility
+	remoteReq.Header.Set("Accept", "application/json, text/event-stream")
 
 	// Ensure we have the proper content type for MCP
 	if remoteReq.Header.Get("Content-Type") == "" {
@@ -820,6 +827,13 @@ func (h *AdapterHandler) proxyToRemoteMCP(w http.ResponseWriter, r *http.Request
 
 	// Copy the response headers
 	for key, values := range resp.Header {
+		// Skip headers that are specific to the transport layer
+		// Since http.Client transparently handles decompression, we must not pass
+		// the Content-Encoding header back to the client, otherwise the client
+		// will try to decompress an already decompressed body.
+		if strings.ToLower(key) == "content-encoding" || strings.ToLower(key) == "content-length" {
+			continue
+		}
 		for _, value := range values {
 			w.Header().Add(key, value)
 		}
@@ -853,15 +867,16 @@ func (h *AdapterHandler) proxyToSidecar(w http.ResponseWriter, r *http.Request, 
 
 	// Copy headers
 	for key, values := range r.Header {
+		if strings.ToLower(key) == "accept" {
+			continue // We will explicitly set Accept header below
+		}
 		for _, value := range values {
 			sidecarReq.Header.Add(key, value)
 		}
 	}
 
-	// Ensure Accept header includes required types for MCP HTTP transport
-	if sidecarReq.Header.Get("Accept") == "" {
-		sidecarReq.Header.Set("Accept", "application/json, text/event-stream")
-	}
+	// Force Accept header to include required types for MCP HTTP transport
+	sidecarReq.Header.Set("Accept", "application/json, text/event-stream")
 
 	// Set Host header to localhost for MCP servers that may check host
 	sidecarReq.Host = "localhost"

@@ -245,12 +245,9 @@ func (h *UnifiedMCPHandler) resolveAdapterURL(adapter models.AdapterResource) st
 		return ""
 	}
 
-	// SPECIAL CASE: If calling ourselves (detected by /api/v1/adapters/ path), use 127.0.0.1
-	// This is more robust than checking for specific IP or port.
 	if strings.Contains(targetURL, "/api/v1/adapters/") {
 		parts := strings.SplitN(targetURL, "/api/v1/adapters/", 2)
 		if len(parts) == 2 {
-			// Always use 127.0.0.1:8911 for internal proxy calls
 			newURL := "http://127.0.0.1:8911/api/v1/adapters/" + parts[1]
 			logging.ProxyLogger.Info("UnifiedMCP: Internal loopback redirected: %s -> %s", targetURL, newURL)
 			return newURL
@@ -344,7 +341,11 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 		Params:  map[string]interface{}{"name": toolName, "arguments": params.Arguments},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
+	resp, err := h.makeAdapterRequest(ctx, targetURL, token, userID, &unprefixedReq)
+	if err != nil {
+		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32603, Message: err.Error()}}
+	}
+	return resp
 }
 
 func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPRequest, userID string, adapters []models.AdapterResource) *MCPResponse {
@@ -428,7 +429,11 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 		Params:  map[string]interface{}{"uri": originalURI},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
+	resp, err := h.makeAdapterRequest(ctx, targetURL, token, userID, &unprefixedReq)
+	if err != nil {
+		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32603, Message: err.Error()}}
+	}
+	return resp
 }
 
 func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPRequest, userID string, adapters []models.AdapterResource) *MCPResponse {
@@ -512,7 +517,11 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 		Params:  map[string]interface{}{"name": promptName, "arguments": params.Arguments},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
+	resp, err := h.makeAdapterRequest(ctx, targetURL, token, userID, &unprefixedReq)
+	if err != nil {
+		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32603, Message: err.Error()}}
+	}
+	return resp
 }
 
 func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken, userID string) ([]Tool, error) {
@@ -570,6 +579,106 @@ func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter
 }
 
 func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapterToken, userID string, req *MCPRequest) (*MCPResponse, error) {
+	// Internal loopback optimization
+	if strings.Contains(url, "localhost") {
+		url = strings.Replace(url, "localhost", "127.0.0.1", 1)
+	}
+
+	// Stateful MCP initialization for loopback calls
+	sessionID := ""
+	if req.Method != "initialize" && req.Method != "initialized" && strings.Contains(url, "127.0.0.1") {
+		initReq := MCPRequest{
+			JSONRPC: "2.0",
+			ID:      "init-1",
+			Method:  "initialize",
+			Params: map[string]interface{}{
+				"protocolVersion": "2024-11-05",
+				"capabilities":    map[string]interface{}{},
+				"clientInfo": map[string]interface{}{
+					"name":    "suse-ai-unified-proxy",
+					"version": "1.0.0",
+				},
+			},
+		}
+
+		initBody, _ := json.Marshal(initReq)
+		initHttpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(initBody))
+		initHttpReq.Header.Set("Content-Type", "application/json")
+		initHttpReq.Header.Set("Accept", "application/json, text/event-stream")
+		if adapterToken != "" {
+			initHttpReq.Header.Set("Authorization", "Bearer "+adapterToken)
+		}
+		if userID != "" {
+			initHttpReq.Header.Set("X-User-ID", userID)
+		}
+
+		if initResp, err := h.httpClient.Do(initHttpReq); err == nil {
+			defer initResp.Body.Close()
+			logging.ProxyLogger.Info("UnifiedMCP: Initialize response status from %s: %d", url, initResp.StatusCode)
+			if initResp.StatusCode == http.StatusOK {
+				// Try to get session ID from header first
+				sessionID = initResp.Header.Get("Mcp-Session-Id")
+				if sessionID == "" {
+					sessionID = initResp.Header.Get("mcp-session-id")
+				}
+
+				if sessionID != "" {
+					logging.ProxyLogger.Info("UnifiedMCP: Extracted session ID from header: %s", sessionID)
+				}
+
+				respBody, _ := io.ReadAll(initResp.Body)
+				bodyStr := string(respBody)
+				if strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ") {
+					lines := strings.Split(bodyStr, "\n")
+					for _, line := range lines {
+						if strings.HasPrefix(line, "data: ") {
+							bodyStr = strings.TrimPrefix(line, "data: ")
+							break
+						}
+					}
+				}
+
+				var initResult map[string]interface{}
+				if err := json.Unmarshal([]byte(bodyStr), &initResult); err == nil {
+					if sessionID == "" {
+						if result, ok := initResult["result"].(map[string]interface{}); ok {
+							if serverInfo, ok := result["serverInfo"].(map[string]interface{}); ok {
+								if name, ok := serverInfo["name"].(string); ok {
+									sessionID = fmt.Sprintf("unified-api-%s", name)
+								}
+							}
+						}
+					}
+				}
+
+				if sessionID == "" {
+					sessionID = "unified-api-session"
+				}
+
+				initializedReq := MCPRequest{
+					JSONRPC: "2.0",
+					Method:  "notifications/initialized",
+					Params:  map[string]interface{}{},
+				}
+				notifBody, _ := json.Marshal(initializedReq)
+				notifHttpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(notifBody))
+				notifHttpReq.Header.Set("Content-Type", "application/json")
+				notifHttpReq.Header.Set("Accept", "application/json, text/event-stream")
+				if adapterToken != "" {
+					notifHttpReq.Header.Set("Authorization", "Bearer "+adapterToken)
+				}
+				if userID != "" {
+					notifHttpReq.Header.Set("X-User-ID", userID)
+				}
+				notifHttpReq.Header.Set("mcp-session-id", sessionID)
+
+				if notifResp, err := h.httpClient.Do(notifHttpReq); err == nil {
+					notifResp.Body.Close()
+				}
+			}
+		}
+	}
+
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -586,6 +695,10 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapter
 	if userID != "" {
 		httpReq.Header.Set("X-User-ID", userID)
 	}
+	if sessionID != "" {
+		httpReq.Header.Set("mcp-session-id", sessionID)
+	}
+
 	resp, err := h.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, err
@@ -596,40 +709,21 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapter
 		return nil, fmt.Errorf("adapter returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := string(respBody)
+	if strings.Contains(bodyStr, "event: ") && strings.Contains(bodyStr, "data: ") {
+		lines := strings.Split(bodyStr, "\n")
+		for _, line := range lines {
+			if strings.HasPrefix(line, "data: ") {
+				bodyStr = strings.TrimPrefix(line, "data: ")
+				break
+			}
+		}
+	}
 	var mcpResp MCPResponse
-	json.Unmarshal(respBody, &mcpResp)
+	if err := json.Unmarshal([]byte(bodyStr), &mcpResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w. Body: %s", err, bodyStr)
+	}
 	return &mcpResp, nil
-}
-
-func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, url, adapterToken, userID string, req *MCPRequest, headers http.Header) *MCPResponse {
-	if url == "" {
-		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32602, Message: "Adapter has no URL"}}
-	}
-	body, _ := json.Marshal(req)
-	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/json, text/event-stream")
-	if adapterToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+adapterToken)
-	}
-	if userID != "" {
-		httpReq.Header.Set("X-User-ID", userID)
-	} else if userIDHeader := headers.Get("X-User-ID"); userIDHeader != "" {
-		httpReq.Header.Set("X-User-ID", userIDHeader)
-	}
-	resp, err := h.httpClient.Do(httpReq)
-	if err != nil {
-		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32603, Message: "Failed to contact adapter: " + err.Error()}}
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return &MCPResponse{JSONRPC: "2.0", ID: req.ID, Error: &MCPRPCError{Code: -32603, Message: fmt.Sprintf("Adapter returned status %d: %s", resp.StatusCode, string(respBody))}}
-	}
-	respBody, _ := io.ReadAll(resp.Body)
-	var mcpResp MCPResponse
-	json.Unmarshal(respBody, &mcpResp)
-	return &mcpResp
 }
 
 func (h *UnifiedMCPHandler) sendError(w http.ResponseWriter, id interface{}, code int, message string) {
