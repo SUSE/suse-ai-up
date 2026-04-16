@@ -109,6 +109,7 @@ type ToolCallParams struct {
 // @Accept json
 // @Produce json
 // @Param X-User-ID header string false "User ID" default(default-user)
+// @Param request body MCPRequest true "MCP Request Body"
 // @Success 200 {object} MCPResponse "MCP response"
 // @Failure 400 {object} ErrorResponse "Invalid request"
 // @Failure 500 {object} ErrorResponse "Internal server error"
@@ -125,6 +126,7 @@ func (h *UnifiedMCPHandler) HandleUnifiedMCP(w http.ResponseWriter, r *http.Requ
 // @Produce json
 // @Param X-User-ID header string false "User ID" default(default-user)
 // @Param name path string true "Virtual Adapter Name"
+// @Param request body MCPRequest true "MCP Request Body"
 // @Success 200 {object} MCPResponse "MCP response"
 // @Failure 400 {object} ErrorResponse "Invalid request"
 // @Failure 500 {object} ErrorResponse "Internal server error"
@@ -146,6 +148,11 @@ func (h *UnifiedMCPHandler) handleUnifiedMCPInternal(w http.ResponseWriter, r *h
 		return
 	}
 	defer r.Body.Close()
+
+	if len(body) == 0 {
+		h.sendError(w, nil, -32700, "Empty request body. A valid JSON-RPC request is required.")
+		return
+	}
 
 	var req MCPRequest
 	if err := json.Unmarshal(body, &req); err != nil {

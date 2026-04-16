@@ -2318,6 +2318,15 @@ const docTemplate = `{
                         "description": "User ID",
                         "name": "X-User-ID",
                         "in": "header"
+                    },
+                    {
+                        "description": "MCP Request Body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MCPRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2369,6 +2378,15 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "MCP Request Body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.MCPRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -3685,6 +3703,19 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 }
+            }
+        },
+        "internal_handlers.MCPRequest": {
+            "type": "object",
+            "properties": {
+                "id": {},
+                "jsonrpc": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "params": {}
             }
         },
         "internal_handlers.MCPResponse": {

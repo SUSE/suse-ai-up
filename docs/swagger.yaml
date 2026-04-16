@@ -179,6 +179,15 @@ definitions:
       message:
         type: string
     type: object
+  internal_handlers.MCPRequest:
+    properties:
+      id: {}
+      jsonrpc:
+        type: string
+      method:
+        type: string
+      params: {}
+    type: object
   internal_handlers.MCPResponse:
     properties:
       error:
@@ -2942,6 +2951,12 @@ paths:
         in: header
         name: X-User-ID
         type: string
+      - description: MCP Request Body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.MCPRequest'
       produces:
       - application/json
       responses:
@@ -2977,6 +2992,12 @@ paths:
         name: name
         required: true
         type: string
+      - description: MCP Request Body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.MCPRequest'
       produces:
       - application/json
       responses:
