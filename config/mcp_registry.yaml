@@ -1,11 +1,11 @@
 - name: uyuni
-  image: ghcr.io/uyuni-project/mcp-server-uyuni:latest
+  image: registry.suse.com/suse/agentic/mcp/multi-linux-manager:latest
   type: server
   meta:
     category: system-management
     sidecarConfig:
       commandType: docker
-      command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}} -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 ghcr.io/uyuni-project/mcp-server-uyuni:latest
+      command: docker run -it --rm {{uyuni.server}} {{uyuni.user}} {{uyuni.pass}} -e UYUNI_MCP_TRANSPORT=http -e UYUNI_MCP_HOST=0.0.0.0 registry.suse.com/suse/agentic/mcp/multi-linux-manager:latest
       port: 8000
       source: manual-config
       lastUpdated: '2025-12-11T16:30:00Z'
