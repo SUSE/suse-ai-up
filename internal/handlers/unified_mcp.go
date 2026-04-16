@@ -292,17 +292,21 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 		var token string
 		if adapter.Authentication != nil && adapter.Authentication.Type == "bearer" && adapter.Authentication.BearerToken != nil {
 			token = adapter.Authentication.BearerToken.Token
+			logging.ProxyLogger.Info("UnifiedMCP: Using internal token for adapter %s", adapter.Name)
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource, url, adapterToken string) {
+		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
 
-			tools, err := h.fetchToolsFromAdapter(ctx, adapter, url, adapterToken)
+			logging.ProxyLogger.Info("UnifiedMCP: Fetching tools from %s at %s", adapter.Name, url)
+			tools, err := h.fetchToolsFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
-				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s: %v", adapter.Name, err)
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s (%s): %v", adapter.Name, url, err)
 				return
 			}
+
+			logging.ProxyLogger.Info("UnifiedMCP: Found %d tools from %s", len(tools), adapter.Name)
 
 			// Prefix tool names with adapter name
 			mu.Lock()
@@ -315,10 +319,12 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 				allTools = append(allTools, prefixedTool)
 			}
 			mu.Unlock()
-		}(adapter, targetURL, token)
+		}(adapter, targetURL, token, userID)
 	}
 
 	wg.Wait()
+
+	logging.ProxyLogger.Info("UnifiedMCP: Total aggregated tools: %d", len(allTools))
 
 	return &MCPResponse{
 		JSONRPC: "2.0",
@@ -409,7 +415,7 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 		token = adapter.Authentication.BearerToken.Token
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, &unprefixedReq, headers)
+	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
 }
 
 // handleResourcesList aggregates resources from a specific set of adapters
@@ -433,13 +439,14 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 		var token string
 		if adapter.Authentication != nil && adapter.Authentication.Type == "bearer" && adapter.Authentication.BearerToken != nil {
 			token = adapter.Authentication.BearerToken.Token
+			logging.ProxyLogger.Info("UnifiedMCP: Using internal token for adapter %s", adapter.Name)
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource, url, adapterToken string) {
+		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
 
-			resources, err := h.fetchResourcesFromAdapter(ctx, adapter, url, adapterToken)
+			resources, err := h.fetchResourcesFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch resources from %s: %v", adapter.Name, err)
 				return
@@ -457,7 +464,7 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 				allResources = append(allResources, prefixedResource)
 			}
 			mu.Unlock()
-		}(adapter, targetURL, token)
+		}(adapter, targetURL, token, userID)
 	}
 
 	wg.Wait()
@@ -542,7 +549,7 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 		token = adapter.Authentication.BearerToken.Token
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, &unprefixedReq, headers)
+	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
 }
 
 // handlePromptsList aggregates prompts from a specific set of adapters
@@ -566,13 +573,14 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 		var token string
 		if adapter.Authentication != nil && adapter.Authentication.Type == "bearer" && adapter.Authentication.BearerToken != nil {
 			token = adapter.Authentication.BearerToken.Token
+			logging.ProxyLogger.Info("UnifiedMCP: Using internal token for adapter %s", adapter.Name)
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource, url, adapterToken string) {
+		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
 
-			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter, url, adapterToken)
+			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch prompts from %s: %v", adapter.Name, err)
 				return
@@ -589,7 +597,7 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 				allPrompts = append(allPrompts, prefixedPrompt)
 			}
 			mu.Unlock()
-		}(adapter, targetURL, token)
+		}(adapter, targetURL, token, userID)
 	}
 
 	wg.Wait()
@@ -678,12 +686,12 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 		token = adapter.Authentication.BearerToken.Token
 	}
 
-	return h.forwardToAdapter(ctx, adapter, targetURL, token, &unprefixedReq, headers)
+	return h.forwardToAdapter(ctx, adapter, targetURL, token, userID, &unprefixedReq, headers)
 }
 
 // fetchToolsFromAdapter fetches the list of available tools from a single MCP adapter.
 // It sends a tools/list JSON-RPC request to the adapter's URL and parses the response.
-func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken string) ([]Tool, error) {
+func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken, userID string) ([]Tool, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -691,7 +699,7 @@ func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter m
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, userID, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +728,7 @@ func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter m
 
 // fetchResourcesFromAdapter fetches the list of available resources from a single MCP adapter.
 // It sends a resources/list JSON-RPC request to the adapter's URL and parses the response.
-func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken string) ([]Resource, error) {
+func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken, userID string) ([]Resource, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -728,7 +736,7 @@ func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapt
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, userID, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -757,7 +765,7 @@ func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapt
 
 // fetchPromptsFromAdapter fetches the list of available prompts from a single MCP adapter.
 // It sends a prompts/list JSON-RPC request to the adapter's URL and parses the response.
-func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken string) ([]Prompt, error) {
+func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource, url, adapterToken, userID string) ([]Prompt, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -765,7 +773,7 @@ func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, adapterToken, userID, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -794,7 +802,13 @@ func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter
 
 // makeAdapterRequest makes a JSON-RPC HTTP POST request to an MCP adapter.
 // It marshals the request to JSON, sends it to the specified URL, and parses the response.
-func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapterToken string, req *MCPRequest) (*MCPResponse, error) {
+func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapterToken, userID string, req *MCPRequest) (*MCPResponse, error) {
+	// Internal call optimization: if the URL points to this proxy, we could potentially
+	// call the handler directly. For now, we'll just ensure localhost works.
+	if strings.Contains(url, "localhost") {
+		url = strings.Replace(url, "localhost", "127.0.0.1", 1)
+	}
+
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -809,25 +823,34 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapter
 	if adapterToken != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+adapterToken)
 	}
+	if userID != "" {
+		httpReq.Header.Set("X-User-ID", userID)
+	}
 
 	resp, err := h.httpClient.Do(httpReq)
 	if err != nil {
+		logging.ProxyLogger.Warn("UnifiedMCP: HTTP request failed to %s: %v", url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+		logging.ProxyLogger.Warn("UnifiedMCP: Adapter %s returned status %d: %s", url, resp.StatusCode, string(respBody))
 		return nil, fmt.Errorf("adapter returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logging.ProxyLogger.Warn("UnifiedMCP: Failed to read response body from %s: %v", url, err)
 		return nil, err
 	}
 
+	logging.ProxyLogger.Info("UnifiedMCP: Received response from %s: %s", url, string(respBody))
+
 	var mcpResp MCPResponse
 	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
+		logging.ProxyLogger.Warn("UnifiedMCP: Failed to unmarshal response from %s: %v", url, err)
 		return nil, err
 	}
 
@@ -835,7 +858,7 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapter
 }
 
 // forwardToAdapter forwards a JSON-RPC request to a specific MCP adapter and returns the response.
-func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, url, adapterToken string, req *MCPRequest, headers http.Header) *MCPResponse {
+func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, url, adapterToken, userID string, req *MCPRequest, headers http.Header) *MCPResponse {
 	if url == "" {
 		return &MCPResponse{
 			JSONRPC: "2.0",
@@ -867,9 +890,11 @@ func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *model
 		httpReq.Header.Set("Authorization", "Bearer "+adapterToken)
 	}
 
-	// Forward relevant headers
-	if userID := headers.Get("X-User-ID"); userID != "" {
+	// Forward userID from either argument or headers
+	if userID != "" {
 		httpReq.Header.Set("X-User-ID", userID)
+	} else if userIDHeader := headers.Get("X-User-ID"); userIDHeader != "" {
+		httpReq.Header.Set("X-User-ID", userIDHeader)
 	}
 
 	resp, err := h.httpClient.Do(httpReq)

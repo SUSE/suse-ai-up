@@ -665,22 +665,49 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 	if adapter.ConnectionType == models.ConnectionTypeLocalStdio ||
 		(adapter.ConnectionType == models.ConnectionTypeStreamableHttp && adapter.SidecarConfig == nil) {
 		fmt.Printf("DEBUG: Returning MCP response for LocalStdio adapter %s\n", adapterID)
+
+		// Read request to see method
+		body, _ := io.ReadAll(r.Body)
+		var req struct {
+			Method string `json:"method"`
+		}
+		json.Unmarshal(body, &req)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		response := map[string]interface{}{
-			"jsonrpc": "2.0",
-			"id":      1,
-			"result": map[string]interface{}{
+
+		var result interface{}
+		switch req.Method {
+		case "initialize":
+			result = map[string]interface{}{
 				"serverInfo": map[string]interface{}{
 					"name":    adapter.Name,
 					"version": "1.0.0",
 				},
 				"capabilities": map[string]interface{}{
-					"tools": map[string]interface{}{
-						"listChanged": true,
-					},
+					"tools": map[string]interface{}{"listChanged": true},
 				},
-			},
+			}
+		case "tools/list":
+			result = map[string]interface{}{
+				"tools": []interface{}{},
+			}
+		case "resources/list":
+			result = map[string]interface{}{
+				"resources": []interface{}{},
+			}
+		case "prompts/list":
+			result = map[string]interface{}{
+				"prompts": []interface{}{},
+			}
+		default:
+			result = map[string]interface{}{}
+		}
+
+		response := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"result":  result,
 		}
 		json.NewEncoder(w).Encode(response)
 		return

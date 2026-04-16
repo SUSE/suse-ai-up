@@ -539,7 +539,7 @@ func TestIntegration_ToolsListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	tools, err := handler.fetchToolsFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "")
+	tools, err := handler.fetchToolsFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user")
 	if err != nil {
 		t.Fatalf("fetchToolsFromAdapter failed: %v", err)
 	}
@@ -589,7 +589,7 @@ func TestIntegration_ResourcesListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	resources, err := handler.fetchResourcesFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "")
+	resources, err := handler.fetchResourcesFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user")
 	if err != nil {
 		t.Fatalf("fetchResourcesFromAdapter failed: %v", err)
 	}
@@ -639,7 +639,7 @@ func TestIntegration_PromptsListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	prompts, err := handler.fetchPromptsFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "")
+	prompts, err := handler.fetchPromptsFromAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user")
 	if err != nil {
 		t.Fatalf("fetchPromptsFromAdapter failed: %v", err)
 	}
@@ -670,7 +670,7 @@ func TestForwardToAdapter_NoRemoteURL(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", req, http.Header{})
+	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user", req, http.Header{})
 
 	if resp.Error == nil {
 		t.Fatal("Expected error for adapter with no remote URL")
@@ -723,7 +723,7 @@ func TestForwardToAdapter_HeaderForwarding(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("X-User-ID", "test-user-123")
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", req, headers)
+	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, "", "test-user-123", req, headers)
 
 	if resp.Error != nil {
 		t.Fatalf("Unexpected error: %v", resp.Error)
@@ -759,7 +759,7 @@ func TestMakeAdapterRequest_Success(t *testing.T) {
 		Method:  "tools/list",
 	}
 
-	resp, err := handler.makeAdapterRequest(context.Background(), mockServer.URL, "", req)
+	resp, err := handler.makeAdapterRequest(context.Background(), mockServer.URL, "", "test-user", req)
 	if err != nil {
 		t.Fatalf("makeAdapterRequest failed: %v", err)
 	}
@@ -794,7 +794,7 @@ func TestMakeAdapterRequest_AdapterError(t *testing.T) {
 		Method:  "tools/list",
 	}
 
-	resp, err := handler.makeAdapterRequest(context.Background(), mockServer.URL, "", req)
+	resp, err := handler.makeAdapterRequest(context.Background(), mockServer.URL, "", "test-user", req)
 	if err != nil {
 		t.Fatalf("makeAdapterRequest failed: %v", err)
 	}
