@@ -278,11 +278,10 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
-		targetURL := adapter.RemoteUrl
-		if targetURL == "" {
-			targetURL = adapter.URL
-		}
+		// Use the adapter's proxy URL. This ensures that:
+		// 1. RemoteHttp adapters get their credentials injected by the proxy.
+		// 2. StreamableHttp adapters are correctly routed to sidecars.
+		targetURL := adapter.URL
 
 		if targetURL == "" {
 			continue
@@ -298,11 +297,22 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 		wg.Add(1)
 		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
+			// Panic recovery for robust aggregation
+			defer func() {
+				if r := recover(); r != nil {
+					logging.ProxyLogger.Error("UnifiedMCP: Panic while fetching tools from %s: %v", adapter.Name, r)
+				}
+			}()
+
+			// Use a per-adapter timeout
+			adapterCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+			defer cancel()
 
 			logging.ProxyLogger.Info("UnifiedMCP: Fetching tools from %s at %s", adapter.Name, url)
-			tools, err := h.fetchToolsFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
+			tools, err := h.fetchToolsFromAdapter(adapterCtx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
-				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s (%s): %v", adapter.Name, url, err)
+				// Simply log and continue, as requested
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s (%s): %v. Skipping.", adapter.Name, url, err)
 				return
 			}
 
@@ -395,11 +405,8 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 		},
 	}
 
-	// Get the correct URL to forward to
-	targetURL := adapter.RemoteUrl
-	if targetURL == "" {
-		targetURL = adapter.URL
-	}
+	// Use proxy URL for consistency
+	targetURL := adapter.URL
 
 	if targetURL == "" {
 		return &MCPResponse{
@@ -425,11 +432,7 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
-		targetURL := adapter.RemoteUrl
-		if targetURL == "" {
-			targetURL = adapter.URL
-		}
+		targetURL := adapter.URL
 
 		if targetURL == "" {
 			continue
@@ -445,10 +448,18 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 		wg.Add(1)
 		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					logging.ProxyLogger.Error("UnifiedMCP: Panic while fetching resources from %s: %v", adapter.Name, r)
+				}
+			}()
 
-			resources, err := h.fetchResourcesFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
+			adapterCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+			defer cancel()
+
+			resources, err := h.fetchResourcesFromAdapter(adapterCtx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
-				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch resources from %s: %v", adapter.Name, err)
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch resources from %s (%s): %v. Skipping.", adapter.Name, url, err)
 				return
 			}
 
@@ -537,11 +548,8 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 		Params:  map[string]interface{}{"uri": originalURI},
 	}
 
-	// Get the correct URL to forward to
-	targetURL := adapter.RemoteUrl
-	if targetURL == "" {
-		targetURL = adapter.URL
-	}
+	// Use proxy URL for consistency
+	targetURL := adapter.URL
 
 	// Get token if it's an internal bearer-auth adapter
 	var token string
@@ -559,11 +567,7 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
-		targetURL := adapter.RemoteUrl
-		if targetURL == "" {
-			targetURL = adapter.URL
-		}
+		targetURL := adapter.URL
 
 		if targetURL == "" {
 			continue
@@ -579,10 +583,18 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 		wg.Add(1)
 		go func(adapter models.AdapterResource, url, adapterToken, currentUserID string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					logging.ProxyLogger.Error("UnifiedMCP: Panic while fetching prompts from %s: %v", adapter.Name, r)
+				}
+			}()
 
-			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter, url, adapterToken, currentUserID)
+			adapterCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+			defer cancel()
+
+			prompts, err := h.fetchPromptsFromAdapter(adapterCtx, adapter, url, adapterToken, currentUserID)
 			if err != nil {
-				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch prompts from %s: %v", adapter.Name, err)
+				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch prompts from %s (%s): %v. Skipping.", adapter.Name, url, err)
 				return
 			}
 
@@ -674,11 +686,8 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 		},
 	}
 
-	// Get the correct URL to forward to
-	targetURL := adapter.RemoteUrl
-	if targetURL == "" {
-		targetURL = adapter.URL
-	}
+	// Use proxy URL for consistency
+	targetURL := adapter.URL
 
 	// Get token if it's an internal bearer-auth adapter
 	var token string
