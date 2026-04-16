@@ -284,7 +284,18 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 		targetURL := adapter.URL
 
 		if targetURL == "" {
+			logging.ProxyLogger.Warn("UnifiedMCP: Skipping adapter %s because it has no proxy URL", adapter.Name)
 			continue
+		}
+
+		// SPECIAL CASE: If calling ourselves (localhost/127.0.0.1), use internal DNS or 127.0.0.1
+		// This avoids issues where the external IP/Port is not reachable from inside the container.
+		if strings.Contains(targetURL, "192.168.64.29") || strings.Contains(targetURL, "localhost") {
+			// Use 127.0.0.1 for internal loopback
+			parts := strings.Split(targetURL, ":8911")
+			if len(parts) > 1 {
+				targetURL = "http://127.0.0.1:8911" + parts[1]
+			}
 		}
 
 		// Get token if it's an internal bearer-auth adapter
