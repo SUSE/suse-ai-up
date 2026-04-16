@@ -632,13 +632,14 @@ func RunUniproxy() {
 	logging.ProxyLogger.Info("Initializing AdapterService with SidecarManager")
 	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, registryStore, sidecarManager, cfg)
 	logging.ProxyLogger.Info("AdapterService created: %v", adapterService != nil)
-	adapterHandler := handlers.NewAdapterHandler(adapterService, userGroupService)
-	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
-	logging.ProxyLogger.Success("AdapterService and AdapterHandler initialized")
 
 	// Initialize UnifiedMCPHandler for aggregated MCP endpoint
 	unifiedMCPHandler := handlers.NewUnifiedMCPHandler(adapterService, userGroupService)
 	logging.ProxyLogger.Info("UnifiedMCPHandler created: %v", unifiedMCPHandler != nil)
+
+	adapterHandler := handlers.NewAdapterHandler(adapterService, userGroupService, unifiedMCPHandler)
+	logging.ProxyLogger.Info("AdapterHandler created: %v", adapterHandler != nil)
+	logging.ProxyLogger.Success("AdapterService and AdapterHandler initialized")
 
 	// Adapter handlers are now used directly in Gin routes
 

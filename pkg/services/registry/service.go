@@ -40,6 +40,7 @@ type Service struct {
 	userGroupService            *services.UserGroupService
 	userGroupHandler            *handlers.UserGroupHandler
 	routeAssignmentHandler      *handlers.RouteAssignmentHandler
+	unifiedMCPHandler           *handlers.UnifiedMCPHandler
 	syncManager                 *SyncManager
 	sidecarManager              *proxy.SidecarManager
 	shutdownCh                  chan struct{}
@@ -120,6 +121,9 @@ func NewService(config *Config, globalConfig *config.Config) *Service {
 	// Initialize adapter service (sidecar manager will be set later if available)
 	service.adapterService = adaptersvc.NewAdapterService(service.adapterStore, service.adapterGroupAssignmentStore, service.store, service.sidecarManager, globalConfig)
 
+	// Initialize unified MCP handler
+	service.unifiedMCPHandler = handlers.NewUnifiedMCPHandler(service.adapterService, service.userGroupService)
+
 	// Initialize handlers
 	service.userGroupHandler = handlers.NewUserGroupHandler(service.userGroupService, service.adapterService)
 	service.routeAssignmentHandler = handlers.NewRouteAssignmentHandler(service.userGroupService, service)
@@ -157,7 +161,7 @@ func (s *Service) Start() error {
 	mux.HandleFunc("/api/v1/registry/reload", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(s.handleReloadRemoteServers)))
 
 	// Adapter management routes
-	adapterHandler := handlers.NewAdapterHandler(s.adapterService, s.userGroupService)
+	adapterHandler := handlers.NewAdapterHandler(s.adapterService, s.userGroupService, s.unifiedMCPHandler)
 	mux.HandleFunc("/api/v1/adapters", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(adapterHandler.HandleAdapters)))
 	mux.HandleFunc("/api/v1/adapters/", middleware.CORSMiddleware(middleware.APIKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/adapters/")

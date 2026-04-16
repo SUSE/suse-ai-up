@@ -87,7 +87,11 @@ The response will include the aggregated endpoint URL and a secure token:
 
 ## Step 3: Use the Virtual Adapter
 
-You can now interact with the virtual adapter using standard MCP JSON-RPC requests.
+You can now interact with the virtual adapter using standard MCP JSON-RPC requests via two different routes:
+1.  **Aggregator Route**: `http://localhost:8911/api/v1/mcp/{name}`
+2.  **Standard Adapter Route**: `http://localhost:8911/api/v1/adapters/{name}/mcp`
+
+Both routes provide the same aggregated functionality.
 
 ### Get Tool List
 Use the token returned in the previous step to list all tools from both adapters.
@@ -102,7 +106,7 @@ curl -X POST -H "Content-Type: application/json" \
        "method": "tools/list",
        "params": {}
      }' \
-     http://localhost:8911/api/v1/mcp/my-unified-mcp
+     http://localhost:8911/api/v1/adapters/my-unified-mcp/mcp
 ```
 
 ### Example Result

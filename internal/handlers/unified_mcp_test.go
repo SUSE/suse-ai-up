@@ -8,8 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"suse-ai-up/pkg/clients"
 	"suse-ai-up/pkg/models"
-	"suse-ai-up/pkg/services"
+	core_services "suse-ai-up/pkg/services"
 	adaptersvc "suse-ai-up/pkg/services/adapters"
 )
 
@@ -43,8 +44,13 @@ func newTestUnifiedMCPHandler(adapters []*models.AdapterResource, mockServer *ht
 
 	// Create a real handler but we'll need to work around the service dependency
 	// For now, we test the handler methods that don't require full service integration
+	adapterStore := clients.NewInMemoryAdapterStore()
+	adapterGroupAssignmentStore := clients.NewInMemoryAdapterGroupAssignmentStore()
+	serverStore := clients.NewInMemoryMCPServerStore()
+	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil, nil)
 	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
+		httpClient:     http.DefaultClient,
+		adapterService: adapterService,
 	}
 
 	return handler
@@ -52,9 +58,7 @@ func newTestUnifiedMCPHandler(adapters []*models.AdapterResource, mockServer *ht
 
 // TestHandleUnifiedMCP_MethodNotAllowed tests that non-POST requests are rejected
 func TestHandleUnifiedMCP_MethodNotAllowed(t *testing.T) {
-	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
-	}
+	handler := setupHandler(http.DefaultClient)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/mcp", nil)
 	w := httptest.NewRecorder()
@@ -81,9 +85,7 @@ func TestHandleUnifiedMCP_MethodNotAllowed(t *testing.T) {
 
 // TestHandleUnifiedMCP_InvalidJSON tests that invalid JSON is rejected
 func TestHandleUnifiedMCP_InvalidJSON(t *testing.T) {
-	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
-	}
+	handler := setupHandler(http.DefaultClient)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/mcp", bytes.NewReader([]byte("invalid json")))
 	w := httptest.NewRecorder()
@@ -106,9 +108,7 @@ func TestHandleUnifiedMCP_InvalidJSON(t *testing.T) {
 
 // TestHandleUnifiedMCP_UnknownMethod tests that unknown methods return method not found
 func TestHandleUnifiedMCP_UnknownMethod(t *testing.T) {
-	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
-	}
+	handler := setupHandler(http.DefaultClient)
 
 	mcpReq := MCPRequest{
 		JSONRPC: "2.0",
@@ -138,9 +138,7 @@ func TestHandleUnifiedMCP_UnknownMethod(t *testing.T) {
 
 // TestHandleInitialize tests the initialize method
 func TestHandleInitialize(t *testing.T) {
-	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
-	}
+	handler := setupHandler(http.DefaultClient)
 
 	mcpReq := MCPRequest{
 		JSONRPC: "2.0",
@@ -199,25 +197,25 @@ func TestHandleInitialize(t *testing.T) {
 // TestToolNameParsing tests that tool names are correctly parsed
 func TestToolNameParsing(t *testing.T) {
 	tests := []struct {
-		name          string
-		toolName      string
-		expectError   bool
+		name            string
+		toolName        string
+		expectError     bool
 		expectedAdapter string
-		expectedTool  string
+		expectedTool    string
 	}{
 		{
-			name:          "valid tool name",
-			toolName:      "servicenow__get_incident",
-			expectError:   false,
+			name:            "valid tool name",
+			toolName:        "servicenow__get_incident",
+			expectError:     false,
 			expectedAdapter: "servicenow",
-			expectedTool:  "get_incident",
+			expectedTool:    "get_incident",
 		},
 		{
-			name:          "tool name with multiple underscores",
-			toolName:      "my_adapter__my_tool_name",
-			expectError:   false,
+			name:            "tool name with multiple underscores",
+			toolName:        "my_adapter__my_tool_name",
+			expectError:     false,
 			expectedAdapter: "my_adapter",
-			expectedTool:  "my_tool_name",
+			expectedTool:    "my_tool_name",
 		},
 		{
 			name:        "invalid tool name - no prefix",
@@ -328,6 +326,22 @@ func splitResourceURI(uri string) []string {
 		}
 	}
 	return nil
+}
+
+func setupHandler(httpClient *http.Client) *UnifiedMCPHandler {
+	adapterStore := clients.NewInMemoryAdapterStore()
+	adapterGroupAssignmentStore := clients.NewInMemoryAdapterGroupAssignmentStore()
+	serverStore := clients.NewInMemoryMCPServerStore()
+	userStore := clients.NewInMemoryUserStore()
+	groupStore := clients.NewInMemoryGroupStore()
+	userGroupService := core_services.NewUserGroupService(userStore, groupStore)
+	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil, nil)
+
+	return &UnifiedMCPHandler{
+		httpClient:       httpClient,
+		adapterService:   adapterService,
+		userGroupService: userGroupService,
+	}
 }
 
 // TestToolPrefixing tests that tools are correctly prefixed with adapter name
@@ -541,9 +555,7 @@ func TestIntegration_ToolsListWithMockAdapter(t *testing.T) {
 	defer mockServer.Close()
 
 	// Create handler with mock HTTP client
-	handler := &UnifiedMCPHandler{
-		httpClient: mockServer.Client(),
-	}
+	handler := setupHandler(mockServer.Client())
 
 	// Test fetchToolsFromAdapter directly
 	adapter := models.AdapterResource{
@@ -554,7 +566,7 @@ func TestIntegration_ToolsListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	tools, err := handler.fetchToolsFromAdapter(context.Background(), adapter)
+	tools, err := handler.fetchToolsFromAdapter(context.Background(), adapter, adapter.RemoteUrl)
 	if err != nil {
 		t.Fatalf("fetchToolsFromAdapter failed: %v", err)
 	}
@@ -594,9 +606,7 @@ func TestIntegration_ResourcesListWithMockAdapter(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	handler := &UnifiedMCPHandler{
-		httpClient: mockServer.Client(),
-	}
+	handler := setupHandler(mockServer.Client())
 
 	adapter := models.AdapterResource{
 		AdapterData: models.AdapterData{
@@ -606,7 +616,7 @@ func TestIntegration_ResourcesListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	resources, err := handler.fetchResourcesFromAdapter(context.Background(), adapter)
+	resources, err := handler.fetchResourcesFromAdapter(context.Background(), adapter, adapter.RemoteUrl)
 	if err != nil {
 		t.Fatalf("fetchResourcesFromAdapter failed: %v", err)
 	}
@@ -646,9 +656,7 @@ func TestIntegration_PromptsListWithMockAdapter(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	handler := &UnifiedMCPHandler{
-		httpClient: mockServer.Client(),
-	}
+	handler := setupHandler(mockServer.Client())
 
 	adapter := models.AdapterResource{
 		AdapterData: models.AdapterData{
@@ -658,7 +666,7 @@ func TestIntegration_PromptsListWithMockAdapter(t *testing.T) {
 		},
 	}
 
-	prompts, err := handler.fetchPromptsFromAdapter(context.Background(), adapter)
+	prompts, err := handler.fetchPromptsFromAdapter(context.Background(), adapter, adapter.RemoteUrl)
 	if err != nil {
 		t.Fatalf("fetchPromptsFromAdapter failed: %v", err)
 	}
@@ -674,8 +682,13 @@ func TestIntegration_PromptsListWithMockAdapter(t *testing.T) {
 
 // TestForwardToAdapter_NoRemoteURL tests forwarding when adapter has no remote URL
 func TestForwardToAdapter_NoRemoteURL(t *testing.T) {
+	adapterStore := clients.NewInMemoryAdapterStore()
+	adapterGroupAssignmentStore := clients.NewInMemoryAdapterGroupAssignmentStore()
+	serverStore := clients.NewInMemoryMCPServerStore()
+	adapterService := adaptersvc.NewAdapterService(adapterStore, adapterGroupAssignmentStore, serverStore, nil, nil)
 	handler := &UnifiedMCPHandler{
-		httpClient: http.DefaultClient,
+		httpClient:     http.DefaultClient,
+		adapterService: adapterService,
 	}
 
 	adapter := &models.AdapterResource{
@@ -691,7 +704,7 @@ func TestForwardToAdapter_NoRemoteURL(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, req, http.Header{})
+	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, req, http.Header{})
 
 	if resp.Error == nil {
 		t.Fatal("Expected error for adapter with no remote URL")
@@ -701,7 +714,7 @@ func TestForwardToAdapter_NoRemoteURL(t *testing.T) {
 		t.Errorf("Expected error code -32602, got %d", resp.Error.Code)
 	}
 
-	if resp.Error.Message != "Adapter has no remote URL" {
+	if resp.Error.Message != "Adapter has no URL" {
 		t.Errorf("Unexpected error message: %s", resp.Error.Message)
 	}
 }
@@ -746,7 +759,7 @@ func TestForwardToAdapter_HeaderForwarding(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("X-User-ID", "test-user-123")
 
-	resp := handler.forwardToAdapter(context.Background(), adapter, req, headers)
+	resp := handler.forwardToAdapter(context.Background(), adapter, adapter.RemoteUrl, req, headers)
 
 	if resp.Error != nil {
 		t.Fatalf("Unexpected error: %v", resp.Error)
@@ -838,5 +851,5 @@ func TestMakeAdapterRequest_AdapterError(t *testing.T) {
 // Ensure imports are used (they are used in the mocks at the top)
 var (
 	_ *adaptersvc.AdapterService
-	_ *services.UserGroupService
+	_ *core_services.UserGroupService
 )

@@ -189,6 +189,13 @@ func (h *UnifiedMCPHandler) handleUnifiedMCPInternal(w http.ResponseWriter, r *h
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to load source adapter %s for virtual adapter %s: %v", sourceID, virtualAdapterName, err)
 				continue
 			}
+
+			// Safeguard: Do not aggregate other virtual adapters to prevent loops
+			if adapter.ConnectionType == models.ConnectionTypeVirtual {
+				logging.ProxyLogger.Warn("UnifiedMCP: Skipping nested virtual adapter %s", adapter.Name)
+				continue
+			}
+
 			adapters = append(adapters, *adapter)
 		}
 	} else {
@@ -264,15 +271,21 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
+		targetURL := adapter.RemoteUrl
+		if targetURL == "" {
+			targetURL = adapter.URL
+		}
+
+		if targetURL == "" {
 			continue
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource) {
+		go func(adapter models.AdapterResource, url string) {
 			defer wg.Done()
 
-			tools, err := h.fetchToolsFromAdapter(ctx, adapter)
+			tools, err := h.fetchToolsFromAdapter(ctx, adapter, url)
 			if err != nil {
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch tools from %s: %v", adapter.Name, err)
 				return
@@ -289,7 +302,7 @@ func (h *UnifiedMCPHandler) handleToolsList(ctx context.Context, req *MCPRequest
 				allTools = append(allTools, prefixedTool)
 			}
 			mu.Unlock()
-		}(adapter)
+		}(adapter, targetURL)
 	}
 
 	wg.Wait()
@@ -352,14 +365,6 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 		}
 	}
 
-	if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
-		return &MCPResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32602, Message: "Adapter does not support remote MCP"},
-		}
-	}
-
 	// Forward the request with unprefixed tool name
 	unprefixedReq := MCPRequest{
 		JSONRPC: "2.0",
@@ -371,7 +376,21 @@ func (h *UnifiedMCPHandler) handleToolsCall(ctx context.Context, req *MCPRequest
 		},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+	// Get the correct URL to forward to
+	targetURL := adapter.RemoteUrl
+	if targetURL == "" {
+		targetURL = adapter.URL
+	}
+
+	if targetURL == "" {
+		return &MCPResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter does not support MCP (no URL found)"},
+		}
+	}
+
+	return h.forwardToAdapter(ctx, adapter, targetURL, &unprefixedReq, headers)
 }
 
 // handleResourcesList aggregates resources from a specific set of adapters
@@ -381,15 +400,21 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
+		targetURL := adapter.RemoteUrl
+		if targetURL == "" {
+			targetURL = adapter.URL
+		}
+
+		if targetURL == "" {
 			continue
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource) {
+		go func(adapter models.AdapterResource, url string) {
 			defer wg.Done()
 
-			resources, err := h.fetchResourcesFromAdapter(ctx, adapter)
+			resources, err := h.fetchResourcesFromAdapter(ctx, adapter, url)
 			if err != nil {
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch resources from %s: %v", adapter.Name, err)
 				return
@@ -407,7 +432,7 @@ func (h *UnifiedMCPHandler) handleResourcesList(ctx context.Context, req *MCPReq
 				allResources = append(allResources, prefixedResource)
 			}
 			mu.Unlock()
-		}(adapter)
+		}(adapter, targetURL)
 	}
 
 	wg.Wait()
@@ -480,7 +505,13 @@ func (h *UnifiedMCPHandler) handleResourcesRead(ctx context.Context, req *MCPReq
 		Params:  map[string]interface{}{"uri": originalURI},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+	// Get the correct URL to forward to
+	targetURL := adapter.RemoteUrl
+	if targetURL == "" {
+		targetURL = adapter.URL
+	}
+
+	return h.forwardToAdapter(ctx, adapter, targetURL, &unprefixedReq, headers)
 }
 
 // handlePromptsList aggregates prompts from a specific set of adapters
@@ -490,15 +521,21 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 	var wg sync.WaitGroup
 
 	for _, adapter := range adapters {
-		if adapter.ConnectionType != models.ConnectionTypeRemoteHttp || adapter.RemoteUrl == "" {
+		// Use RemoteUrl if available, otherwise fallback to the adapter's own proxy URL
+		targetURL := adapter.RemoteUrl
+		if targetURL == "" {
+			targetURL = adapter.URL
+		}
+
+		if targetURL == "" {
 			continue
 		}
 
 		wg.Add(1)
-		go func(adapter models.AdapterResource) {
+		go func(adapter models.AdapterResource, url string) {
 			defer wg.Done()
 
-			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter)
+			prompts, err := h.fetchPromptsFromAdapter(ctx, adapter, url)
 			if err != nil {
 				logging.ProxyLogger.Warn("UnifiedMCP: Failed to fetch prompts from %s: %v", adapter.Name, err)
 				return
@@ -515,7 +552,7 @@ func (h *UnifiedMCPHandler) handlePromptsList(ctx context.Context, req *MCPReque
 				allPrompts = append(allPrompts, prefixedPrompt)
 			}
 			mu.Unlock()
-		}(adapter)
+		}(adapter, targetURL)
 	}
 
 	wg.Wait()
@@ -592,13 +629,18 @@ func (h *UnifiedMCPHandler) handlePromptsGet(ctx context.Context, req *MCPReques
 		},
 	}
 
-	return h.forwardToAdapter(ctx, adapter, &unprefixedReq, headers)
+	// Get the correct URL to forward to
+	targetURL := adapter.RemoteUrl
+	if targetURL == "" {
+		targetURL = adapter.URL
+	}
+
+	return h.forwardToAdapter(ctx, adapter, targetURL, &unprefixedReq, headers)
 }
 
-// fetchToolsFromAdapter fetches the list of available tools from a single remote MCP adapter.
-// It sends a tools/list JSON-RPC request to the adapter's remote URL and parses the response.
-// Returns the list of tools or an error if the request fails or the adapter returns an error.
-func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Tool, error) {
+// fetchToolsFromAdapter fetches the list of available tools from a single MCP adapter.
+// It sends a tools/list JSON-RPC request to the adapter's URL and parses the response.
+func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter models.AdapterResource, url string) ([]Tool, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -606,7 +648,7 @@ func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter m
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -629,10 +671,9 @@ func (h *UnifiedMCPHandler) fetchToolsFromAdapter(ctx context.Context, adapter m
 	return result.Tools, nil
 }
 
-// fetchResourcesFromAdapter fetches the list of available resources from a single remote MCP adapter.
-// It sends a resources/list JSON-RPC request to the adapter's remote URL and parses the response.
-// Returns the list of resources or an error if the request fails or the adapter returns an error.
-func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Resource, error) {
+// fetchResourcesFromAdapter fetches the list of available resources from a single MCP adapter.
+// It sends a resources/list JSON-RPC request to the adapter's URL and parses the response.
+func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapter models.AdapterResource, url string) ([]Resource, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -640,7 +681,7 @@ func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapt
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -663,10 +704,9 @@ func (h *UnifiedMCPHandler) fetchResourcesFromAdapter(ctx context.Context, adapt
 	return result.Resources, nil
 }
 
-// fetchPromptsFromAdapter fetches the list of available prompts from a single remote MCP adapter.
-// It sends a prompts/list JSON-RPC request to the adapter's remote URL and parses the response.
-// Returns the list of prompts or an error if the request fails or the adapter returns an error.
-func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource) ([]Prompt, error) {
+// fetchPromptsFromAdapter fetches the list of available prompts from a single MCP adapter.
+// It sends a prompts/list JSON-RPC request to the adapter's URL and parses the response.
+func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter models.AdapterResource, url string) ([]Prompt, error) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -674,7 +714,7 @@ func (h *UnifiedMCPHandler) fetchPromptsFromAdapter(ctx context.Context, adapter
 		Params:  map[string]interface{}{},
 	}
 
-	resp, err := h.makeAdapterRequest(ctx, adapter.RemoteUrl, &req)
+	resp, err := h.makeAdapterRequest(ctx, url, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -733,16 +773,15 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url string, 
 	return &mcpResp, nil
 }
 
-// forwardToAdapter forwards a JSON-RPC request to a specific remote MCP adapter and returns the response.
+// forwardToAdapter forwards a JSON-RPC request to a specific MCP adapter and returns the response.
 // It handles the HTTP communication, including forwarding relevant headers (like X-User-ID) to the adapter.
-// If the adapter has no remote URL or communication fails, it returns an appropriate error response.
 // This is used by tools/call, resources/read, and prompts/get to route requests to the correct adapter.
-func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, req *MCPRequest, headers http.Header) *MCPResponse {
-	if adapter.RemoteUrl == "" {
+func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *models.AdapterResource, url string, req *MCPRequest, headers http.Header) *MCPResponse {
+	if url == "" {
 		return &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   &MCPRPCError{Code: -32602, Message: "Adapter has no remote URL"},
+			Error:   &MCPRPCError{Code: -32602, Message: "Adapter has no URL"},
 		}
 	}
 
@@ -755,7 +794,7 @@ func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *model
 		}
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, adapter.RemoteUrl, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return &MCPResponse{
 			JSONRPC: "2.0",

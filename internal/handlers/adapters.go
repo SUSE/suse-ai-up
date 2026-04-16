@@ -22,15 +22,17 @@ type ErrorResponse struct {
 
 // AdapterHandler handles adapter management requests
 type AdapterHandler struct {
-	adapterService   *adaptersvc.AdapterService
-	userGroupService *services.UserGroupService
+	adapterService    *adaptersvc.AdapterService
+	userGroupService  *services.UserGroupService
+	unifiedMCPHandler *UnifiedMCPHandler
 }
 
 // NewAdapterHandler creates a new adapter handler
-func NewAdapterHandler(adapterService *adaptersvc.AdapterService, userGroupService *services.UserGroupService) *AdapterHandler {
+func NewAdapterHandler(adapterService *adaptersvc.AdapterService, userGroupService *services.UserGroupService, unifiedMCPHandler *UnifiedMCPHandler) *AdapterHandler {
 	return &AdapterHandler{
-		adapterService:   adapterService,
-		userGroupService: userGroupService,
+		adapterService:    adapterService,
+		userGroupService:  userGroupService,
+		unifiedMCPHandler: unifiedMCPHandler,
 	}
 }
 
@@ -693,6 +695,18 @@ func (h *AdapterHandler) HandleMCPProtocol(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		h.proxyToRemoteMCP(w, r, adapter.RemoteUrl)
+		return
+	}
+
+	// For Virtual adapters, delegate to UnifiedMCPHandler
+	if adapter.ConnectionType == models.ConnectionTypeVirtual {
+		if h.unifiedMCPHandler != nil {
+			h.unifiedMCPHandler.HandleVirtualMCP(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "UnifiedMCPHandler not initialized"})
 		return
 	}
 
