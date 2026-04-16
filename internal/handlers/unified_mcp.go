@@ -579,6 +579,7 @@ func (h *UnifiedMCPHandler) makeAdapterRequest(ctx context.Context, url, adapter
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json, text/event-stream")
 	if adapterToken != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+adapterToken)
 	}
@@ -607,6 +608,7 @@ func (h *UnifiedMCPHandler) forwardToAdapter(ctx context.Context, adapter *model
 	body, _ := json.Marshal(req)
 	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json, text/event-stream")
 	if adapterToken != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+adapterToken)
 	}
